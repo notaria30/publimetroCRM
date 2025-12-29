@@ -81,7 +81,7 @@ export default function QuoteDetailPage() {
   const printPDF = () => {
     if (!quote?._id) return;
     window.open(
-      `http://localhost:4000/api/pdf/quote/${quote._id}`,
+      `/api/pdf/quote/${quote._id}`,
       "_blank"
     );
   };

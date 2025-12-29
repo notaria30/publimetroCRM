@@ -136,7 +136,7 @@ export default function PostSaleCreatePage() {
             </Typography>
 
             <Grid container spacing={3}>
-              <Grid item xs={12} md={6}>
+               <Grid size={{ xs: 12, md: 4 }}>
                 <FormControl fullWidth required>
                   <InputLabel>Venta</InputLabel>
                   <Select
@@ -154,7 +154,7 @@ export default function PostSaleCreatePage() {
                 </FormControl>
               </Grid>
 
-              <Grid item xs={12} md={6}>
+               <Grid size={{ xs: 12, md: 3 }}>
                 <FormControl fullWidth>
                   <InputLabel>Etapa</InputLabel>
                   <Select

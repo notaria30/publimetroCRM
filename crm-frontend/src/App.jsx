@@ -252,7 +252,16 @@ function App() {
               </PrivateRoute>
             }
           />
-          <Route path="/postsale/create" element={<PostSaleCreatePage />} />
+          <Route
+            path="/postsale/create"
+            element={
+              <PrivateRoute>
+                <ProtectedLayout>
+                  <PostSaleCreatePage />
+                </ProtectedLayout>
+              </PrivateRoute>
+            }
+          />
 
           {/* INVOICES */}
           <Route

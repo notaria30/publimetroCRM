@@ -160,7 +160,7 @@ function ReportSalesPage() {
           </Box>
 
           <Grid container spacing={2}>
-            <Grid item xs={12} md={4}>
+            <Grid size={{ xs: 12, md: 3 }}>
               <TextField
                 select
                 fullWidth
@@ -179,7 +179,7 @@ function ReportSalesPage() {
               </TextField>
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid size={{ xs: 12, md: 2.5 }}>
               <TextField
                 select
                 fullWidth
@@ -198,7 +198,7 @@ function ReportSalesPage() {
               </TextField>
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid size={{ xs: 12, md: 3 }}>
               <TextField
                 select
                 fullWidth
@@ -255,7 +255,7 @@ function ReportSalesPage() {
               />
             </Grid>
 
-            <Grid item xs={12} md={4}>
+            <Grid size={{ xs: 12, md: 2 }}>
               <TextField
                 select
                 fullWidth
