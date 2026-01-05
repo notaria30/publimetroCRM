@@ -326,6 +326,28 @@ function ClientCreatePage() {
                     <MenuItem value="automotriz">Automotriz</MenuItem>
                     <MenuItem value="construccion">Construcción</MenuItem>
                     <MenuItem value="servicios financieros">Servicios Financieros</MenuItem>
+                    <MenuItem value="autos">Autos</MenuItem>
+                    <MenuItem value="inmobiliaria">Inmobiliaria</MenuItem>
+                    <MenuItem value="restaurantes">Restaurantes</MenuItem>
+                    <MenuItem value="hoteles">Hoteles</MenuItem>
+                    <MenuItem value="tiendas departamentales">Tiendas Departamentales</MenuItem>
+                    <MenuItem value="tiendas de conveniencia">Tiendas de Conveniencia</MenuItem>
+                    <MenuItem value="hospitales">Hospital</MenuItem>
+                    <MenuItem value="opticas">Optica</MenuItem>
+                    <MenuItem value="farmacias">Farmacia</MenuItem>
+                    <MenuItem value="gimansios">Gimnasio</MenuItem>
+                    <MenuItem value="clinicas">Clinica</MenuItem>
+                    <MenuItem value="escuelas">Escuela</MenuItem>
+                    <MenuItem value="universidades">Universidad</MenuItem>
+                    <MenuItem value="clubs deportivo">Club Deportivo</MenuItem>
+                    <MenuItem value="eventos o espectaculos">Evento/Espectaculo</MenuItem>
+                    <MenuItem value="servicios financieros">Servicio Financiero</MenuItem>
+                    <MenuItem value="aseguradoras">Aseguradora</MenuItem>
+                    <MenuItem value="Notarias">Notaria</MenuItem>
+                    <MenuItem value="talleres mecanicos">Taller Mecanico</MenuItem>
+                    <MenuItem value="distribuidora de autos">Distribuidora de autos</MenuItem>
+                    <MenuItem value="cursos o diplomados">Cursos/Diplomados</MenuItem>
+                    <MenuItem value="laboratorios medicos">Laboratorio Medico</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>

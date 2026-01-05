@@ -1,5 +1,5 @@
 // src/pages/quotes/QuotesPage.jsx
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Container,
@@ -15,7 +15,10 @@ import {
   TableBody,
   Chip,
   Stack,
+  TextField,
+  InputAdornment,
 } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
 import { getQuotes, approveQuote, rejectQuote } from "../../services/quoteService";
 import { useAuth } from "../../context/AuthContext";
 
@@ -24,6 +27,9 @@ export default function QuotesPage() {
   const [tab, setTab] = useState("pendiente");
   const [quotes, setQuotes] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // ✅ NUEVO: buscador
+  const [search, setSearch] = useState("");
 
   const loadQuotes = async () => {
     try {
@@ -58,7 +64,50 @@ export default function QuotesPage() {
     loadQuotes();
   }, []);
 
-  const filtered = quotes.filter((q) => q.status === tab);
+  // Normaliza texto para buscar (minúsculas + sin acentos)
+  const normalize = (str = "") =>
+    String(str)
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+
+  // Colors para chips
+  const statusChip = {
+    aprobado: { label: "Aprobada", color: "success" },
+    pendiente: { label: "Pendiente", color: "warning" },
+    rechazado: { label: "Rechazada", color: "error" },
+  };
+
+  // ✅ Primero filtra por TAB
+  const tabFiltered = useMemo(() => {
+    return quotes.filter((q) => q.status === tab);
+  }, [quotes, tab]);
+
+  // ✅ Luego aplica buscador dentro del TAB
+  const filtered = useMemo(() => {
+    const q = normalize(search.trim());
+    if (!q) return tabFiltered;
+
+    return tabFiltered.filter((item) => {
+      const createdStr = item.createdAt
+        ? new Date(item.createdAt).toLocaleDateString()
+        : "";
+
+      const haystack = [
+        item.folio,
+        item.client?.nombreComercial,
+        item.client?.razonSocial,
+        item.total != null ? Number(item.total).toFixed(2) : "",
+        statusChip[item.status]?.label || item.status,
+        createdStr,
+      ]
+        .filter(Boolean)
+        .map(normalize)
+        .join(" ");
+
+      return haystack.includes(q);
+    });
+  }, [tabFiltered, search]);
 
   if (loading) {
     return (
@@ -71,30 +120,50 @@ export default function QuotesPage() {
     );
   }
 
-  // Colors para chips
-  const statusChip = {
-    aprobado: { label: "Aprobada", color: "success" },
-    pendiente: { label: "Pendiente", color: "warning" },
-    rechazado: { label: "Rechazada", color: "error" },
-  };
-
   return (
     <Container sx={{ py: 4 }}>
       {/* HEADER */}
-      <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+      <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} gap={2} flexWrap="wrap">
         <Typography variant="h4" fontWeight={700}>
           Cotizaciones
         </Typography>
 
-        <Button
-          component={Link}
-          to="/quotes/new"
-          variant="contained"
-          sx={{ textTransform: "none" }}
-        >
-          Nueva cotización
-        </Button>
+        <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
+          {/* ✅ BUSCADOR */}
+          <TextField
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar (folio, cliente, total, status, fecha)…"
+            size="small"
+            sx={{
+              width: { xs: "100%", sm: 420 },
+              backgroundColor: "white",
+              borderRadius: "10px",
+            }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+          />
+
+          <Button
+            component={Link}
+            to="/quotes/new"
+            variant="contained"
+            sx={{ textTransform: "none" }}
+          >
+            Nueva cotización
+          </Button>
+        </Box>
       </Box>
+
+      {/* ✅ contador opcional (dentro del tab) */}
+      <Typography variant="body2" sx={{ mb: 2, opacity: 0.75 }}>
+        Mostrando {filtered.length} de {tabFiltered.length} en "{statusChip[tab]?.label || tab}"
+      </Typography>
 
       {/* TABS */}
       <Box sx={{ borderBottom: 1, borderColor: "divider", mb: 2 }}>
@@ -105,15 +174,15 @@ export default function QuotesPage() {
           indicatorColor="primary"
         >
           <Tab
-            label={`Pendientes (${quotes.filter(q => q.status === "pendiente").length})`}
+            label={`Pendientes (${quotes.filter((q) => q.status === "pendiente").length})`}
             value="pendiente"
           />
           <Tab
-            label={`Aprobadas (${quotes.filter(q => q.status === "aprobado").length})`}
+            label={`Aprobadas (${quotes.filter((q) => q.status === "aprobado").length})`}
             value="aprobado"
           />
           <Tab
-            label={`Rechazadas (${quotes.filter(q => q.status === "rechazado").length})`}
+            label={`Rechazadas (${quotes.filter((q) => q.status === "rechazado").length})`}
             value="rechazado"
           />
         </Tabs>
@@ -147,13 +216,10 @@ export default function QuotesPage() {
                 />
               </TableCell>
 
-              <TableCell>
-                {new Date(q.createdAt).toLocaleDateString()}
-              </TableCell>
+              <TableCell>{new Date(q.createdAt).toLocaleDateString()}</TableCell>
 
               <TableCell>
                 <Stack direction="row" spacing={1}>
-                  {/* VER */}
                   <Button
                     component={Link}
                     to={`/quotes/${q._id}`}
@@ -163,7 +229,6 @@ export default function QuotesPage() {
                     Ver
                   </Button>
 
-                  {/* ACCIONES SOLO PARA OWNER Y SOLO SI ESTÁ PENDIENTE */}
                   {isOwner && q.status === "pendiente" && (
                     <>
                       <Button
@@ -189,6 +254,17 @@ export default function QuotesPage() {
               </TableCell>
             </TableRow>
           ))}
+
+          {/* ✅ estado vacío */}
+          {filtered.length === 0 && (
+            <TableRow>
+              <TableCell colSpan={6} sx={{ py: 4 }}>
+                <Typography align="center" sx={{ opacity: 0.7 }}>
+                  No se encontraron cotizaciones con ese criterio en este tab.
+                </Typography>
+              </TableCell>
+            </TableRow>
+          )}
         </TableBody>
       </Table>
     </Container>

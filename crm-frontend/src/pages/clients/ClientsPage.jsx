@@ -1,6 +1,6 @@
 // src/pages/clients/ClientsPage.jsx
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { getClients } from "../../services/clientService";
 import { useAuth } from "../../context/AuthContext";
@@ -16,13 +16,19 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Chip
+  Chip,
+  TextField,
+  InputAdornment,
 } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
 
 export default function ClientsPage() {
   const { isOwner, isWorker } = useAuth();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
+
+  // ✅ Buscador
+  const [search, setSearch] = useState("");
 
   const loadClients = async () => {
     try {
@@ -39,19 +45,17 @@ export default function ClientsPage() {
     loadClients();
   }, []);
 
-  if (loading)
-    return (
-      <Typography variant="body1" sx={{ p: 4 }}>
-        Cargando clientes...
-      </Typography>
-    );
+  // Normaliza texto para buscar (minúsculas + sin acentos)
+  const normalize = (str = "") =>
+    String(str)
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
 
   // MISMA PALETA QUE COTIZACIONES (chips)
   const getStatusChip = (status) => {
     const value = status || "prospeccion";
-
-    const label =
-      value.charAt(0).toUpperCase() + value.slice(1);
+    const label = value.charAt(0).toUpperCase() + value.slice(1);
 
     const colors = {
       prospeccion: "#F28C0F",
@@ -72,37 +76,95 @@ export default function ClientsPage() {
     );
   };
 
+  // ✅ Importante: hooks SIEMPRE arriba, antes de returns condicionales
+  const filteredClients = useMemo(() => {
+    const q = normalize(search.trim());
+    if (!q) return clients;
+
+    return clients.filter((client) => {
+      const haystack = [
+        client.nombreComercial,
+        client.razonSocial,
+        client.rfc,
+        client.status,
+        client.assignedTo?.name,
+      ]
+        .filter(Boolean)
+        .map(normalize)
+        .join(" ");
+
+      return haystack.includes(q);
+    });
+  }, [clients, search]);
+
+  // ✅ Ahora sí, return condicional al final
+  if (loading)
+    return (
+      <Typography variant="body1" sx={{ p: 4 }}>
+        Cargando clientes...
+      </Typography>
+    );
+
   return (
     <Box sx={{ p: 3 }}>
-      {/* HEADER, MISMO ESTILO QUE COTIZACIONES */}
+      {/* HEADER */}
       <Box
         display="flex"
         alignItems="center"
         justifyContent="space-between"
-        mb={4}
+        mb={2}
+        gap={2}
+        flexWrap="wrap"
       >
         <Typography variant="h4" fontWeight={700}>
           Clientes
         </Typography>
 
-        {(isOwner || isWorker) && (
-          <Button
-            variant="contained"
+        <Box display="flex" alignItems="center" gap={2} flexWrap="wrap">
+          {/* ✅ BUSCADOR */}
+          <TextField
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar cliente (nombre, razón social, RFC, estatus, ejecutivo)…"
+            size="small"
             sx={{
-              backgroundColor: "#007BFF",
-              textTransform: "none",
-              fontSize: 15,
-              px: 3,
-              py: 1,
-              borderRadius: "8px",
+              width: { xs: "100%", sm: 420 },
+              backgroundColor: "white",
+              borderRadius: "10px",
             }}
-            component={Link}
-            to="/clients/new"
-          >
-            Nuevo Cliente
-          </Button>
-        )}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+          />
+
+          {(isOwner || isWorker) && (
+            <Button
+              variant="contained"
+              sx={{
+                backgroundColor: "#007BFF",
+                textTransform: "none",
+                fontSize: 15,
+                px: 3,
+                py: 1,
+                borderRadius: "8px",
+              }}
+              component={Link}
+              to="/clients/new"
+            >
+              Nuevo Cliente
+            </Button>
+          )}
+        </Box>
       </Box>
+
+      {/* contador */}
+      <Typography variant="body2" sx={{ mb: 2, opacity: 0.75 }}>
+        Mostrando {filteredClients.length} de {clients.length}
+      </Typography>
 
       {/* TABLA */}
       <TableContainer
@@ -135,31 +197,24 @@ export default function ClientsPage() {
           </TableHead>
 
           <TableBody>
-            {clients.map((client) => (
+            {filteredClients.map((client) => (
               <TableRow
                 key={client._id}
                 hover
-                sx={{
-                  "&:hover": { backgroundColor: "#f5f5f5" },
-                }}
+                sx={{ "&:hover": { backgroundColor: "#f5f5f5" } }}
               >
                 <TableCell>{client.nombreComercial}</TableCell>
                 <TableCell>{client.razonSocial}</TableCell>
                 <TableCell>{client.rfc}</TableCell>
 
                 <TableCell>{getStatusChip(client.status)}</TableCell>
-
                 <TableCell>{client.assignedTo?.name || "N/A"}</TableCell>
 
                 <TableCell>
                   <Button
                     variant="outlined"
                     size="small"
-                    sx={{
-                      textTransform: "none",
-                      borderRadius: "8px",
-                      px: 2,
-                    }}
+                    sx={{ textTransform: "none", borderRadius: "8px", px: 2 }}
                     component={Link}
                     to={`/clients/${client._id}`}
                   >
@@ -168,6 +223,16 @@ export default function ClientsPage() {
                 </TableCell>
               </TableRow>
             ))}
+
+            {filteredClients.length === 0 && (
+              <TableRow>
+                <TableCell colSpan={6} sx={{ py: 4 }}>
+                  <Typography align="center" sx={{ opacity: 0.7 }}>
+                    No se encontraron clientes con ese criterio.
+                  </Typography>
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </TableContainer>
