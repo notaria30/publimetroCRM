@@ -43,7 +43,32 @@ const clientSchema = new mongoose.Schema(
 
     tipoIndustria: {
       type: String,
-      enum: ["alimentaria", "hotelera", "automotriz", "construccion", "servicios financieros"],
+      lowercase: true,
+      trim: true,
+      enum: [
+        "autos",
+        "inmobiliaria",
+        "restaurantes",
+        "hoteles",
+        "tiendas departamentales",
+        "tiendas de conveniencia",
+        "hospitales",
+        "opticas",
+        "farmacias",
+        "gimansios",
+        "clinicas",
+        "escuelas",
+        "universidades",
+        "clubs deportivo",
+        "eventos o espectaculos",
+        "servicios financieros",
+        "aseguradoras",
+        "notarias",
+        "talleres mecanicos",
+        "distribuidora de autos",
+        "cursos o diplomados",
+        "laboratorios medicos"
+      ],
     },
 
     contactos: {

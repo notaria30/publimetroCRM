@@ -1,5 +1,8 @@
 import { Box, Card, CardContent, Typography, Grid, TextField, IconButton, Button, FormControl, Select, MenuItem, InputLabel, Divider } from "@mui/material";
 import AddIcon from "@mui/icons-material/Add";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import dayjs from "dayjs";
+
 
 export default function QuoteTarifasSection({
   form,
@@ -10,6 +13,28 @@ export default function QuoteTarifasSection({
   addTarifa,
   removeTarifa,
 }) {
+  const sanitizeDateTyping = (raw) => raw.replace(/[^\d-]/g, "").slice(0, 10);
+  const isoToDayjs = (iso) => (iso ? dayjs(iso, "YYYY-MM-DD", true) : null);
+  const dayjsToISO = (d) => (d && d.isValid() ? d.format("YYYY-MM-DD") : "");
+
+
+  const normalizeToISO = (raw) => {
+    if (!raw) return "";
+    const s = String(raw).trim();
+
+    // ya es ISO
+    if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+
+    // si viene DD/MM/YYYY
+    const m = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(s);
+    if (m) {
+      const [, dd, mm, yyyy] = m;
+      return `${yyyy}-${mm}-${dd}`;
+    }
+
+    // si aún está incompleta, no la fuerces
+    return s;
+  };
 
   return (
     <Card elevation={2} sx={{ mb: 3 }}>
@@ -108,15 +133,19 @@ export default function QuoteTarifasSection({
                 <Grid container spacing={2}>
                   {tarifa.fechas.map((f, iFecha) => (
                     <Grid item xs={12} md={3} key={iFecha}>
-                      <TextField
-                        fullWidth
+                      <DatePicker
                         label={`Fecha ${iFecha + 1}`}
-                        type="date"
-                        value={f}
-                        onChange={(e) =>
-                          handleTarifaFecha(index, iFecha, e.target.value)
-                        }
-                        InputLabelProps={{ shrink: true }}
+                        value={isoToDayjs(f)}
+                        onChange={(newValue) => {
+                          handleTarifaFecha(index, iFecha, dayjsToISO(newValue));
+                        }}
+                        format="DD/MM/YYYY"   // ✅ así lo ve el usuario
+                        slotProps={{
+                          textField: {
+                            fullWidth: true,
+                            InputLabelProps: { shrink: true },
+                          },
+                        }}
                       />
                     </Grid>
                   ))}

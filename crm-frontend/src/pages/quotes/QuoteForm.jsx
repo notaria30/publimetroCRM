@@ -80,13 +80,14 @@ const defaultForm = {
 // formateo de fecha
 function formatDateInput(value) {
   if (!value) return "";
+  if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}$/.test(value)) {
+    return value;
+  }
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return "";
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+  return d.toISOString().slice(0, 10);
 }
+
 
 function mapInitialQuoteToForm(quote) {
   if (!quote) return defaultForm;
@@ -352,64 +353,70 @@ export default function QuoteForm({
   // ----------------------
   const buildPayload = () => ({
     ...form,
+
     tarifas: form.tarifas.map((t) => ({
       ...t,
       costo: Number(t.costo) || 0,
       totalLinea: Number(t.totalLinea) || 0,
-      fechas: (t.fechas || []).filter(Boolean).map((f) => new Date(f)),
+      // ✅ mandar strings "YYYY-MM-DD"
+      fechas: (t.fechas || []).filter(Boolean),
     })),
+
     activacion: {
       ...form.activacion,
       cantidad: Number(form.activacion.cantidad) || 0,
       costo: Number(form.activacion.costo) || 0,
-      fechas: (form.activacion.fechas || [])
-        .filter(Boolean)
-        .map((f) => new Date(f)),
+      // ✅ mandar strings "YYYY-MM-DD"
+      fechas: (form.activacion.fechas || []).filter(Boolean),
     },
+
     desarrolloInformativo: {
       ...form.desarrolloInformativo,
+      // ✅ mandar string "YYYY-MM-DD" o null
       fecha: form.desarrolloInformativo.fecha
-        ? new Date(form.desarrolloInformativo.fecha)
+        ? form.desarrolloInformativo.fecha
         : null,
     },
+
     posteoRedesSociales: {
       ...form.posteoRedesSociales,
       cantidad: Number(form.posteoRedesSociales.cantidad) || 0,
-      fechas: (form.posteoRedesSociales.fechas || [])
-        .filter(Boolean)
-        .map((f) => new Date(f)),
+      // ✅ mandar strings "YYYY-MM-DD"
+      fechas: (form.posteoRedesSociales.fechas || []).filter(Boolean),
     },
+
     fajillas: {
       ...form.fajillas,
       cantidad: Number(form.fajillas.cantidad) || 0,
       precio: Number(form.fajillas.precio) || 0,
     },
+
     intercambio: {
       ...form.intercambio,
-      porcentajeEfectivo:
-        Number(form.intercambio.porcentajeEfectivo) || 0,
-      porcentajeEspecie:
-        Number(form.intercambio.porcentajeEspecie) || 0,
+      porcentajeEfectivo: Number(form.intercambio.porcentajeEfectivo) || 0,
+      porcentajeEspecie: Number(form.intercambio.porcentajeEspecie) || 0,
     },
+
     cortesias: {
       ...form.cortesias,
       cantidad: Number(form.cortesias.cantidad) || 0,
-      fechas: (form.cortesias.fechas || [])
-        .filter(Boolean)
-        .map((f) => new Date(f)),
+      // ✅ mandar strings "YYYY-MM-DD"
+      fechas: (form.cortesias.fechas || []).filter(Boolean),
     },
+
     ajustesPrecios: {
       ...form.ajustesPrecios,
-      porcentajeAjuste:
-        Number(form.ajustesPrecios.porcentajeAjuste) || 0,
+      porcentajeAjuste: Number(form.ajustesPrecios.porcentajeAjuste) || 0,
       valorAjuste: Number(form.ajustesPrecios.valorAjuste) || 0,
     },
+
     formaPago: form.formaPago,
     metodoPago: form.metodoPago,
     usoCFDI: form.usoCFDI,
     facturacionEstado: form.facturacionEstado,
     total: Number(form.total) || 0,
   });
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();

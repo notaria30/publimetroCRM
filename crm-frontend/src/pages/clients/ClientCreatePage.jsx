@@ -343,7 +343,7 @@ function ClientCreatePage() {
                     <MenuItem value="eventos o espectaculos">Evento/Espectaculo</MenuItem>
                     <MenuItem value="servicios financieros">Servicio Financiero</MenuItem>
                     <MenuItem value="aseguradoras">Aseguradora</MenuItem>
-                    <MenuItem value="Notarias">Notaria</MenuItem>
+                    <MenuItem value="notarias">Notaria</MenuItem>
                     <MenuItem value="talleres mecanicos">Taller Mecanico</MenuItem>
                     <MenuItem value="distribuidora de autos">Distribuidora de autos</MenuItem>
                     <MenuItem value="cursos o diplomados">Cursos/Diplomados</MenuItem>
