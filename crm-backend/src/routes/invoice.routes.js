@@ -16,6 +16,7 @@ router.post("/", auth, async (req, res) => {
       numeroFactura,
       fechaFactura,
       importeSinIVA,
+      metodoPago,
       pagado,
       fechaPago,
       importePago,
@@ -27,6 +28,14 @@ router.post("/", auth, async (req, res) => {
     if (Number.isNaN(base)) {
       return res.status(400).json({
         message: "importeSinIVA debe ser un número válido",
+      });
+    }
+
+    // Validar método de pago (SAT): PUE o PPD
+    const allowedMetodoPago = ["PUE", "PPD"];
+    if (metodoPago && !allowedMetodoPago.includes(metodoPago)) {
+      return res.status(400).json({
+        message: "metodoPago debe ser 'PUE' o 'PPD'",
       });
     }
 
@@ -55,11 +64,12 @@ router.post("/", auth, async (req, res) => {
       client,
       rfc: clientData.rfc,
       quote,
-      sale: saleData?._id || null,   // 👈 LIGAMOS FACTURA → VENTA
+      sale: saleData?._id || null,   
       numeroFactura,
       fechaFactura,
       importeSinIVA: base,
       importeConIVA,
+      metodoPago: metodoPago || "PUE",
       pagado,
       fechaPago,
       importePago,

@@ -46,6 +46,14 @@ const invoiceSchema = new mongoose.Schema(
       required: true,
     },
 
+    // MÉTODO DE PAGO (SAT): PUE / PPD
+    metodoPago: {
+      type: String,
+      enum: ["PUE", "PPD"],
+      default: "PUE",
+      required: true,
+    },
+
     // PAGO
     pagado: {
       type: Boolean,

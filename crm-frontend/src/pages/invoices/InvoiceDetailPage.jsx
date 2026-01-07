@@ -98,6 +98,11 @@ export default function InvoiceDetailPage() {
           <Typography variant="h6" fontWeight={700} mb={2}>
             Pago
           </Typography>
+          
+          <Grid item xs={12} md={4}>
+            <Typography fontWeight={600}>Método de pago</Typography>
+            <Typography>{invoice.metodoPago || "—"}</Typography>
+          </Grid>
 
           <Grid container spacing={3}>
             <Grid item xs={12} md={4}>

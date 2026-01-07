@@ -26,7 +26,7 @@ const EMPTY_TARIFA = {
 
 const defaultForm = {
   client: "",
-  tarifas: [EMPTY_TARIFA],
+  tarifas: [{ ...EMPTY_TARIFA }],
   duracion: "",
   activacion: {
     activo: false,
@@ -221,19 +221,9 @@ export default function QuoteForm({
       const tarifas = [...prev.tarifas];
       const t = { ...tarifas[index] };
 
-      if (field === "costo") {
-        t.costo = value === "" ? "" : Number(value);
-      } else {
-        t[field] = value;
-      }
+      if (field === "costo") t.costo = value === "" ? "" : Number(value);
+      else t[field] = value;
 
-      // 👉 NUEVO: cuando cambia periodicidad, generar tantas fechas vacías
-      if (field === "periodicidad") {
-        const num = Number(value) || 0;
-        t.fechas = Array(num).fill("");
-      }
-
-      // 👉 total línea = periodicidad × costo
       const periodicidad = Number(t.periodicidad) || 0;
       const costo = Number(t.costo) || 0;
       t.totalLinea = periodicidad * costo;
@@ -243,21 +233,47 @@ export default function QuoteForm({
     });
   };
 
-  // NUEVA FUNCIÓN → Cuando cambia la periodicidad
+  const MAX_FECHAS_TARIFA = 31;
   const handlePeriodicidadChange = (index, value) => {
-    const num = Number(value) || 0;
+    const raw = String(value ?? "").trim();
+
+    // si está vacío, deja que el usuario borre sin crashear
+    if (raw === "") {
+      setForm((prev) => {
+        const tarifas = [...prev.tarifas];
+        const t = { ...tarifas[index] };
+
+        t.periodicidad = "";
+        t.fechas = [];
+        t.totalLinea = 0;
+
+        tarifas[index] = t;
+        return { ...prev, tarifas };
+      });
+      return;
+    }
+
+    let num = Number(raw);
+
+    // evitar NaN / Infinity (Chrome puede generar esto mientras escriben)
+    if (!Number.isFinite(num)) return;
+
+    // entero + límites
+    num = Math.floor(num);
+    if (num < 0) num = 0;
+    if (num > MAX_FECHAS_TARIFA) num = MAX_FECHAS_TARIFA;
 
     setForm((prev) => {
       const tarifas = [...prev.tarifas];
       const t = { ...tarifas[index] };
 
-      // Guardar periodicidad
+      // conservar fechas ya capturadas si baja/sube periodicidad
+      const prevFechas = Array.isArray(t.fechas) ? t.fechas : [];
+      const nuevasFechas = Array.from({ length: num }, (_, i) => prevFechas[i] || "");
+
       t.periodicidad = num;
+      t.fechas = nuevasFechas;
 
-      // Crear X fechas vacías según periodicidad
-      t.fechas = Array(num).fill("");
-
-      // Recalcular total línea
       const costo = Number(t.costo) || 0;
       t.totalLinea = num * costo;
 
@@ -265,6 +281,7 @@ export default function QuoteForm({
       return { ...prev, tarifas };
     });
   };
+
 
   const handleTarifaFecha = (tarifaIndex, fechaIndex, value) => {
     setForm((prev) => {
@@ -348,9 +365,6 @@ export default function QuoteForm({
     );
   }, [totalCalculado]);
 
-  // ----------------------
-  // SUBMIT
-  // ----------------------
   const buildPayload = () => ({
     ...form,
 
@@ -409,14 +423,12 @@ export default function QuoteForm({
       porcentajeAjuste: Number(form.ajustesPrecios.porcentajeAjuste) || 0,
       valorAjuste: Number(form.ajustesPrecios.valorAjuste) || 0,
     },
-
     formaPago: form.formaPago,
     metodoPago: form.metodoPago,
     usoCFDI: form.usoCFDI,
     facturacionEstado: form.facturacionEstado,
     total: Number(form.total) || 0,
   });
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -434,9 +446,6 @@ export default function QuoteForm({
     }
   };
 
-  // ----------------------
-  // RENDER
-  // ----------------------
   return (
     <div style={{ maxWidth: 1300, margin: "0 auto", padding: 24 }}>
 

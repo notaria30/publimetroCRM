@@ -32,6 +32,7 @@ export default function InvoiceCreatePage() {
     quote: "",
     numeroFactura: "",
     fechaFactura: "",
+    metodoPago: "PUE",
     importeSinIVA: "",
     importeConIVA: "",
     pagado: false,
@@ -222,6 +223,22 @@ export default function InvoiceCreatePage() {
                   onChange={handleChange}
                   required
                 />
+              </Grid>
+
+              <Grid item xs={12} md={4}>
+                <FormControl fullWidth>
+                  <InputLabel>Método de pago</InputLabel>
+                  <Select
+                    name="metodoPago"
+                    value={form.metodoPago}
+                    label="Método de pago"
+                    onChange={handleChange}
+                    required
+                  >
+                    <MenuItem value="PUE">PUE - Pago en una sola exhibición</MenuItem>
+                    <MenuItem value="PPD">PPD - Pago en parcialidades o diferido</MenuItem>
+                  </Select>
+                </FormControl>
               </Grid>
 
               <Grid item xs={12} md={4}>
