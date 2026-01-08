@@ -16,6 +16,7 @@ import QuoteEstadoAprobacionSection from "./QuoteEstadoAprobacionSection.jsx";
 import QuoteTotalFinalSection from "./QuoteTotalFinalSection.jsx";
 
 
+
 const EMPTY_TARIFA = {
   periodicidad: "",
   formato: "",
@@ -456,7 +457,7 @@ export default function QuoteForm({
           setForm={setForm}
           clients={clients}
         />
-
+        
         {/* Tarifas */}
         <QuoteTarifasSection
           form={form}

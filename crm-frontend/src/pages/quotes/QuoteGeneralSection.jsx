@@ -36,7 +36,7 @@ export default function QuoteGeneralSection({ clients, form, setForm }) {
             <TextField
               fullWidth
               label="Duración"
-              placeholder="Ej: 3 meses, campaña trimestral..."
+              placeholder="Ej: 3 meses"
               value={form.duracion}
               onChange={(e) =>
                 setForm((prev) => ({ ...prev, duracion: e.target.value }))

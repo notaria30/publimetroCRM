@@ -132,7 +132,7 @@ export default function SalesDetailPage() {
         gap={2}
       >
         <Typography variant="h4" fontWeight={700}>
-          Venta #{sale._id}
+          Venta #{sale.folio || sale._id}
         </Typography>
 
         <Button variant="outlined" component={RouterLink} to="/sales">

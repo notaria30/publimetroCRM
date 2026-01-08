@@ -52,7 +52,8 @@ router.get("/:id", auth, async (req, res) => {
   try {
     const quote = await Quote.findById(req.params.id)
       .populate("client", "nombreComercial razonSocial rfc")
-      .populate("createdBy", "name email");
+      .populate("createdBy", "name email")
+      .populate("approvedBy", "name email role");
 
     if (!quote) {
       return res.status(404).json({ message: "Cotización no encontrada" });
@@ -135,7 +136,8 @@ router.put("/:id/approve", auth, async (req, res) => {
     )
       .populate("client", "nombreComercial razonSocial")
       .populate("createdBy", "name email")
-      .populate("approvedBy", "name email");
+      .populate("approvedBy", "name email")
+      .populate("approvedBy", "name email role");
 
     if (!quote) {
       return res.status(404).json({ message: "Cotización no encontrada" });
@@ -171,7 +173,9 @@ router.put("/:id/reject", auth, async (req, res) => {
     )
       .populate("client", "nombreComercial razonSocial")
       .populate("createdBy", "name email")
-      .populate("approvedBy", "name email");
+      .populate("approvedBy", "name email")
+      .populate("approvedBy", "name email role");
+
 
     if (!quote) {
       return res.status(404).json({ message: "Cotización no encontrada" });

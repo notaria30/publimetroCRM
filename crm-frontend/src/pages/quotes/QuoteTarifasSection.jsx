@@ -39,17 +39,20 @@ export default function QuoteTarifasSection({
   return (
     <Card elevation={2} sx={{ mb: 3 }}>
       <CardContent>
-        <Typography variant="h6" fontWeight={700} mb={2}>
-          Tarifas
-        </Typography>
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            mb: 2,
+            gap: 2,
+          }}
+        >
+          <Typography variant="h6" fontWeight={700} sx={{ m: 0 }}>
+            Tarifas
+          </Typography>
 
-        {/* Toolbar */}
-        <Box display="flex" justifyContent="flex-end" mb={2}>
-          <Button
-            variant="outlined"
-            startIcon={<AddIcon />}
-            onClick={addTarifa}
-          >
+          <Button variant="outlined" startIcon={<AddIcon />} onClick={addTarifa}>
             Agregar tarifa
           </Button>
         </Box>
@@ -70,7 +73,7 @@ export default function QuoteTarifasSection({
               </Grid>
 
               {/* PERIODICIDAD */}
-              <Grid size={{ xs: 12, md: 1.5 }}>
+              <Grid size={{ xs: 12, md: 1.7 }}>
                 <TextField
                   label="Periodicidad"
                   type="number"

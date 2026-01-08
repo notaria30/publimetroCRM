@@ -250,22 +250,51 @@ router.get("/analytics", auth, async (req, res) => {
 
 router.get("/metas", auth, async (req, res) => {
   try {
-    const vendedores = await Sale.aggregate([
+    const pipeline = [];
+
+    // 🔐 WORKER solo ve sus propias metas
+    if (req.user.role === "WORKER") {
+      pipeline.push({
+        $match: { assignedTo: req.user._id },
+      });
+    }
+
+    pipeline.push(
       {
         $group: {
           _id: "$assignedTo",
           totalVentas: { $sum: 1 },
         },
       },
-    ]);
+      {
+        $lookup: {
+          from: "users",           // <- colección de usuarios (normalmente es "users")
+          localField: "_id",
+          foreignField: "_id",
+          as: "user",
+        },
+      },
+      { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+      {
+        $project: {
+          _id: 1,
+          totalVentas: 1,
+          name: "$user.name",
+          email: "$user.email",
+          role: "$user.role",
+        },
+      },
+      { $sort: { totalVentas: -1 } }
+    );
 
-    res.json({
-      vendedores,
-    });
+    const vendedores = await Sale.aggregate(pipeline);
+
+    res.json({ vendedores });
   } catch (error) {
     console.error("Error en metas vendedores:", error);
     res.status(500).json({ message: "Error interno" });
   }
 });
+
 
 module.exports = router;

@@ -38,6 +38,9 @@ const quoteSchema = new mongoose.Schema(
     // Duración (texto libre)
     duracion: { type: String },
 
+    // Presentación / introducción para el cliente (se usa en PDF / envío)
+    presentation: { type: String, default: "" },
+    
     // ACTIVACIÓN
     activacion: {
       activo: { type: Boolean, default: false },

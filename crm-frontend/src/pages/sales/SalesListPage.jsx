@@ -125,7 +125,7 @@ export default function SalesListPage() {
             ) : (
               sales.map((sale) => (
                 <TableRow key={sale._id} hover>
-                  <TableCell>{sale._id}</TableCell>
+                  <TableCell>{sale.folio || sale._id}</TableCell>
 
                   <TableCell>{sale.client?.nombreComercial || "—"}</TableCell>
 

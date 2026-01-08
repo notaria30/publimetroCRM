@@ -128,6 +128,17 @@ export default function QuoteDetailPage() {
     ((ajustes.porcentajeAjuste || 0) !== 0 ||
       (ajustes.valorAjuste || 0) !== 0);
 
+  const InfoItem = ({ label, value }) => (
+    <Box>
+      <Typography variant="caption" color="text.secondary">
+        {label}
+      </Typography>
+      <Typography fontWeight={600} sx={{ mt: 0.3 }}>
+        {value ?? "—"}
+      </Typography>
+    </Box>
+  );
+
   return (
     <Box sx={{ p: 3 }}>
       {/* HEADER + ACCIONES */}
@@ -193,152 +204,99 @@ export default function QuoteDetailPage() {
       <Card sx={{ mb: 4 }}>
         <CardContent>
           <Grid container spacing={3}>
+            {/* FILA 1 */}
             <Grid item xs={12} md={6}>
               <Typography variant="subtitle2" color="text.secondary">
                 Cliente
               </Typography>
-              <Typography variant="h6" fontWeight={600} mt={0.5}>
+              <Typography variant="h6" fontWeight={700} mt={0.5}>
                 {quote.client?.nombreComercial || "—"}
               </Typography>
+
               {quote.client?.razonSocial && (
-                <Typography mt={0.5}>
-                  Razón social: {quote.client.razonSocial}
-                </Typography>
+                <Typography mt={0.5}>Razón social: {quote.client.razonSocial}</Typography>
               )}
-              {quote.client?.rfc && (
-                <Typography mt={0.5}>RFC: {quote.client.rfc}</Typography>
-              )}
+              {quote.client?.rfc && <Typography mt={0.5}>RFC: {quote.client.rfc}</Typography>}
             </Grid>
 
-            <Grid item xs={12} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Total
-              </Typography>
-              <Typography variant="h6" fontWeight={700} mt={0.5}>
-                $
-                {quote.total?.toLocaleString("es-MX", {
-                  minimumFractionDigits: 2,
-                }) || "0.00"}
-              </Typography>
+            <Grid item xs={12} sm={6} md={3}>
+              <InfoItem
+                label="Total"
+                value={
+                  "$" +
+                  (quote.total?.toLocaleString("es-MX", { minimumFractionDigits: 2 }) ||
+                    "0.00")
+                }
+              />
             </Grid>
 
-            <Grid item xs={12} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
+            <Grid item xs={12} sm={6} md={3}>
+              <Typography variant="caption" color="text.secondary">
                 Status
               </Typography>
-              <Stack direction="row" alignItems="center" mt={0.5}>
-                <Chip
-                  label={statusLabel}
-                  color={statusColor}
-                  sx={{ fontWeight: 600 }}
-                />
+              <Stack direction="row" alignItems="center" sx={{ mt: 0.7 }}>
+                <Chip label={statusLabel} color={statusColor} sx={{ fontWeight: 700 }} />
               </Stack>
             </Grid>
 
-            <Grid item xs={12} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Creada
-              </Typography>
-              <Typography mt={0.5}>{formatDate(quote.createdAt)}</Typography>
+            {/* DIVISOR */}
+            <Grid item xs={12}>
+              <Divider />
             </Grid>
 
-            <Grid item xs={12} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Última actualización
-              </Typography>
-              <Typography mt={0.5}>{formatDate(quote.updatedAt)}</Typography>
+            {/* FILA 2 (datos) */}
+            <Grid item xs={12} sm={6} md={3}>
+              <InfoItem label="Creada" value={formatDate(quote.createdAt)} />
             </Grid>
 
-            <Grid item xs={12} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Folio interno
-              </Typography>
-              <Typography mt={0.5}>{quote.folio}</Typography>
+            <Grid item xs={12} sm={6} md={3}>
+              <InfoItem label="Última actualización" value={formatDate(quote.updatedAt)} />
             </Grid>
 
-            <Grid item xs={12} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Estado cliente
-              </Typography>
-              <Typography mt={0.5}>
-                {quote.estadoCliente || "—"}
-              </Typography>
+            <Grid item xs={12} sm={6} md={3}>
+              <InfoItem label="Folio interno" value={quote.folio} />
             </Grid>
 
-            {/* NUEVOS CAMPOS: FACTURACIÓN / PAGOS */}
-
-            <Grid item xs={12} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Forma de pago
-              </Typography>
-              <Typography mt={0.5}>
-                {quote.formaPago || "—"}
-              </Typography>
+            <Grid item xs={12} sm={6} md={3}>
+              <InfoItem label="Estado cliente" value={quote.estadoCliente || "—"} />
             </Grid>
 
-            <Grid item xs={12} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Forma de pago
-              </Typography>
-              <Typography mt={0.5}>
-                {quote.formaPago || "—"}
-              </Typography>
+            <Grid item xs={12} sm={6} md={3}>
+              <InfoItem label="Forma de pago" value={quote.formaPago || "—"} />
             </Grid>
 
-            <Grid item xs={12} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Uso CFDI
-              </Typography>
-              <Typography mt={0.5}>
-                {quote.usoCFDI || "—"}
-              </Typography>
+            <Grid item xs={12} sm={6} md={3}>
+              <InfoItem label="Uso CFDI" value={quote.usoCFDI || "—"} />
             </Grid>
 
-            <Grid item xs={12} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Estado de facturación
-              </Typography>
-
-              <Typography mt={0.5}>
-                {quote.facturacionEstado === "facturado"
-                  ? "Facturado"
-                  : "Por facturar"}
-              </Typography>
+            <Grid item xs={12} sm={6} md={3}>
+              <InfoItem
+                label="Estado de facturación"
+                value={quote.facturacionEstado === "facturado" ? "Facturado" : "Por facturar"}
+              />
             </Grid>
 
-            <Grid item xs={12} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Creada por
-              </Typography>
-              <Typography mt={0.5}>
-                {quote.createdBy?.name || "—"}
-              </Typography>
+            {/* FILA 3 */}
+            <Grid item xs={12} md={6}>
+              <InfoItem label="Creada por" value={quote.createdBy?.name || "—"} />
               {quote.createdBy?.email && (
-                <Typography variant="body2" color="text.secondary">
+                <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
                   {quote.createdBy.email}
                 </Typography>
               )}
             </Grid>
 
-            {quote.approvedBy && (
-              <Grid item xs={12} md={3}>
-                <Typography variant="subtitle2" color="text.secondary">
-                  Aprobada / revisada por
-                </Typography>
-                <Typography mt={0.5}>
-                  {quote.approvedBy?.name || "—"}
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                  {quote.approvedBy?.email || ""}
-                </Typography>
-                <Typography variant="body2" mt={0.5}>
-                  {quote.approvedAt
-                    ? `El ${formatDate(quote.approvedAt)}`
-                    : ""}
-                </Typography>
-              </Grid>
-            )}
+            <Grid item xs={12} md={6}>
+              <InfoItem
+                label="Aprobada / revisada por"
+                value={quote.approvedBy?.name || "—"}
+              />
+              <Typography variant="body2" color="text.secondary" sx={{ mt: 0.5 }}>
+                {quote.approvedAt ? `El ${formatDate(quote.approvedAt)}` : ""}
+              </Typography>
+            </Grid>
           </Grid>
+
         </CardContent>
       </Card>
 

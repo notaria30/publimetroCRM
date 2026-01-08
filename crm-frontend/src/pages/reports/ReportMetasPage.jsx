@@ -26,7 +26,7 @@ export default function ReportMetasPage() {
 
   return (
     <Box maxWidth="1200px" mx="auto" mt={4} px={3}>
-      
+
       {/* TÍTULO */}
       <Typography variant="h4" fontWeight={700} mb={3}>
         Metas por Vendedor
@@ -66,7 +66,7 @@ export default function ReportMetasPage() {
                     }}
                   >
                     <Typography variant="h6" fontWeight={700}>
-                      {v._id}
+                      {v.name || v.email || v._id}
                     </Typography>
 
                     <Typography variant="body1" mt={1}>

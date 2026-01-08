@@ -2,6 +2,12 @@ const mongoose = require("mongoose");
 
 const saleSchema = new mongoose.Schema(
   {
+    folio: {
+      type: String,
+      unique: true,
+      index: true,
+    },
+    
     client: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Client",

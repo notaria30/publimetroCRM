@@ -5,6 +5,7 @@ const Quote = require("../models/Quote");
 const { auth } = require("../middlewares/auth.middleware");
 const PostSale = require("../models/PostSale");
 const router = express.Router();
+const Counter = require("../models/Counter");
 // Crear venta desde una cotización (creación automática)
 router.post("/", auth, async (req, res) => {
   try {
@@ -27,7 +28,17 @@ router.post("/", auth, async (req, res) => {
     // 2) Si no, usar al usuario que hace la aprobación
     const assignedUser = quote.createdBy || req.user._id;
 
+    // Generar folio incremental seguro
+    const counter = await Counter.findByIdAndUpdate(
+      "saleFolio",
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
+
+    const folio = `V-${String(counter.seq).padStart(4, "0")}`;
+
     const sale = await Sale.create({
+      folio,
       client: quote.client._id,
       quote: quote._id,
       assignedTo: assignedUser,   // ← ASIGNACIÓN CORRECTA
