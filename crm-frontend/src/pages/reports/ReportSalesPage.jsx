@@ -14,9 +14,10 @@ import {
   Legend,
 } from "recharts";
 import { getSalesReport } from "../../services/reportService";
-import { getClients } from "../../services/clientService";
+import { getClients, getClientById } from "../../services/clientService";
 import { getUsers } from "../../services/userService";
-
+import * as XLSX from "xlsx";
+import { saveAs } from "file-saver";
 import {
   Box,
   Grid,
@@ -43,12 +44,12 @@ function ReportSalesPage() {
   const [filters, setFilters] = useState({
     cliente: "",
     tipoCliente: "",
-    formato: "",
     ejecutivo: "",
     fechaInicio: "",
     fechaFin: "",
     pagado: "",
   });
+
   const [stats, setStats] = useState(null);
 
   const [clients, setClients] = useState([]);
@@ -69,9 +70,40 @@ function ReportSalesPage() {
     loadFilters();
   }, []);
 
-  const handleChange = (e) => {
-    setFilters({ ...filters, [e.target.name]: e.target.value });
+  const handleChange = async (e) => {
+    const { name, value } = e.target;
+
+    // Cambio normal
+    setFilters((prev) => ({ ...prev, [name]: value }));
+
+    // ✅ Si cambió el cliente, autollenar tipoCliente y ejecutivo
+    if (name === "cliente") {
+      if (!value) {
+        // si eligen "Todos", limpiamos autollenados (opcional)
+        setFilters((prev) => ({
+          ...prev,
+          cliente: "",
+          tipoCliente: "",
+          ejecutivo: "",
+        }));
+        return;
+      }
+
+      try {
+        const res = await getClientById(value);
+        const client = res.data;
+        setFilters((prev) => ({
+          ...prev,
+          cliente: value,
+          tipoCliente: client?.tipoCliente || "",
+          ejecutivo: client?.assignedTo?._id || client?.assignedTo || "",
+        }));
+      } catch (err) {
+        console.error("Error autollenando cliente:", err);
+      }
+    }
   };
+
 
   const handleSearch = async () => {
     try {
@@ -82,32 +114,75 @@ function ReportSalesPage() {
       console.error("Error cargando reporte de ventas:", err);
     }
   };
+  const handleExportExcel = () => {
+    // Hoja detalle
+    const detalle = data.map((s) => ({
+      Cliente: s.client?.nombreComercial || "",
+      Ejecutivo: s.assignedTo?.name || "",
+      "Folio cotización": s.quote?.folio || "",
+      Etapa: s.pipelineStage || "",
+      Fecha: s.createdAt ? s.createdAt.slice(0, 10) : "",
+      Monto: s.monto || 0,
+      Pagado:
+        s.pagado === true ? "Pagado" : s.pagado === false ? "Pendiente" : "Sin factura",
+    }));
 
-  const COLORS = ["#0088FE", "#00C49F", "#FFBB28", "#FF8042", "#A020F0"];
+    // Hoja por ejecutivo (desde stats)
+    const porEjecutivo = Object.entries(stats?.porEjecutivo || {}).map(
+      ([name, info]) => ({
+        Ejecutivo: name,
+        Operaciones: info?.count || 0,
+        "Monto total": info?.totalMonto || 0,
+      })
+    );
 
-  const toChartData = (obj) =>
+    const wb = XLSX.utils.book_new();
+    const ws1 = XLSX.utils.json_to_sheet(detalle);
+    const ws2 = XLSX.utils.json_to_sheet(porEjecutivo);
+
+    XLSX.utils.book_append_sheet(wb, ws1, "Detalle");
+    XLSX.utils.book_append_sheet(wb, ws2, "Por Ejecutivo");
+
+    const file = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+    saveAs(
+      new Blob([file], { type: "application/octet-stream" }),
+      `reporte_ventas_${new Date().toISOString().slice(0, 10)}.xlsx`
+    );
+  };
+
+  const toChartDataNumber = (obj) =>
     Object.keys(obj || {}).map((key) => ({
       name: key,
       value: obj[key],
     }));
 
-  const sumValues = (obj) =>
-    Object.values(obj || {}).reduce((acc, v) => acc + v, 0);
+  const toChartDataAmount = (obj) =>
+    Object.keys(obj || {}).map((key) => ({
+      name: key,
+      count: obj[key]?.count || 0,
+      totalMonto: obj[key]?.totalMonto || 0,
+    }));
 
   // Métricas simples derivadas de stats
   const kpis = useMemo(() => {
     if (!stats) return null;
 
-    const totalVentas = sumValues(stats.porCliente || {});
+    const totalOperaciones = data.length;
     const totalClientes = Object.keys(stats.porCliente || {}).length;
     const totalEjecutivos = Object.keys(stats.porEjecutivo || {}).length;
 
+    const totalMonto = data.reduce((acc, s) => acc + (s.monto || 0), 0);
+    const ticketPromedio = totalOperaciones ? totalMonto / totalOperaciones : 0;
+
     return {
-      totalVentas,
+      totalOperaciones,
       totalClientes,
       totalEjecutivos,
+      totalMonto,
+      ticketPromedio,
     };
-  }, [stats]);
+  }, [stats, data]);
+
 
   return (
     <Box maxWidth="1400px" mx="auto" mt={4} px={3} pb={6}>
@@ -150,13 +225,19 @@ function ReportSalesPage() {
             <Typography variant="h6" fontWeight={700}>
               Filtros
             </Typography>
-            <Button
-              variant="contained"
-              onClick={handleSearch}
-              sx={{ alignSelf: { xs: "stretch", md: "center" } }}
-            >
-              Aplicar filtros
-            </Button>
+            <Stack direction="row" spacing={1} sx={{ alignSelf: { xs: "stretch", md: "center" } }}>
+              <Button variant="contained" onClick={handleSearch}>
+                Aplicar filtros
+              </Button>
+
+              <Button
+                variant="outlined"
+                onClick={handleExportExcel}
+                disabled={!data.length}
+              >
+                Exportar Excel
+              </Button>
+            </Stack>
           </Box>
 
           <Grid container spacing={2}>
@@ -220,18 +301,6 @@ function ReportSalesPage() {
             <Grid item xs={12} md={4}>
               <TextField
                 fullWidth
-                label="Formato"
-                name="formato"
-                placeholder="Ej: banner, página, extra"
-                value={filters.formato}
-                onChange={handleChange}
-                size="small"
-              />
-            </Grid>
-
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
                 type="date"
                 label="Fecha inicio"
                 name="fechaInicio"
@@ -288,7 +357,7 @@ function ReportSalesPage() {
                   Ventas registradas
                 </Typography>
                 <Typography variant="h5" fontWeight={700}>
-                  {kpis.totalVentas}
+                  {kpis.totalOperaciones}
                 </Typography>
                 <Typography variant="body2" color="text.secondary">
                   Total de operaciones consideradas en el periodo filtrado.
@@ -352,7 +421,7 @@ function ReportSalesPage() {
                 <Divider sx={{ mb: 2 }} />
                 <Box sx={{ width: "100%", height: 300 }}>
                   <ResponsiveContainer>
-                    <BarChart data={toChartData(stats.porCliente)}>
+                    <BarChart data={toChartDataNumber(stats.porCliente)}>
                       <XAxis dataKey="name" />
                       <YAxis />
                       <Tooltip />
@@ -375,12 +444,12 @@ function ReportSalesPage() {
                 <Divider sx={{ mb: 2 }} />
                 <Box sx={{ width: "100%", height: 300 }}>
                   <ResponsiveContainer>
-                    <BarChart data={toChartData(stats.porEjecutivo)}>
+                    <BarChart data={toChartDataAmount(stats.porEjecutivo)}>
                       <XAxis dataKey="name" />
                       <YAxis />
                       <Tooltip />
                       <Legend />
-                      <Bar dataKey="value" />
+                      <Bar dataKey="totalMonto" name="Monto total" />
                     </BarChart>
                   </ResponsiveContainer>
                 </Box>
@@ -400,15 +469,15 @@ function ReportSalesPage() {
                   <ResponsiveContainer>
                     <PieChart>
                       <Pie
-                        data={toChartData(stats.porTipoCliente)}
+                        data={toChartDataNumber(stats.porTipoCliente)}
                         dataKey="value"
                         nameKey="name"
                         label
                       >
-                        {toChartData(stats.porTipoCliente).map((entry, i) => (
+                        {toChartDataNumber(stats.porTipoCliente).map((entry, i) => (
                           <Cell
                             key={`cell-${i}`}
-                            // colores default de recharts, dejamos que se encargue
+                          // colores default de recharts, dejamos que se encargue
                           />
                         ))}
                       </Pie>
@@ -430,12 +499,12 @@ function ReportSalesPage() {
                 <Divider sx={{ mb: 2 }} />
                 <Box sx={{ width: "100%", height: 300 }}>
                   <ResponsiveContainer>
-                    <LineChart data={toChartData(stats.porMes)}>
+                    <LineChart data={toChartDataAmount(stats.porMes)}>
                       <XAxis dataKey="name" />
                       <YAxis />
                       <Tooltip />
                       <Legend />
-                      <Line type="monotone" dataKey="value" />
+                      <Line type="monotone" dataKey="totalMonto" name="Monto total" />
                     </LineChart>
                   </ResponsiveContainer>
                 </Box>
@@ -471,16 +540,17 @@ function ReportSalesPage() {
                 <TableRow>
                   <TableCell>Cliente</TableCell>
                   <TableCell>Ejecutivo</TableCell>
-                  <TableCell>Formato</TableCell>
                   <TableCell>Cotización</TableCell>
                   <TableCell>Etapa</TableCell>
                   <TableCell>Fecha</TableCell>
+                  <TableCell>Monto</TableCell>
+                  <TableCell>Pago</TableCell>
                 </TableRow>
               </TableHead>
               <TableBody>
                 {data.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={6} align="center">
+                    <TableCell colSpan={7} align="center">
                       No hay resultados
                     </TableCell>
                   </TableRow>
@@ -489,11 +559,6 @@ function ReportSalesPage() {
                     <TableRow key={sale._id} hover>
                       <TableCell>{sale.client?.nombreComercial}</TableCell>
                       <TableCell>{sale.assignedTo?.name}</TableCell>
-                      <TableCell>
-                        {sale.quote?.tarifas
-                          ?.map((t) => t.formato)
-                          .join(", ")}
-                      </TableCell>
                       <TableCell>Folio {sale.quote?.folio}</TableCell>
                       <TableCell>{sale.pipelineStage}</TableCell>
                       <TableCell>
@@ -501,7 +566,20 @@ function ReportSalesPage() {
                           ? sale.createdAt.slice(0, 10)
                           : "-"}
                       </TableCell>
+                      <TableCell>
+                        {typeof sale.monto === "number"
+                          ? sale.monto.toLocaleString("es-MX", { style: "currency", currency: "MXN" })
+                          : "-"}
+                      </TableCell>
+
+                      <TableCell>
+                        {sale.pagado === true && <Chip size="small" label="Pagado" />}
+                        {sale.pagado === false && <Chip size="small" label="Pendiente" />}
+                        {sale.pagado === null && <Chip size="small" label="Sin factura" />}
+                      </TableCell>
+
                     </TableRow>
+
                   ))
                 )}
               </TableBody>

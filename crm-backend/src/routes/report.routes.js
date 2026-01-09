@@ -4,20 +4,18 @@ const Client = require("../models/Client");
 const Quote = require("../models/Quote");
 const Invoice = require("../models/Invoice");
 const { auth } = require("../middlewares/auth.middleware");
-
 const router = express.Router();
 
-// Reporte de ventas con filtros
+// Reporte de ventas con filtros (SIN formato)
 router.get("/sales", auth, async (req, res) => {
   try {
     const {
       cliente,
-      formato,
       tipoCliente,
       ejecutivo,
       fechaInicio,
       fechaFin,
-      pagado,
+      pagado, // "true" | "false" | undefined
     } = req.query;
 
     let filtros = {};
@@ -37,64 +35,90 @@ router.get("/sales", auth, async (req, res) => {
       };
     }
 
-    // Si se filtra por pagado
-    if (pagado === "true" || pagado === "false") {
-      const facturas = await Invoice.find({ pagado: pagado === "true" }).select("quote");
-      filtros.quote = { $in: facturas.map((f) => f.quote) };
-    }
-
-    // Buscar ventas
+    // 1) Buscar ventas base
     let ventas = await Sale.find(filtros)
       .populate("client", "nombreComercial tipoCliente")
-      .populate("quote")
+      .populate("quote") // aquí viene quote.total
       .populate("assignedTo", "name email");
 
-    // Formato desde cotización
-    if (formato) {
-      ventas = ventas.filter((v) =>
-        v.quote?.tarifas?.some((t) => t.formato === formato)
-      );
-    }
-
+    // 2) Filtro por tipoCliente (sin formato)
     if (tipoCliente) {
-      ventas = ventas.filter((v) => v.client.tipoCliente === tipoCliente);
+      ventas = ventas.filter((v) => v?.client?.tipoCliente === tipoCliente);
     }
 
-    // ==============================
-    // 📊  AGREGACIONES
-    // ==============================
-    const porCliente = {};
-    const porEjecutivo = {};
-    const porFormato = {};
-    const porTipoCliente = {};
-    const porMes = {};
+    // 3) Preparar mapa de pagos por quote (para mostrar y/o filtrar)
+    const quoteIds = ventas
+      .map((v) => v?.quote?._id)
+      .filter(Boolean);
 
-    ventas.forEach((v) => {
-      const cliente = v.client.nombreComercial;
-      const ejecutivo = v.assignedTo.name;
-      const tipoCli = v.client.tipoCliente;
-      const fecha = new Date(v.createdAt);
-      const mes = fecha.toISOString().slice(0, 7);
+    const facturas = await Invoice.find({ quote: { $in: quoteIds } })
+      .select("quote pagado");
 
-      // formatos
-      v.quote?.tarifas?.forEach((t) => {
-        porFormato[t.formato] = (porFormato[t.formato] || 0) + 1;
+    const pagoPorQuote = new Map(
+      facturas.map((f) => [String(f.quote), Boolean(f.pagado)])
+    );
+
+    // 4) Si filtras por pagado, filtra por el mapa (más directo y sin $in gigante)
+    if (pagado === "true" || pagado === "false") {
+      const target = pagado === "true";
+      ventas = ventas.filter((v) => {
+        const qid = String(v?.quote?._id || "");
+        // si no hay factura, no coincide ni con true ni con false (queda fuera)
+        if (!pagoPorQuote.has(qid)) return false;
+        return pagoPorQuote.get(qid) === target;
       });
+    }
 
-      porCliente[cliente] = (porCliente[cliente] || 0) + 1;
-      porEjecutivo[ejecutivo] = (porEjecutivo[ejecutivo] || 0) + 1;
-      porTipoCliente[tipoCli] = (porTipoCliente[tipoCli] || 0) + 1;
-      porMes[mes] = (porMes[mes] || 0) + 1;
+    // 5) Enriquecer ventas con "pagado" (para frontend/Excel)
+    const ventasUI = ventas.map((v) => {
+      const qid = String(v?.quote?._id || "");
+      const pagadoVal = pagoPorQuote.has(qid) ? pagoPorQuote.get(qid) : null; // null si no hay factura
+      return {
+        ...v.toObject(),
+        pagado: pagadoVal,
+        monto: v?.quote?.total || 0,
+      };
     });
 
-    // RESPUESTA COMPLETA
+    // ==============================
+    // 📊  STATS (con monto)
+    // ==============================
+    const porCliente = {};
+    const porEjecutivo = {};     // { "Juan": { count, totalMonto } }
+    const porTipoCliente = {};
+    const porMes = {};           // { "2026-01": { count, totalMonto } }
+
+    ventasUI.forEach((v) => {
+      const nombreCliente = v?.client?.nombreComercial || "Sin cliente";
+      const nombreEjecutivo = v?.assignedTo?.name || "Sin ejecutivo";
+      const tipoCli = v?.client?.tipoCliente || "Sin tipo";
+      const fecha = new Date(v.createdAt);
+      const mes = fecha.toISOString().slice(0, 7);
+      const monto = v.monto || 0;
+
+      porCliente[nombreCliente] = (porCliente[nombreCliente] || 0) + 1;
+
+      if (!porEjecutivo[nombreEjecutivo]) {
+        porEjecutivo[nombreEjecutivo] = { count: 0, totalMonto: 0 };
+      }
+      porEjecutivo[nombreEjecutivo].count += 1;
+      porEjecutivo[nombreEjecutivo].totalMonto += monto;
+
+      porTipoCliente[tipoCli] = (porTipoCliente[tipoCli] || 0) + 1;
+
+      if (!porMes[mes]) {
+        porMes[mes] = { count: 0, totalMonto: 0 };
+      }
+      porMes[mes].count += 1;
+      porMes[mes].totalMonto += monto;
+    });
+
     res.json({
-      total: ventas.length,
-      ventas,
+      total: ventasUI.length,
+      ventas: ventasUI,
       stats: {
         porCliente,
         porEjecutivo,
-        porFormato,
         porTipoCliente,
         porMes,
       },

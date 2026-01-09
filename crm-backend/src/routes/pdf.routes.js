@@ -3,11 +3,27 @@ const router = express.Router();
 const PDFDocument = require("pdfkit");
 const Quote = require("../models/Quote");
 const path = require("path");
+const { auth } = require("../middlewares/auth.middleware");
 
-router.get("/quote/:id", async (req, res) => {
+
+
+
+router.get("/quote/:id", auth, async (req, res) => {
   try {
-    const quote = await Quote.findById(req.params.id).populate("client");
+    const quote = await Quote.findById(req.params.id)
+      .populate("client", "nombreComercial assignedTo")
+      .populate("createdBy", "_id role");
+
     if (!quote) return res.status(404).send("Cotización no encontrada");
+
+    // 🔐 Permisos
+    if (req.user.role === "WORKER") {
+      // solo puede ver PDFs de cotizaciones creadas por él
+      if (String(quote.createdBy?._id || quote.createdBy) !== String(req.user._id)) {
+        return res.status(403).send("No tienes permiso para ver esta cotización");
+      }
+    }
+
 
     // Crear PDF
     const doc = new PDFDocument({ margin: 50 });
@@ -57,7 +73,9 @@ router.get("/quote/:id", async (req, res) => {
     // ===========================
     // PRESENTACIÓN / INTRODUCCIÓN
     // ===========================
-    const clientName = quote.client?.nombreComercial || "Cliente";
+    const dirigidoA = (req.query.dirigidoA || "").trim();
+    const clientName = dirigidoA || quote.client?.nombreComercial || "Cliente";
+
 
     const intro = `Estimado(a) ${clientName}
 
@@ -102,26 +120,50 @@ Atentamente,`;
     // INFORMACIÓN DEL CLIENTE
     // ===========================
     const boxTop = doc.y;
+    const boxX = 50;
+    const boxW = 500;
+    const boxH = 95;
 
+    // Fondo suave
     doc
-      .rect(50, boxTop, 500, 80)
+      .rect(boxX, boxTop, boxW, boxH)
+      .fillColor("#F4FBF7")
+      .fill();
+
+    // Borde
+    doc
+      .rect(boxX, boxTop, boxW, boxH)
       .strokeColor("#0A6A44")
-      .lineWidth(2)
+      .lineWidth(1.2)
       .stroke();
 
     doc
-      .fontSize(14)
+      .fontSize(13)
       .fillColor("#0A6A44")
-      .text("Información del Clientes", 60, boxTop + 10);
+      .text("Información del Cliente", boxX + 14, boxTop + 12);
 
-    doc
-      .fontSize(12)
-      .fillColor("black")
-      .text(`Cliente: ${quote.client?.nombreComercial || "N/A"}`, 60, boxTop + 30)
-      .text(`Status: ${quote.status}`, 60, boxTop + 48)
-      .text(`Total: $${quote.total}`, 60, boxTop + 66);
+    const labelX = boxX + 14;
+    const valueX = boxX + 95;
+
+    doc.fontSize(11).fillColor("#333");
+    doc.text("Cliente:", labelX, boxTop + 36);
+    doc.text("Status:", labelX, boxTop + 54);
+    doc.text("Total:", labelX, boxTop + 72);
+
+    const totalFmt = (quote.total || 0).toLocaleString("es-MX", {
+      style: "currency",
+      currency: "MXN",
+    });
+
+    doc.fillColor("#000");
+    doc.text(`${quote.client?.nombreComercial || "N/A"}`, valueX, boxTop + 36);
+    doc.text(`${quote.status || "N/A"}`, valueX, boxTop + 54);
+    doc.text(`${totalFmt}`, valueX, boxTop + 72);
 
     doc.moveDown(5);
+
+
+    doc.addPage();
 
     // ===========================
     // TABLA DE TARIFAS
@@ -132,24 +174,79 @@ Atentamente,`;
     const tableTop = doc.y;
 
     const headers = ["Formato", "Periodicidad", "Costo", "Fechas", "Total Línea"];
-    const colWidths = [100, 100, 80, 160, 100];
+    const colWidths = [90, 95, 75, 150, 90];
+    // === HEADER (fondo + textos) ===
+    const headerH = 26;
 
-    doc.fontSize(12).fillColor("white");
-    doc.rect(50, tableTop, 500, 22).fill("#0A6A44");
+    // Fondo verde
+    doc
+      .rect(50, tableTop, 500, headerH)
+      .fill("#0A6A44");
+
+    // Textos del header
+    doc
+      .fontSize(11)
+      .fillColor("white");
 
     let x = 55;
     headers.forEach((h, i) => {
-      doc.text(h, x, tableTop + 6);
+      doc.text(h, x, tableTop + 8, {
+        width: colWidths[i] - 10,
+        lineBreak: false,
+        ellipsis: true,
+      });
       x += colWidths[i];
     });
 
+    // Regresar a negro para el contenido
     doc.fillColor("black");
 
-    let y = tableTop + 25;
+
+    let y = tableTop + 32;
 
     const tarifas = quote.tarifas || [];
 
     tarifas.forEach((t) => {
+      const pageBottom = doc.page.height - 120; // espacio para pie
+      if (y + 30 > pageBottom) {
+        doc.addPage();
+
+        // Redibujar encabezado en la nueva página
+        doc.fontSize(16).fillColor("#0A6A44").text("Tarifas", { underline: true });
+        doc.moveDown(0.5);
+
+        const newTableTop = doc.y;
+        // === HEADER (fondo + textos) en nueva página ===
+        const headerH = 26;
+
+        // Fondo verde
+        doc
+          .rect(50, newTableTop, 500, headerH)
+          .fill("#0A6A44");
+
+        // Textos del header
+        doc
+          .fontSize(11)
+          .fillColor("white");
+
+        let x2 = 55;
+        headers.forEach((h, i) => {
+          doc.text(h, x2, newTableTop + 8, {
+            width: colWidths[i] - 10,
+            lineBreak: false,
+            ellipsis: true,
+          });
+          x2 += colWidths[i];
+        });
+
+        // Regresar a negro
+        doc.fillColor("black");
+
+        // Ajusta y para arrancar filas justo debajo del header
+        y = newTableTop + headerH + 6;
+
+      }
+
       const fechas = (t.fechas || [])
         .map((f) => new Date(f).toLocaleDateString("es-MX"))
         .join(", ");
@@ -165,7 +262,12 @@ Atentamente,`;
       let xRow = 55;
 
       row.forEach((cell, i) => {
-        doc.text(cell, xRow, y, { width: colWidths[i] - 10 });
+        doc.text(cell ?? "", xRow, y, {
+          width: colWidths[i] - 10,
+          height: 18,
+          ellipsis: true,
+          lineBreak: false,
+        });
         xRow += colWidths[i];
       });
 

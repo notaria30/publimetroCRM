@@ -22,9 +22,10 @@ import {
   DialogTitle,
   DialogContent,
   DialogActions,
+  TextField,
 } from "@mui/material";
 import { Link as RouterLink, useParams, useNavigate } from "react-router-dom";
-
+import api from "../../services/api";
 import { getQuoteById, deleteQuote } from "../../services/quoteService";
 import { createSaleFromQuote } from "../../services/salesService";
 
@@ -34,12 +35,17 @@ export default function QuoteDetailPage() {
   const [quote, setQuote] = useState(null);
   const [loading, setLoading] = useState(true);
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
+  const [openPdfDialog, setOpenPdfDialog] = useState(false);
+  const [dirigidoA, setDirigidoA] = useState("");
+  const [pdfLoading, setPdfLoading] = useState(false);
+
 
   useEffect(() => {
     async function load() {
       try {
         const res = await getQuoteById(id);
         setQuote(res.data);
+        setDirigidoA(res.data?.client?.nombreComercial || "");
       } catch (error) {
         console.error("Error cargando cotización:", error);
       } finally {
@@ -78,13 +84,45 @@ export default function QuoteDetailPage() {
     }
   };
 
-  const printPDF = () => {
+  const handleOpenPdfDialog = () => {
     if (!quote?._id) return;
-    window.open(
-      `/api/pdf/quote/${quote._id}`,
-      "_blank"
-    );
+    setOpenPdfDialog(true);
   };
+  const handleDownloadPdf = async () => {
+    if (!quote?._id) return;
+
+    try {
+      setPdfLoading(true);
+
+      const params = {};
+      if (dirigidoA?.trim()) params.dirigidoA = dirigidoA.trim();
+
+      const res = await api.get(`/pdf/quote/${quote._id}`, {
+        params,
+        responseType: "blob",
+      });
+
+      const file = new Blob([res.data], { type: "application/pdf" });
+      const url = window.URL.createObjectURL(file);
+
+      // abrir en nueva pestaña
+      window.open(url, "_blank");
+
+      // opcional: si quieres descargar directo, usa <a download>
+      // const a = document.createElement("a");
+      // a.href = url;
+      // a.download = `cotizacion-${quote.folio}.pdf`;
+      // a.click();
+
+      setOpenPdfDialog(false);
+    } catch (error) {
+      console.error("Error generando PDF:", error);
+      alert(error.response?.data || "No se pudo generar el PDF");
+    } finally {
+      setPdfLoading(false);
+    }
+  };
+
 
   if (loading) {
     return (
@@ -167,9 +205,10 @@ export default function QuoteDetailPage() {
             Volver
           </Button>
 
-          <Button variant="outlined" onClick={printPDF}>
+          <Button variant="outlined" onClick={handleOpenPdfDialog}>
             Imprimir PDF
           </Button>
+
 
           {quote.status === "aprobado" && (
             <Button
@@ -783,6 +822,52 @@ export default function QuoteDetailPage() {
           </Button>
         </DialogActions>
       </Dialog>
+      {/* DIALOG PDF */}
+      <Dialog
+        open={openPdfDialog}
+        onClose={() => setOpenPdfDialog(false)}
+        maxWidth="sm"
+        fullWidth
+        PaperProps={{
+          sx: { borderRadius: 3, p: 1.5 },
+        }}
+      >
+        <DialogTitle sx={{ fontWeight: 700 }}>
+          Generar PDF de cotización
+        </DialogTitle>
+
+        <DialogContent sx={{ pt: 1 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Puedes editar a quién va dirigida la cotización (por ejemplo: el dueño o un contacto específico).
+          </Typography>
+
+          <TextField
+            fullWidth
+            label="Dirigido a"
+            value={dirigidoA}
+            onChange={(e) => setDirigidoA(e.target.value)}
+            placeholder="Ej. Carlos Pérez (Director General)"
+            size="small"
+            autoFocus
+          />
+        </DialogContent>
+
+        <DialogActions sx={{ px: 2, pb: 2 }}>
+          <Button onClick={() => setOpenPdfDialog(false)} disabled={pdfLoading}>
+            Cancelar
+          </Button>
+
+          <Button
+            variant="contained"
+            onClick={handleDownloadPdf}
+            disabled={pdfLoading}
+            sx={{ fontWeight: 700 }}
+          >
+            {pdfLoading ? "Generando..." : "Abrir PDF"}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
     </Box>
   );
 }
