@@ -18,6 +18,8 @@ export default function CampaignDetailPage() {
 
   const [campaign, setCampaign] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
 
   useEffect(() => {
     async function load() {
@@ -25,7 +27,22 @@ export default function CampaignDetailPage() {
         const res = await getCampaignById(campId);
         setCampaign(res.data);
       } catch (err) {
-        console.error("Error cargando campaña:", err);
+        const status = err?.response?.status;
+        const msg = err?.response?.data?.message;
+
+        console.error("Error cargando campaña:", status, msg, err);
+
+        if (status === 403) {
+          setError("No tienes permiso para ver esta campaña.");
+          return;
+        }
+
+        if (status === 404) {
+          setError("Campaña no encontrada.");
+          return;
+        }
+
+        setError("Error cargando campaña.");
       } finally {
         setLoading(false);
       }
@@ -52,6 +69,13 @@ export default function CampaignDetailPage() {
 
   return (
     <Box sx={{ p: 4 }}>
+      <Button
+        variant="outlined"
+        sx={{ mb: 3 }}
+        onClick={() => navigate(`/clients/${clientId}/campaigns`)}
+      >
+        Volver a campañas
+      </Button>
       {/* Título */}
       <Box
         sx={{

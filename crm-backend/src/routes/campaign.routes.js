@@ -13,19 +13,23 @@ router.post("/", auth, async (req, res) => {
   try {
     const data = req.body;
 
-    if (!data.client) {
-      return res.status(400).json({ message: "client es requerido" });
-    }
-    if (!data.nombre) {
-      return res.status(400).json({ message: "nombre es requerido" });
-    }
+    if (!data.client) return res.status(400).json({ message: "client es requerido" });
+    if (!data.nombre) return res.status(400).json({ message: "nombre es requerido" });
 
-    // asegurar createdBy desde el usuario logueado
     data.createdBy = req.user._id;
 
     const campaign = await Campaign.create(data);
 
-    res.status(201).json(campaign);
+    const populatedCampaign = await Campaign.findById(campaign._id)
+      .populate("client", "nombreComercial status")
+      .populate("sale", "_id pipelineStage")
+      .populate("quote", "folio total")
+      .populate("createdBy", "name email");
+
+    return res.status(201).json({
+      message: "Campaña creada correctamente",
+      campaign: populatedCampaign,
+    });
 
   } catch (err) {
     console.error("Error al crear campaña:", err);
@@ -33,14 +37,15 @@ router.post("/", auth, async (req, res) => {
   }
 });
 
+
 // Listar campañas
 router.get("/", auth, async (req, res) => {
   try {
     let filter = {};
 
-    // Si es WORKER, solo sus campañas (por createdBy)
-    if (req.user.role === "WORKER") {
-      filter.createdBy = req.user._id;
+    // Filtrar por cliente si viene en query
+    if (req.query.client) {
+      filter.client = req.query.client;
     }
 
     const campaigns = await Campaign.find(filter)
@@ -57,6 +62,7 @@ router.get("/", auth, async (req, res) => {
   }
 });
 
+
 // Obtener una campaña por ID
 router.get("/:id", auth, async (req, res) => {
   try {
@@ -68,16 +74,6 @@ router.get("/:id", auth, async (req, res) => {
 
     if (!campaign) {
       return res.status(404).json({ message: "Campaña no encontrada" });
-    }
-
-    // Si es WORKER solo puede ver las suyas
-    if (
-      req.user.role === "WORKER" &&
-      campaign.createdBy.toString() !== req.user._id.toString()
-    ) {
-      return res
-        .status(403)
-        .json({ message: "No tienes permiso para ver esta campaña" });
     }
 
     res.json(campaign);

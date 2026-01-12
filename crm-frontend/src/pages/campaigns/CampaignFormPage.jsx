@@ -86,16 +86,29 @@ export default function CampaignFormPage() {
         res = await updateCampaign(campId, form);
         alert("Campaña actualizada");
       } else {
-        res = await createCampaign({ ...form, client: clientId });
+        // IMPORTANTE: usa el cliente seleccionado en el form
+        // (si quieres forzar clientId de params, lo hacemos luego, pero esto es lo correcto)
+        res = await createCampaign({ ...form, client: form.client || clientId });
         alert("Campaña creada");
       }
 
-      navigate(`/clients/${res.data.campaign.client}/campaigns/${res.data.campaign._id}`);
+      // Normalizar: algunos backends responden {campaign: ...} y otros responden directamente la campaña
+      const campaign = res?.data?.campaign ?? res?.data;
+
+      if (!campaign?._id) {
+        console.error("Respuesta inesperada al guardar campaña:", res?.data);
+        return alert("La campaña se guardó, pero la respuesta del servidor no trae el ID.");
+      }
+
+      const resolvedClientId = campaign.client?._id ?? campaign.client ?? (form.client || clientId);
+
+      navigate(`/clients/${resolvedClientId}/campaigns/${campaign._id}`);
     } catch (err) {
       console.error("Error guardando campaña:", err);
       alert("Error al guardar");
     }
   };
+
 
   if (loading)
     return (

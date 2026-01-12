@@ -73,7 +73,7 @@ router.get("/", auth, async (req, res) => {
     } else {
       sales = await Sale.find({ assignedTo: req.user._id })
         .populate("client", "nombreComercial status")
-        .populate("quote", "folio total")
+        .populate("quote", "folio total status")
         .populate("assignedTo", "name email");
     }
     res.json(sales);
@@ -87,7 +87,7 @@ router.get("/:id", auth, async (req, res) => {
   try {
     const sale = await Sale.findById(req.params.id)
       .populate("client", "nombreComercial status")
-      .populate("quote", "folio total")
+      .populate("quote", "folio total status")
       .populate("assignedTo", "name email");
     if (!sale) {
       return res.status(404).json({ message: "Venta no encontrada" });
@@ -143,7 +143,11 @@ router.put("/:id", auth, async (req, res) => {
       updates,
       { new: true, runValidators: true }
     )
+      .populate("client", "nombreComercial status")
+      .populate("quote", "folio total status")
+      .populate("assignedTo", "name email")
       .populate("history.changedBy", "name email");
+
 
 
     // 🔥 Historial de pipeline

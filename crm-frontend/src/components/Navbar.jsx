@@ -37,8 +37,8 @@ export default function Navbar() {
             { to: "/clients", label: "Clientes" },
             { to: "/quotes", label: "Cotizaciones" },
             { to: "/sales", label: "Ventas" },
-            { to: "/postsale", label: "Post-Venta" },
             { to: "/invoices", label: "Facturación" },
+            { to: "/postsale", label: "Post-Venta" },
             { to: "/reports", label: "Reportes" },
           ].map((l) => (
             <NavLink

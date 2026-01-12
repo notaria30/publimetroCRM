@@ -30,6 +30,13 @@ export default function ClientCampaignsPage() {
     }, [id]);
     return (
         <div style={{ padding: "20px" }}>
+
+            {/* TÍTULO */}
+            <Typography variant="h4" fontWeight={700} mb={1.5}>
+                Campañas del cliente
+            </Typography>
+
+            {/* FILA DE BOTONES (debajo del título) */}
             <div
                 style={{
                     display: "flex",
@@ -38,24 +45,18 @@ export default function ClientCampaignsPage() {
                     marginBottom: "25px",
                 }}
             >
-                <h1>Campañas del cliente</h1>
+                <Button variant="outlined" onClick={() => navigate("/clients")}>
+                    Volver
+                </Button>
 
-                <button
+                <Button
+                    variant="contained"
                     onClick={() => navigate(`/clients/${id}/campaigns/new`)}
-                    style={{
-                        padding: "10px 20px",
-                        backgroundColor: "#1976d2",
-                        color: "white",
-                        border: "none",
-                        borderRadius: "6px",
-                        cursor: "pointer",
-                        fontSize: "14px",
-                        fontWeight: "bold",
-                    }}
                 >
                     Nueva campaña
-                </button>
+                </Button>
             </div>
+
 
             {/* Si no hay campañas */}
             {campaigns.length === 0 ? (

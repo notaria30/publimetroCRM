@@ -211,15 +211,27 @@ export default function ClientsPage() {
                 <TableCell>{client.assignedTo?.name || "N/A"}</TableCell>
 
                 <TableCell>
-                  <Button
-                    variant="outlined"
-                    size="small"
-                    sx={{ textTransform: "none", borderRadius: "8px", px: 2 }}
-                    component={Link}
-                    to={`/clients/${client._id}`}
-                  >
-                    Ver
-                  </Button>
+                  <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      sx={{ textTransform: "none", borderRadius: "8px", px: 2 }}
+                      component={Link}
+                      to={`/clients/${client._id}`}
+                    >
+                      Ver
+                    </Button>
+
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      sx={{ textTransform: "none", borderRadius: "8px", px: 2 }}
+                      component={Link}
+                      to={`/clients/${client._id}/campaigns`}
+                    >
+                      Campañas
+                    </Button>
+                  </Box>
                 </TableCell>
               </TableRow>
             ))}

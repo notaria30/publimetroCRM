@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { createInvoice } from "../../services/invoiceService";
 import { getClients } from "../../services/clientService";
 import { getQuotes } from "../../services/quoteService";
-
 import {
   Box,
   Card,
@@ -19,6 +18,8 @@ import {
   FormControlLabel,
   Switch,
 } from "@mui/material";
+import dayjs from "dayjs";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 
 export default function InvoiceCreatePage() {
   const navigate = useNavigate();
@@ -26,6 +27,9 @@ export default function InvoiceCreatePage() {
   const [clients, setClients] = useState([]);
   const [quotes, setQuotes] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
+  const isoToDayjs = (iso) => (iso ? dayjs(iso) : null);
+  const dayjsToISO = (d) => (d ? d.toISOString() : "");
+
 
   const [form, setForm] = useState({
     client: "",
@@ -213,15 +217,23 @@ export default function InvoiceCreatePage() {
               </Grid>
 
               <Grid item xs={12} md={4}>
-                <TextField
-                  fullWidth
-                  type="date"
+                <DatePicker
                   label="Fecha factura"
-                  InputLabelProps={{ shrink: true }}
-                  name="fechaFactura"
-                  value={form.fechaFactura}
-                  onChange={handleChange}
-                  required
+                  value={isoToDayjs(form.fechaFactura)}
+                  onChange={(newValue) => {
+                    setForm((prev) => ({
+                      ...prev,
+                      fechaFactura: dayjsToISO(newValue),
+                    }));
+                  }}
+                  format="DD/MM/YYYY"
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      required: true,
+                      InputLabelProps: { shrink: true },
+                    },
+                  }}
                 />
               </Grid>
 
@@ -280,14 +292,22 @@ export default function InvoiceCreatePage() {
             {form.pagado && (
               <Grid container spacing={3} mt={1}>
                 <Grid item xs={12} md={4}>
-                  <TextField
-                    fullWidth
-                    type="date"
+                  <DatePicker
                     label="Fecha pago"
-                    InputLabelProps={{ shrink: true }}
-                    name="fechaPago"
-                    value={form.fechaPago}
-                    onChange={handleChange}
+                    value={isoToDayjs(form.fechaPago)}
+                    onChange={(newValue) => {
+                      setForm((prev) => ({
+                        ...prev,
+                        fechaPago: dayjsToISO(newValue),
+                      }));
+                    }}
+                    format="DD/MM/YYYY"
+                    slotProps={{
+                      textField: {
+                        fullWidth: true,
+                        InputLabelProps: { shrink: true },
+                      },
+                    }}
                   />
                 </Grid>
 

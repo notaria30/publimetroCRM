@@ -17,6 +17,12 @@ import {
   Paper,
   TextField,
 } from "@mui/material";
+import Table from "@mui/material/Table";
+import TableBody from "@mui/material/TableBody";
+import TableCell from "@mui/material/TableCell";
+import TableHead from "@mui/material/TableHead";
+import TableRow from "@mui/material/TableRow";
+import TableContainer from "@mui/material/TableContainer";
 import { useParams, Link as RouterLink, useNavigate } from "react-router-dom";
 import { getSaleById, updateSale, addSaleNote } from "../../services/salesService";
 import { addSaleTask, completeSaleTask } from "../../services/salesService";
@@ -383,7 +389,7 @@ export default function SalesDetailPage() {
             No hay movimientos registrados en el pipeline todavía.
           </Typography>
         ) : (
-          <Paper sx={{ p: 2 }}>
+          <TableContainer component={Paper} sx={{ p: 2 }}>
             <Table>
               <TableHead>
                 <TableRow sx={{ backgroundColor: "#e0e0e0" }}>
@@ -424,7 +430,7 @@ export default function SalesDetailPage() {
                 ))}
               </TableBody>
             </Table>
-          </Paper>
+          </TableContainer>
         )}
       </Box>
       {/* NOTAS DE SEGUIMIENTO */}
