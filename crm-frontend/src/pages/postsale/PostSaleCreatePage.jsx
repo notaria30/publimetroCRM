@@ -42,17 +42,22 @@ export default function PostSaleCreatePage() {
   });
 
   const STAGES = [
-    "prospeccion",
-    "acercamiento",
-    "presentacion_contacto_indicado",
-    "propuesta_comercial",
-    "negociacion_cierre",
-    "documentacion_contrato",
-    "facturacion",
-    "pago",
     "servicio_post_venta",
+    "medicion_resultados",
+    "encuesta_satisfaccion",
+    "renovacion",
     "reportes",
+    "cerrado",
   ];
+
+  const stageLabels = {
+    servicio_post_venta: "Servicio Post-Venta",
+    medicion_resultados: "Medición de resultados",
+    encuesta_satisfaccion: "Encuesta de satisfacción",
+    renovacion: "Renovación",
+    reportes: "Reportes",
+    cerrado: "Cerrado",
+  };
 
   /** Cargar ventas */
   useEffect(() => {
@@ -67,15 +72,27 @@ export default function PostSaleCreatePage() {
   const handleChange = (e) => {
     const { name, value } = e.target;
 
-    // encuesta
+    //si cambia etapa
+    if (name === "postSaleStage") {
+      setForm((prev) => ({
+        ...prev,
+        postSaleStage: value,
+        renovacion: value === "renovacion"
+          ? { ...prev.renovacion, requiereRenovacion: true }
+          : prev.renovacion,
+      }));
+      return;
+    }
+
+    //encuesta
     if (["calificacion", "comentarios"].includes(name)) {
-      setForm({
-        ...form,
+      setForm((prev) => ({
+        ...prev,
         encuestaSatisfaccion: {
-          ...form.encuestaSatisfaccion,
+          ...prev.encuestaSatisfaccion,
           [name]: value,
         },
-      });
+      }));
       return;
     }
 
@@ -90,18 +107,6 @@ export default function PostSaleCreatePage() {
       });
       return;
     }
-
-    if (name === "fechaPosibleRenovacion") {
-      setForm({
-        ...form,
-        renovacion: {
-          ...form.renovacion,
-          fechaPosibleRenovacion: value,
-        },
-      });
-      return;
-    }
-
     setForm({ ...form, [name]: value });
   };
 
@@ -166,7 +171,7 @@ export default function PostSaleCreatePage() {
                   >
                     {STAGES.map((s) => (
                       <MenuItem key={s} value={s}>
-                        {s}
+                        {stageLabels[s] || s.replace(/_/g, " ")}
                       </MenuItem>
                     ))}
                   </Select>

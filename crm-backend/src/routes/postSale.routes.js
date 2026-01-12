@@ -50,7 +50,7 @@ router.get("/", auth, async (req, res) => {
 
     if (req.user.role === "OWNER") {
       records = await PostSale.find()
-        .populate("sale")
+        .populate("sale", "folio _id")
         .populate("client", "nombreComercial status")
         .populate("assignedTo", "name email");
     } else {

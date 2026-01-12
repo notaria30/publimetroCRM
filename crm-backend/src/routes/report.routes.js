@@ -5,6 +5,7 @@ const Quote = require("../models/Quote");
 const Invoice = require("../models/Invoice");
 const { auth } = require("../middlewares/auth.middleware");
 const router = express.Router();
+const SalesGoal = require("../models/SalesGoal"); 
 
 // Reporte de ventas con filtros (SIN formato)
 router.get("/sales", auth, async (req, res) => {
@@ -274,51 +275,108 @@ router.get("/analytics", auth, async (req, res) => {
 
 router.get("/metas", auth, async (req, res) => {
   try {
+    const month = req.query.month; // "YYYY-MM" (opcional)
+
+    // Base pipeline: ventas por vendedor (y suma de monto si hay quote.total)
     const pipeline = [];
 
-    // 🔐 WORKER solo ve sus propias metas
+    // WORKER: solo él
     if (req.user.role === "WORKER") {
-      pipeline.push({
-        $match: { assignedTo: req.user._id },
-      });
+      pipeline.push({ $match: { assignedTo: req.user._id } });
+    }
+
+    // Si quieres filtrar por mes, usamos createdAt dentro del mes
+    if (month && /^\d{4}-\d{2}$/.test(month)) {
+      const [y, m] = month.split("-");
+      const start = new Date(Number(y), Number(m) - 1, 1);
+      const end = new Date(Number(y), Number(m), 1);
+      pipeline.push({ $match: { createdAt: { $gte: start, $lt: end } } });
     }
 
     pipeline.push(
+      // traer quote para sumar total
+      {
+        $lookup: {
+          from: "quotes",
+          localField: "quote",
+          foreignField: "_id",
+          as: "quoteDoc",
+        },
+      },
+      { $unwind: { path: "$quoteDoc", preserveNullAndEmptyArrays: true } },
+
       {
         $group: {
           _id: "$assignedTo",
           totalVentas: { $sum: 1 },
+          totalMonto: { $sum: { $ifNull: ["$quoteDoc.total", 0] } },
+          ventasCerradas: { $sum: { $cond: [{ $eq: ["$isClosed", true] }, 1, 0] } },
+          montoCerrado: {
+            $sum: { $cond: [{ $eq: ["$isClosed", true] }, { $ifNull: ["$quoteDoc.total", 0] }, 0] },
+          },
         },
       },
+
+      // usuario
       {
         $lookup: {
-          from: "users",           // <- colección de usuarios (normalmente es "users")
+          from: "users",
           localField: "_id",
           foreignField: "_id",
           as: "user",
         },
       },
       { $unwind: { path: "$user", preserveNullAndEmptyArrays: true } },
+
       {
         $project: {
           _id: 1,
           totalVentas: 1,
+          totalMonto: 1,
+          ventasCerradas: 1,
+          montoCerrado: 1,
           name: "$user.name",
           email: "$user.email",
           role: "$user.role",
         },
       },
-      { $sort: { totalVentas: -1 } }
+      { $sort: { totalMonto: -1 } }
     );
 
     const vendedores = await Sale.aggregate(pipeline);
 
-    res.json({ vendedores });
+    // Metas del mes (solo si month viene)
+    let goalsMap = new Map();
+    if (month && /^\d{4}-\d{2}$/.test(month)) {
+      const goals = await SalesGoal.find({ month }).select("user goalAmount goalClosedDeals");
+      goalsMap = new Map(goals.map((g) => [String(g.user), g]));
+    }
+
+    const enriched = vendedores.map((v) => {
+      const g = goalsMap.get(String(v._id));
+      const goalAmount = g?.goalAmount ?? 0;
+      const goalClosedDeals = g?.goalClosedDeals ?? 0;
+
+      const progressAmount = goalAmount > 0 ? Math.min(100, (v.montoCerrado / goalAmount) * 100) : 0;
+      const progressDeals = goalClosedDeals > 0 ? Math.min(100, (v.ventasCerradas / goalClosedDeals) * 100) : 0;
+
+      return {
+        ...v,
+        goal: {
+          month: month || null,
+          goalAmount,
+          goalClosedDeals,
+          progressAmount,
+          progressDeals,
+        },
+      };
+    });
+
+    res.json({ vendedores: enriched, month: month || null });
   } catch (error) {
     console.error("Error en metas vendedores:", error);
     res.status(500).json({ message: "Error interno" });
   }
 });
-
 
 module.exports = router;

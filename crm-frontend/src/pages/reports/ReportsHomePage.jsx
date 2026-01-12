@@ -10,17 +10,22 @@ import {
   Typography,
   Button,
 } from "@mui/material";
+import { useAuth } from "../../context/AuthContext";
+
 
 export default function ReportsHomePage() {
-  const reports = [
-    { name: "Reporte de Ventas", path: "/reports/sales" },
-    { name: "Proyecciones", path: "/reports/projections" },
-    { name: "Clientes Activos", path: "/reports/clientes-activos" },
-    { name: "Publicidad", path: "/reports/publicidad" },
-    { name: "Activaciones", path: "/reports/activaciones" },
-    { name: "Analítica", path: "/reports/analytics" },
-    { name: "Metas por Vendedor", path: "/reports/metas" },
-  ];
+  const { isOwner } = useAuth();
+const reports = [
+  { name: "Reporte de Ventas", path: "/reports/sales" },
+  { name: "Proyecciones", path: "/reports/projections" },
+  { name: "Clientes Activos", path: "/reports/clientes-activos" },
+  { name: "Publicidad", path: "/reports/publicidad" },
+  { name: "Activaciones", path: "/reports/activaciones" },
+  { name: "Analítica", path: "/reports/analytics" },
+  ...(isOwner ? [{ name: "Metas por Vendedor", path: "/reports/metas" }] : []),
+  ...(isOwner ? [{ name: "Asignar metas (Admin)", path: "/reports/goals-admin" }] : []),
+];
+
 
   return (
     <Box maxWidth="1200px" mx="auto" mt={4} px={3}>

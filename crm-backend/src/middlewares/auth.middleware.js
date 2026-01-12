@@ -23,7 +23,7 @@ const auth = async (req, res, next) => {
 
     // guardar usuario en la request
     req.user = user;
-
+    req.user.role = (req.user.role || "").toUpperCase();
     next();
   } catch (error) {
     console.error("Error en auth middleware:", error);

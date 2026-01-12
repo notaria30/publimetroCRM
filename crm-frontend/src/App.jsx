@@ -48,17 +48,29 @@ import CampaignListPage from "./pages/campaigns/CampaignListPage.jsx";
 import CampaignDetailPage from "./pages/campaigns/CampaignDetailPage.jsx";
 import CampaignFormPage from "./pages/campaigns/CampaignFormPage.jsx";
 import ClientCampaignsPage from "./pages/clients/ClientCampaignsPage";
+import ReportGoalsAdminPage from "./pages/reports/ReportGoalsAdminPage";
 
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
 
   if (loading) return <div>Cargando...</div>;
-
   if (!user) return <Navigate to="/login" replace />;
 
   return children;
 }
+
+
+function OwnerRoute({ children }) {
+  const { user, loading, isOwner } = useAuth();
+
+  if (loading) return <div>Cargando...</div>;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!isOwner) return <Navigate to="/reports" replace />;
+
+  return children;
+}
+
 
 function App() {
   return (
@@ -313,6 +325,16 @@ function App() {
           <Route path="/reports/activaciones" element={<ProtectedLayout><ReportActivacionesPage /></ProtectedLayout>} />
           <Route path="/reports/analytics" element={<ProtectedLayout><ReportAnalyticsPage /></ProtectedLayout>} />
           <Route path="/reports/metas" element={<ProtectedLayout><ReportMetasPage /></ProtectedLayout>} />
+          <Route
+            path="/reports/goals-admin"
+            element={
+              <OwnerRoute>
+                <ProtectedLayout>
+                  <ReportGoalsAdminPage />
+                </ProtectedLayout>
+              </OwnerRoute>
+            }
+          />
 
           {/* 404 */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -25,5 +25,5 @@ export const getAnalytics = () =>
   api.get("/reports/analytics");
 
 // Metas vendedores
-export const getMetas = () =>
-  api.get("/reports/metas");
+export const getMetas = (params) => api.get("/reports/metas", { params });
+

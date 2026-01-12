@@ -142,7 +142,7 @@ export default function QuoteTarifasSection({
                         onChange={(newValue) => {
                           handleTarifaFecha(index, iFecha, dayjsToISO(newValue));
                         }}
-                        format="DD/MM/YYYY"   // ✅ así lo ve el usuario
+                        format="DD/MM/YYYY"  
                         slotProps={{
                           textField: {
                             fullWidth: true,
