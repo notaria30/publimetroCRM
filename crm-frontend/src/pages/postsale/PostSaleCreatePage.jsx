@@ -3,7 +3,8 @@ import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createPostSale } from "../../services/postSaleService";
 import { getSales } from "../../services/salesService";
-
+import dayjs from "dayjs";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 import {
   Box,
   Card,
@@ -22,9 +23,9 @@ import {
 
 export default function PostSaleCreatePage() {
   const navigate = useNavigate();
-
+  const isoToDayjs = (iso) => (iso ? dayjs(iso) : null);
+  const dayjsToISO = (d) => (d ? d.toISOString() : "");
   const [sales, setSales] = useState([]);
-
   const [form, setForm] = useState({
     sale: "",
     postSaleStage: "servicio_post_venta",
@@ -129,14 +130,14 @@ export default function PostSaleCreatePage() {
       <Card elevation={3}>
         <CardContent>
           <form onSubmit={handleSubmit}>
-            
+
             {/* SECCIÓN: Venta */}
             <Typography variant="h6" fontWeight={700} mb={2}>
               Venta Asociada
             </Typography>
 
             <Grid container spacing={3}>
-               <Grid size={{ xs: 12, md: 4 }}>
+              <Grid size={{ xs: 12, md: 4 }}>
                 <FormControl fullWidth required>
                   <InputLabel>Venta</InputLabel>
                   <Select
@@ -154,7 +155,7 @@ export default function PostSaleCreatePage() {
                 </FormControl>
               </Grid>
 
-               <Grid size={{ xs: 12, md: 3 }}>
+              <Grid size={{ xs: 12, md: 3 }}>
                 <FormControl fullWidth>
                   <InputLabel>Etapa</InputLabel>
                   <Select
@@ -194,7 +195,7 @@ export default function PostSaleCreatePage() {
             </Typography>
 
             <Grid container spacing={3}>
-              <Grid item xs={12} md={4}>
+              <Grid size={{ xs: 12, md: 2.2 }}>
                 <TextField
                   label="Calificación (1–10)"
                   type="number"
@@ -206,7 +207,7 @@ export default function PostSaleCreatePage() {
                 />
               </Grid>
 
-              <Grid item xs={12} md={8}>
+              <Grid size={{ xs: 12, md: 9 }}>
                 <TextField
                   label="Comentarios"
                   fullWidth
@@ -242,14 +243,25 @@ export default function PostSaleCreatePage() {
             {form.renovacion.requiereRenovacion && (
               <Grid container spacing={3} mt={1}>
                 <Grid item xs={12} md={6}>
-                  <TextField
-                    fullWidth
-                    type="date"
+                  <DatePicker
                     label="Fecha posible de renovación"
-                    InputLabelProps={{ shrink: true }}
-                    name="fechaPosibleRenovacion"
-                    value={form.renovacion.fechaPosibleRenovacion}
-                    onChange={handleChange}
+                    value={isoToDayjs(form.renovacion?.fechaPosibleRenovacion)}
+                    onChange={(newValue) => {
+                      setForm((prev) => ({
+                        ...prev,
+                        renovacion: {
+                          ...prev.renovacion,
+                          fechaPosibleRenovacion: dayjsToISO(newValue),
+                        },
+                      }));
+                    }}
+                    format="DD/MM/YYYY"
+                    slotProps={{
+                      textField: {
+                        fullWidth: true,
+                        InputLabelProps: { shrink: true },
+                      },
+                    }}
                   />
                 </Grid>
               </Grid>
