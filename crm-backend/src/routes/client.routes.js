@@ -80,14 +80,22 @@ router.post("/", auth, async (req, res) => {
   } catch (error) {
     console.error("Error al crear cliente:", error);
 
-    // Manejo de RFC duplicado
+    // RFC duplicado
     if (error.code === 11000 && error.keyPattern?.rfc) {
-      return res.status(400).json({
-        message: "El RFC ya está registrado en el sistema"
+      return res.status(400).json({ message: "El RFC ya está registrado en el sistema" });
+    }
+
+    // ✅ Validación Mongoose (enum/required/etc.)
+    if (error.name === "ValidationError") {
+      return res.status(422).json({
+        message: "Validación fallida",
+        errors: Object.fromEntries(
+          Object.entries(error.errors).map(([field, detail]) => [field, detail.message])
+        ),
       });
     }
 
-    res.status(500).json({ message: "Error interno del servidor" });
+    return res.status(500).json({ message: "Error interno del servidor" });
   }
 });
 

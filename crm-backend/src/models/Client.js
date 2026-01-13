@@ -55,21 +55,23 @@ const clientSchema = new mongoose.Schema(
         "hospitales",
         "opticas",
         "farmacias",
-        "gimansios",
+        "gimnasios",
         "clinicas",
         "escuelas",
         "universidades",
-        "clubs deportivo",
+        "clubs deportivos",
         "eventos o espectaculos",
         "servicios financieros",
         "aseguradoras",
         "notarias",
         "talleres mecanicos",
-        "distribuidora de autos",
+        "distribuidoras de autos",
         "cursos o diplomados",
-        "laboratorios medicos"
+        "laboratorios medicos",
       ],
+      required: true,
     },
+
 
     contactos: {
       mercadotecnia: {

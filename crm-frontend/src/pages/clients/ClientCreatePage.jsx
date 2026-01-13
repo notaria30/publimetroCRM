@@ -2,8 +2,9 @@ import { useState, useEffect } from "react";
 import { getUsers } from "../../services/userService";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { Grid, TextField, Typography, MenuItem, FormControl, Select, InputLabel, Button, Card, CardContent, Box, FormControlLabel, Switch, Alert } from "@mui/material";
+import { Grid, TextField, Typography, MenuItem, FormControl, Select, InputLabel, Button, Card, CardContent, Box, FormControlLabel, Switch, Alert, Snackbar, IconButton } from "@mui/material";
 import { createClient, checkRFC, checkClientName } from "../../services/clientService";
+import CloseIcon from "@mui/icons-material/Close";
 
 
 function ClientCreatePage() {
@@ -12,6 +13,12 @@ function ClientCreatePage() {
   const { isOwner, isWorker, user } = useAuth();
   const [rfcInfo, setRfcInfo] = useState(null);
   const [nameInfo, setNameInfo] = useState(null);
+  const [snackbar, setSnackbar] = useState({
+    open: false,
+    message: "",
+    severity: "success",
+  });
+
 
   const [form, setForm] = useState({
     nombreComercial: "",
@@ -52,6 +59,30 @@ function ClientCreatePage() {
     }
     loadUsers();
   }, []);
+  const INDUSTRIAS = [
+    "autos",
+    "inmobiliaria",
+    "restaurantes",
+    "hoteles",
+    "tiendas departamentales",
+    "tiendas de conveniencia",
+    "hospitales",
+    "opticas",
+    "farmacias",
+    "gimnasios",
+    "clinicas",
+    "escuelas",
+    "universidades",
+    "clubs deportivos",
+    "eventos o espectaculos",
+    "servicios financieros",
+    "aseguradoras",
+    "notarias",
+    "talleres mecanicos",
+    "distribuidoras de autos",
+    "cursos o diplomados",
+    "laboratorios medicos",
+  ];
 
   const handleChange = (e) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -108,7 +139,10 @@ function ClientCreatePage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
+    if (!form.regimen || !form.agenciaODirecto || !form.tipoCliente || !form.tipoIndustria) {
+      alert("Completa Régimen, Agencia/Directo, Tipo de Cliente e Industria");
+      return;
+    }
     // Si RFC ya existe, bloqueamos el envío
     if (rfcInfo?.exists) {
       alert("Este RFC ya existe. No puedes registrar este cliente.");
@@ -118,20 +152,28 @@ function ClientCreatePage() {
       alert("Este Nombre Comercial ya existe. No puedes registrar este cliente.");
       return;
     }
-
     const payload = { ...form };
-
     if (isWorker) {
       payload.assignedTo = user._id;
     }
-
     try {
       await createClient(payload);
-      navigate("/clients");
+
+      setSnackbar({
+        open: true,
+        message: "Cliente creado correctamente",
+        severity: "success",
+      });
+
+      setTimeout(() => {
+        navigate("/clients");
+      }, 1200);
+
     } catch (error) {
       console.error("Error creando cliente:", error);
       alert("Error creando cliente");
     }
+
   };
 
   return (
@@ -312,47 +354,29 @@ function ClientCreatePage() {
                 </FormControl>
               </Grid>
 
-              <Grid size={{ xs: 12, md: 4 }}>
+              <Grid size={{ xs: 12, md: 2 }}>
                 <FormControl fullWidth>
-                  <InputLabel>Industria</InputLabel>
+                  <InputLabel id="tipoIndustria-label">Industria</InputLabel>
                   <Select
+                    labelId="tipoIndustria-label"
                     name="tipoIndustria"
                     value={form.tipoIndustria}
                     label="Industria"
                     onChange={handleChange}
                   >
-                    <MenuItem value="alimentaria">Alimentaria</MenuItem>
-                    <MenuItem value="hotelera">Hotelera</MenuItem>
-                    <MenuItem value="automotriz">Automotriz</MenuItem>
-                    <MenuItem value="construccion">Construcción</MenuItem>
-                    <MenuItem value="servicios financieros">Servicios Financieros</MenuItem>
-                    <MenuItem value="autos">Autos</MenuItem>
-                    <MenuItem value="inmobiliaria">Inmobiliaria</MenuItem>
-                    <MenuItem value="restaurantes">Restaurantes</MenuItem>
-                    <MenuItem value="hoteles">Hoteles</MenuItem>
-                    <MenuItem value="tiendas departamentales">Tiendas Departamentales</MenuItem>
-                    <MenuItem value="tiendas de conveniencia">Tiendas de Conveniencia</MenuItem>
-                    <MenuItem value="hospitales">Hospital</MenuItem>
-                    <MenuItem value="opticas">Optica</MenuItem>
-                    <MenuItem value="farmacias">Farmacia</MenuItem>
-                    <MenuItem value="gimansios">Gimnasio</MenuItem>
-                    <MenuItem value="clinicas">Clinica</MenuItem>
-                    <MenuItem value="escuelas">Escuela</MenuItem>
-                    <MenuItem value="universidades">Universidad</MenuItem>
-                    <MenuItem value="clubs deportivo">Club Deportivo</MenuItem>
-                    <MenuItem value="eventos o espectaculos">Evento/Espectaculo</MenuItem>
-                    <MenuItem value="servicios financieros">Servicio Financiero</MenuItem>
-                    <MenuItem value="aseguradoras">Aseguradora</MenuItem>
-                    <MenuItem value="notarias">Notaria</MenuItem>
-                    <MenuItem value="talleres mecanicos">Taller Mecanico</MenuItem>
-                    <MenuItem value="distribuidora de autos">Distribuidora de autos</MenuItem>
-                    <MenuItem value="cursos o diplomados">Cursos/Diplomados</MenuItem>
-                    <MenuItem value="laboratorios medicos">Laboratorio Medico</MenuItem>
+                    <MenuItem value="">
+                      <em>Selecciona una opción</em>
+                    </MenuItem>
+
+                    {INDUSTRIAS.map((v) => (
+                      <MenuItem key={v} value={v}>
+                        {v}
+                      </MenuItem>
+                    ))}
                   </Select>
                 </FormControl>
               </Grid>
             </Grid>
-
             {/* CONTACTOS */}
             <Typography variant="h6" fontWeight={700} mt={4} mb={2}>
               Contactos
@@ -473,6 +497,34 @@ function ClientCreatePage() {
           </form>
         </CardContent>
       </Card>
+      <Snackbar
+        open={snackbar.open}
+        autoHideDuration={2500}
+        onClose={() => setSnackbar({ ...snackbar, open: false })}
+        anchorOrigin={{ vertical: "top", horizontal: "center" }}
+      >
+        <Alert
+          severity={snackbar.severity}
+          variant="filled"
+          sx={{
+            width: "100%",
+            minWidth: 420,
+            justifyContent: "space-between",
+            alignItems: "center",
+          }}
+          action={
+            <IconButton
+              size="small"
+              color="inherit"
+              onClick={() => setSnackbar({ ...snackbar, open: false })}
+            >
+              <CloseIcon fontSize="small" />
+            </IconButton>
+          }
+        >
+          {snackbar.message}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }
