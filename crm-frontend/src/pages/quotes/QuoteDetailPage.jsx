@@ -124,6 +124,7 @@ export default function QuoteDetailPage() {
   };
 
 
+
   if (loading) {
     return (
       <Box sx={{ p: 4 }}>
@@ -141,6 +142,17 @@ export default function QuoteDetailPage() {
       </Box>
     );
   }
+  const activacionesList = Array.isArray(quote.activaciones)
+    ? quote.activaciones.filter(Boolean)
+    : quote.activacion
+      ? [quote.activacion]
+      : [];
+
+  const activacionSeleccionada =
+    (Array.isArray(quote?.activaciones) &&
+      (quote.activaciones.find((a) => a?.activo) || quote.activaciones[0])) ||
+    quote?.activacion ||
+    null;
 
   const statusColorMap = {
     aprobado: "success",
@@ -422,78 +434,58 @@ export default function QuoteDetailPage() {
       </Box>
 
       {/* ACTIVACIÓN */}
+      {/* ACTIVACIÓN */}
       <Box mb={4}>
         <Typography variant="h5" fontWeight={700} mb={2}>
           Activación
         </Typography>
 
-        {!quote.activacion?.activo ? (
+        {activacionesList.length === 0 ? (
           <Typography color="text.secondary">
             No hay activación para esta cotización.
           </Typography>
         ) : (
-          <Card>
-            <CardContent>
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={3}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Tipo
-                  </Typography>
-                  <Typography mt={0.5}>
-                    {quote.activacion?.tipo || "N/A"}
-                  </Typography>
-                </Grid>
+          <TableContainer component={Paper}>
+            <Table size="small">
+              <TableHead>
+                <TableRow sx={{ backgroundColor: "#008F4F" }}>
+                  <TableCell sx={{ color: "white", fontWeight: 700 }}>Tipo</TableCell>
+                  <TableCell sx={{ color: "white", fontWeight: 700 }}>Cantidad</TableCell>
+                  <TableCell sx={{ color: "white", fontWeight: 700 }}>Costo activación</TableCell>
+                  <TableCell sx={{ color: "white", fontWeight: 700 }}>Costo impresión</TableCell>
+                  <TableCell sx={{ color: "white", fontWeight: 700 }}>Fechas</TableCell>
+                  <TableCell sx={{ color: "white", fontWeight: 700 }}>Puntos de distribución</TableCell>
+                </TableRow>
+              </TableHead>
 
-                <Grid item xs={12} md={3}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Cantidad
-                  </Typography>
-                  <Typography mt={0.5}>
-                    {quote.activacion?.cantidad ?? 0}
-                  </Typography>
-                </Grid>
-
-                <Grid item xs={12} md={3}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Costo
-                  </Typography>
-                  <Typography mt={0.5}>
-                    $
-                    {(quote.activacion?.costo || 0).toLocaleString("es-MX", {
-                      minimumFractionDigits: 2,
-                    })}
-                  </Typography>
-                </Grid>
-
-                <Grid item xs={12} md={3}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Fechas
-                  </Typography>
-                  <Typography mt={0.5}>
-                    {Array.isArray(quote.activacion?.fechas) &&
-                      quote.activacion.fechas.length > 0
-                      ? quote.activacion.fechas
-                        .map((f) => formatDate(f))
-                        .join(", ")
-                      : "—"}
-                  </Typography>
-                </Grid>
-
-                <Grid item xs={12}>
-                  <Typography
-                    variant="subtitle2"
-                    color="text.secondary"
-                    mb={0.5}
-                  >
-                    Puntos de distribución
-                  </Typography>
-                  <Typography>
-                    {quote.activacion?.puntosDistribucion || "N/A"}
-                  </Typography>
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
+              <TableBody>
+                {activacionesList.map((a, idx) => (
+                  <TableRow key={idx} hover>
+                    <TableCell>{a.tipo || "—"}</TableCell>
+                    <TableCell>{a.cantidad ?? 0}</TableCell>
+                    <TableCell>
+                      $
+                      {(a.costoActivacion || 0).toLocaleString("es-MX", {
+                        minimumFractionDigits: 2,
+                      })}
+                    </TableCell>
+                    <TableCell>
+                      $
+                      {(a.costoImpresion || 0).toLocaleString("es-MX", {
+                        minimumFractionDigits: 2,
+                      })}
+                    </TableCell>
+                    <TableCell>
+                      {Array.isArray(a.fechas) && a.fechas.length > 0
+                        ? a.fechas.map((f) => formatDate(f)).join(", ")
+                        : "—"}
+                    </TableCell>
+                    <TableCell>{a.puntosDistribucion || "—"}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         )}
       </Box>
 
@@ -570,55 +562,6 @@ export default function QuoteDetailPage() {
                         .map((f) => formatDate(f))
                         .join(", ")
                       : "—"}
-                  </Typography>
-                </Grid>
-              </Grid>
-            </CardContent>
-          </Card>
-        )}
-      </Box>
-
-      {/* FAJILLAS */}
-      <Box mb={4}>
-        <Typography variant="h5" fontWeight={700} mb={2}>
-          Fajillas
-        </Typography>
-
-        {!quote.fajillas?.activo ? (
-          <Typography color="text.secondary">
-            No hay fajillas para esta cotización.
-          </Typography>
-        ) : (
-          <Card>
-            <CardContent>
-              <Grid container spacing={3}>
-                <Grid item xs={12} md={3}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Cantidad
-                  </Typography>
-                  <Typography mt={0.5}>
-                    {quote.fajillas?.cantidad ?? 0}
-                  </Typography>
-                </Grid>
-
-                <Grid item xs={12} md={3}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Precio
-                  </Typography>
-                  <Typography mt={0.5}>
-                    $
-                    {(quote.fajillas?.precio || 0).toLocaleString("es-MX", {
-                      minimumFractionDigits: 2,
-                    })}
-                  </Typography>
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Puntos de distribución
-                  </Typography>
-                  <Typography mt={0.5}>
-                    {quote.fajillas?.puntosDistribucion || "—"}
                   </Typography>
                 </Grid>
               </Grid>

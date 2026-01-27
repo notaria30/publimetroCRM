@@ -2,8 +2,6 @@ import { useEffect, useState, useMemo } from "react";
 import { getClients } from "../../services/clientService";
 import { approveQuote, rejectQuote } from "../../services/quoteService";
 import { useAuth } from "../../context/AuthContext";
-
-// IMPORTS DE SECCIONES (TODOS EN LA MISMA CARPETA /pages/quotes)
 import QuoteGeneralSection from "./QuoteGeneralSection.jsx";
 import QuoteTarifasSection from "./QuoteTarifasSection.jsx";
 import QuoteActivacionSection from "./QuoteActivacionSection.jsx";
@@ -14,8 +12,6 @@ import QuoteCortesiasSection from "./QuoteCortesiasSection.jsx";
 import QuoteEstadoAprobacionSection from "./QuoteEstadoAprobacionSection.jsx";
 import QuoteTotalFinalSection from "./QuoteTotalFinalSection.jsx";
 
-
-
 const EMPTY_TARIFA = {
   periodicidad: "",
   formato: "",
@@ -24,18 +20,21 @@ const EMPTY_TARIFA = {
   totalLinea: 0,
 };
 
+const EMPTY_ACTIVACION = {
+  activo: false,
+  cantidad: 0,
+  costo: 0,
+  tipo: "",
+  fechas: [""],
+  puntosDistribucion: "",
+};
+
 const defaultForm = {
   client: "",
   tarifas: [{ ...EMPTY_TARIFA }],
   duracion: "",
-  activacion: {
-    activo: false,
-    cantidad: 0,
-    costo: 0,
-    tipo: "",
-    fechas: [""],
-    puntosDistribucion: "",
-  },
+  activacionesActivo: false,
+  activaciones: [],
   desarrolloInformativo: {
     activo: false,
     fecha: "",
@@ -86,6 +85,22 @@ function formatDateInput(value) {
 
 function mapInitialQuoteToForm(quote) {
   if (!quote) return defaultForm;
+  const activacionesRaw =
+    quote.activaciones?.length
+      ? quote.activaciones
+      : (quote.activacion ? [quote.activacion] : []);
+
+  const activaciones = activacionesRaw.map((a) => ({
+    cantidad: a?.cantidad ?? 0,
+    costoActivacion: a?.costoActivacion ?? a?.costo ?? 0, // soporta legacy
+    costoImpresion: a?.costoImpresion ?? 0,
+    tipo: a?.tipo || "",
+    fechas: (a?.fechas || [])
+      .map(formatDateInput)
+      .concat(Array(Math.max(0, 2 - (a?.fechas || []).length)).fill(""))
+      .slice(0, 2),
+    puntosDistribucion: a?.puntosDistribucion || "",
+  }));
 
   return {
     client: quote.client?._id || quote.client || "",
@@ -102,19 +117,8 @@ function mapInitialQuoteToForm(quote) {
 
     duracion: quote.duracion || "",
 
-    activacion: {
-      activo: quote.activacion?.activo ?? false,
-      cantidad: quote.activacion?.cantidad ?? 0,
-      costo: quote.activacion?.costo ?? 0,
-      tipo: quote.activacion?.tipo || "",
-      fechas: (quote.activacion?.fechas || [])
-        .map(formatDateInput)
-        .concat(
-          Array(Math.max(0, 2 - (quote.activacion?.fechas || []).length)).fill("")
-        )
-        .slice(0, 2),
-      puntosDistribucion: quote.activacion?.puntosDistribucion || "",
-    },
+    activacionesActivo: activaciones.length > 0,
+    activaciones,
 
     desarrolloInformativo: {
       activo: quote.desarrolloInformativo?.activo ?? false,
@@ -315,10 +319,17 @@ export default function QuoteForm({
       total += Number(t.totalLinea) || 0;
     });
 
-    if (form.activacion.activo) {
-      total +=
-        (Number(form.activacion.costo) || 0) *
-        (Number(form.activacion.cantidad) || 1);
+    if (form.activacionesActivo) {
+      (form.activaciones || []).forEach((a) => {
+        if (a.activo) {
+          const cant = Number(a.cantidad) || 1;
+          const ca = Number(a.costoActivacion) || 0;
+          const ci = Number(a.costoImpresion) || 0;
+
+          total += (ca + ci) * cant;
+        }
+      });
+
     }
 
     const aj = form.ajustesPrecios;
@@ -357,13 +368,15 @@ export default function QuoteForm({
       fechas: (t.fechas || []).filter(Boolean),
     })),
 
-    activacion: {
-      ...form.activacion,
-      cantidad: Number(form.activacion.cantidad) || 0,
-      costo: Number(form.activacion.costo) || 0,
-      // ✅ mandar strings "YYYY-MM-DD"
-      fechas: (form.activacion.fechas || []).filter(Boolean),
-    },
+    activaciones: form.activacionesActivo
+      ? (form.activaciones || []).map((a) => ({
+        ...a,
+        cantidad: Number(a.cantidad) || 0,
+        costoActivacion: Number(a.costoActivacion) || 0,
+        costoImpresion: Number(a.costoImpresion) || 0,
+        fechas: (a.fechas || []).filter(Boolean),
+      }))
+      : [],
 
     desarrolloInformativo: {
       ...form.desarrolloInformativo,

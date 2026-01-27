@@ -5,15 +5,11 @@ const Quote = require("../models/Quote");
 const path = require("path");
 const { auth } = require("../middlewares/auth.middleware");
 
-
-
-
 router.get("/quote/:id", auth, async (req, res) => {
   try {
     const quote = await Quote.findById(req.params.id)
       .populate("client", "nombreComercial razonSocial rfc")
       .populate("createdBy", "name email role");
-
 
     if (!quote) return res.status(404).send("Cotización no encontrada");
 
@@ -24,7 +20,6 @@ router.get("/quote/:id", auth, async (req, res) => {
         return res.status(403).send("No tienes permiso para ver esta cotización");
       }
     }
-
 
     // Crear PDF
     const doc = new PDFDocument({ margin: 50 });
@@ -76,8 +71,6 @@ router.get("/quote/:id", auth, async (req, res) => {
     // ===========================
     const dirigidoA = (req.query.dirigidoA || "").trim();
     const clientName = dirigidoA || quote.client?.nombreComercial || "Cliente";
-
-
     const intro = `Estimado(a) ${clientName}
 
 Agradecemos la oportunidad de presentarles esta propuesta comercial de Publimetro Querétaro. Nuestro objetivo es ofrecer una solución de comunicación alineada a sus necesidades, que permita conectar su marca con una audiencia local activa, informada y de alto valor.
@@ -106,9 +99,7 @@ Atentamente,`;
       doc.addPage();
     }
 
-
     doc.moveDown(1.5);
-
 
     // ---------------------------
     // HELPERS PDF
@@ -122,11 +113,21 @@ Atentamente,`;
       if (Number.isNaN(dt.getTime())) return "—";
       return dt.toLocaleDateString("es-MX");
     };
+    const getCostosActivacion = (act) => {
+      const costoActivacion =
+        Number(act?.costoActivacion ?? act?.costo ?? 0) || 0; // ✅ si viene viejo "costo" úsalo
+      const costoImpresion = Number(act?.costoImpresion ?? 0) || 0;
+      return { costoActivacion, costoImpresion };
+    };
+
 
     const ensureSpace = (doc, needed = 90) => {
       const bottomLimit = doc.page.height - 100;
       if (doc.y + needed > bottomLimit) doc.addPage();
     };
+
+    const contentX = 50;
+    const contentW = 500;
 
     const paragraph = (text, opts = {}) => {
       const width = opts.width ?? 500;
@@ -211,21 +212,52 @@ Atentamente,`;
       doc.x = 50;
     };
 
-    const keyValue = (label, value) => {
+    const keyValue = (label, value, opts = {}) => {
+      const x = opts.x ?? contentX;          // 50
+      const width = opts.width ?? contentW;  // 500
+
+      const labelW = opts.labelW ?? 160; // ✅ recomendado
+      const gap = opts.gap ?? 10;
+      const valueW = width - labelW - gap;
+
+      const fontSize = opts.fontSize ?? 12;
+      const lineGap = opts.lineGap ?? 2;
+
+      const y = doc.y;
+
+      const safeValue =
+        value === null || value === undefined || value === ""
+          ? "—"
+          : String(value);
+
+      const labelH = doc.heightOfString(label, { width: labelW, lineGap });
+      const valueH = doc.heightOfString(safeValue, { width: valueW, lineGap });
+      const rowH = Math.max(labelH, valueH);
+
+      ensureSpace(doc, rowH + 12);
+
+      // Etiqueta
       doc
-        .fontSize(12)
+        .fontSize(fontSize)
         .fillColor("#444")
-        .text(label, { continued: true });
+        .text(label, x, y, { width: labelW, lineGap });
+
+      // ✅ Valor alineado a la izquierda (bonito y ordenado)
+      const valueAlign = opts.valueAlign ?? "left";
 
       doc
-        .fontSize(12)
+        .fontSize(fontSize)
         .fillColor("#000")
-        .text(` ${value ?? "—"}`);
+        .text(safeValue, x + labelW + gap, y, {
+          width: valueW,
+          lineGap,
+          align: valueAlign,
+          lineBreak: true,
+        });
 
-      doc.moveDown(0.35); // 👈 más separación entre renglones
-      doc.x = 50;
+      doc.y = y + rowH + 6;
+      doc.x = x;
     };
-
 
     // ===========================
     // INFORMACIÓN DEL CLIENTE
@@ -273,11 +305,11 @@ Atentamente,`;
 
     doc.moveDown(5);
 
-
     // ===========================
     // DETALLES DE LA COTIZACIÓN (SOLO SI HAY DATOS)
     // ===========================
     sectionTitle("Detalles");
+    doc.moveDown(0.2);
 
     keyValue("Folio:", quote.folio);
     keyValue("Cliente:", quote.client?.nombreComercial || "—");
@@ -286,8 +318,7 @@ Atentamente,`;
     if (quote.client?.rfc) keyValue("RFC:", quote.client.rfc);
 
     if (quote.createdBy?.name) keyValue("Creada por:", quote.createdBy.name);
-    if (quote.createdBy?.email) keyValue("Email:", quote.createdBy.email);
-
+    if (quote.createdBy?.email) keyValue("Email:", quote.createdBy.email, { valueAlign: "left" });
 
     // PAGOS CFDI (solo si hay algo)
     const hasPagoInfo =
@@ -315,7 +346,6 @@ Atentamente,`;
       doc.moveDown(0.5);
       keyValue("Duración:", quote.duracion, "mes");
     }
-
 
     // ===========================
     // TABLA DE TARIFAS
@@ -354,7 +384,6 @@ Atentamente,`;
 
     // Regresar a negro para el contenido
     doc.fillColor("black");
-
 
     let y = tableTop + 32;
 
@@ -415,23 +444,30 @@ Atentamente,`;
 
       let xRow = 55;
 
+      const rowH = 28;          // ✅ más alto
+      const textY = y + 6;      // ✅ baja un poquito el texto dentro de la fila
+
       row.forEach((cell, i) => {
-        doc.text(cell ?? "", xRow, y, {
+        doc.text(cell ?? "", xRow, textY, {
           width: colWidths[i] - 10,
-          height: 18,
           ellipsis: true,
           lineBreak: false,
         });
         xRow += colWidths[i];
       });
 
-      y += 20;
+      y += rowH;
 
+      // ✅ línea separadora ya NO cae sobre el texto
       doc
         .moveTo(50, y)
         .lineTo(550, y)
-        .strokeColor("#ccc")
+        .strokeColor("#e0e0e0")
+        .lineWidth(1)
         .stroke();
+
+      y += 6;
+
     });
     // IMPORTANTE: al terminar la tabla, sincroniza doc.y con 'y'
     // IMPORTANTE: al terminar la tabla, sincroniza doc.y con 'y' y RESETEA doc.x
@@ -440,36 +476,59 @@ Atentamente,`;
     doc.moveDown(1);
 
     // ===========================
-    // ACTIVACIÓN
+    // ACTIVACIONES (múltiples)
     // ===========================
-    if (quote.activacion?.activo) {
-      sectionTitle("Activación");
 
-      const fechasAct = (quote.activacion?.fechas || [])
-        .filter(Boolean)
-        .map(fmtDate)
-        .join(", ");
+    const activacionesList =
+      Array.isArray(quote.activaciones) && quote.activaciones.length
+        ? quote.activaciones
+        : (quote.activacion ? [quote.activacion] : []);
 
-      drawSimpleTable(
-        ["Tipo", "Cantidad", "Costo", "Fechas"],
-        [[
-          quote.activacion?.tipo || "—",
-          String(quote.activacion?.cantidad ?? 0),
-          money(quote.activacion?.costo),
-          fechasAct || "—",
-        ]],
-        [140, 90, 110, 160] // ancho columnas (suman ~500)
-      );
+    // ✅ si tienes switch general, respétalo; si no existe, asume true si hay items
+    const activacionesEnabled =
+      typeof quote.activacionesActivo === "boolean"
+        ? quote.activacionesActivo
+        : activacionesList.length > 0;
 
-      // Si quieres “Puntos de distribución” abajo (porque es largo)
-      if (quote.activacion?.puntosDistribucion) {
+    // ✅ NO filtres por a.activo (porque tus items no lo traen)
+    const activas = activacionesEnabled ? activacionesList : [];
+
+    if (activas.length) {
+      sectionTitle("Activaciones");
+
+      activas.forEach((act, idx) => {
+        ensureSpace(doc, 140);
+
+        doc
+          .fontSize(12)
+          .fillColor("#0A6A44")
+          .text(`Activación ${idx + 1}`);
+        doc.fillColor("black").fontSize(11);
         doc.moveDown(0.3);
-        doc.fontSize(10).fillColor("#444").text("Puntos de distribución:");
-        doc.fillColor("black").fontSize(10).text(quote.activacion.puntosDistribucion);
-        doc.moveDown(0.5);
-      }
-    }
 
+        const fechasAct = (act?.fechas || [])
+          .filter(Boolean)
+          .map(fmtDate)
+          .join(", ");
+
+        const { costoActivacion, costoImpresion } = getCostosActivacion(act);
+
+        drawSimpleTable(
+          ["Tipo", "Cantidad", "Costo activación", "Costo impresión", "Fechas", "Puntos de distribución"],
+          [[
+            act?.tipo || "—",
+            String(act?.cantidad ?? 0),
+            money(costoActivacion),
+            money(costoImpresion),
+            fechasAct || "—",
+            act?.puntosDistribucion || "—",
+          ]],
+          [110, 60, 95, 95, 90, 50] // suma 500 aprox, ajusta si quieres
+        );
+
+        doc.moveDown(0.6);
+      });
+    }
 
     // ===========================
     // DESARROLLO INFORMATIVO
@@ -486,7 +545,6 @@ Atentamente,`;
         [160, 340]
       );
     }
-
 
     // ===========================
     // POSTEO REDES
@@ -508,8 +566,6 @@ Atentamente,`;
         [120, 380]
       );
     }
-
-
 
     // ===========================
     // INTERCAMBIO
@@ -542,7 +598,6 @@ Atentamente,`;
       doc.moveDown(0.5);
     }
 
-
     // ===========================
     // CORTESÍAS
     // ===========================
@@ -565,7 +620,6 @@ Atentamente,`;
       );
     }
 
-
     // ===========================
     // AJUSTES DE PRECIOS (solo si no es Ninguno o hay valores)
     // ===========================
@@ -587,7 +641,6 @@ Atentamente,`;
       );
     }
 
-
     // ===========================
     // TOTAL (siempre)
     // ===========================
@@ -602,25 +655,37 @@ Atentamente,`;
     // ===========================
     // TEXTO FINAL (ANTES DEL FOOTER)
     // ===========================
-    const textoFinal = `Así mismo, Publimetro Querétaro se reserva el derecho en lo presente y para lo futuro a no publicar diseños que vayan en contra de la calidad necesaria, tanto en especificaciones técnicas, como de imagen, valores, etc.
+    const textoFinal = `La celebración del presente instrumento es vinculante y surtirá plenos efectos en términos del Código Civil para el Estado de Querétaro y su correlativo en el orden federal, para la empresa que se describe en la carátula, a partir de la firma de autorización.
+No obstante, lo anterior, en caso de que, a criterio de Medios Informativos de Querétaro, S.A. de C.V. (“Publimetro Querétaro”), considere necesario celebrar un contrato en términos de la Ley para la Transparencia, Prevención y Combate de Prácticas Indebidas en Materia de Contratación de Publicidad y cualquier otra disposición que resulte aplicable para la contratación de los servicios descritos en este instrumento, la empresa, se obliga a proporcionar todos los documentos que Publimetro Querétaro le solicite, así como a firmar dicho contrato; el cual, junto con la carátula y términos y condiciones descritos en este documento y el contrato serán consideramos como un mismo instrumento para su interpretación y aplicación.
+La empresa, será en todo momento responsable de hacer llegar a Publimetro Querétaro el diseño, tal y como se solicita en las especificaciones que para efecto se harán llegar a través de los medios de contacto proporcionados; por lo que cualquier variación en éstos deberán de ser informados de manera inmediata a Publimetro Querétaro. Cualquier diseño deberá de ser entregado a Publimetro Querétaro por lo menos con 2 (dos) días de anticipación a cualquier publicación; así mismo, se considerará este plazo para cualquier cambio en los diseños. Para eventualidades de emergencia, se podrán recibir diseños para publicarse al día siguiente; siempre y cuando, el diseño cumpla con todas las especificaciones técnicas necesarias, que se haya reservado el espacio antes de las 12:00 p.m. del día anterior, y que el diseño llegue a más tardar a las 4:30 p.m. del día anterior.
+En caso de que Publimetro Querétaro sea quien realice los diseños, éstos solo se podrán publicar en los medios de Publimetro Querétaro. Si la empresa quisiera utilizarlos para otros medios, deberá de solicitar autorización expresa y por escrito de Publimetro Querétaro, y deberá de tener liquidado el pago (cuando sea el caso). Así mismo, se necesitarán por lo menos 3 (tres) días hábiles una vez recibida toda la información para la elaboración del diseño y para poder entregarlo. La empresa podrá solicitar máximo 2 (dos) cambios importantes y 3 (tres) cambios sencillos. Solo se podrá generar un diseño por cada 6 (seis) publicaciones. En caso de que la empresa requiera adicionales, se podrá generar un cobro adicional.
+La empresa será responsable en todo momento del contenido, promociones, etc., que solicite publicar a Publimetro Querétaro; en términos de las disposiciones vigentes y que resulten aplicables, en el claro entendido de que Publimetro Querétaro se reserva el derecho de no publicar o interrumpir de manera parcial o inmediata cualquier publicación que vulnere las normas y buenas costumbres, en México. Adicional, será la empresa quien libere en lo presente y para lo futuro a Publimetro Querétaro de cualquier publicidad que afecte de manera directa o indirecta a este último, así como a indemnizarlo y pagándole los daños y perjuicios que le pueda ocasionar dichas faltas u omisiones. El cliente es responsable de verificar que todos los datos en su diseño sean correctos.
+Así mismo, Publimetro Querétaro se reserva el derecho en lo presente y para lo futuro a no publicar diseños que vayan en contra de la calidad necesaria, tanto en especificaciones técnicas, como de imagen, valores, etc.
 Si Publimetro Querétaro solicita información adicional a la empresa para la contratación de los servicios, en términos de lo descrito en este instrumento, podrá suspender de manera temporal o definitiva sin perjuicio alguno cualquier servicio o producto, hasta que la empresa cumpla con sus obligaciones, perdiendo todo derecho a que le sea reembolsable cualquier monto que haya pagado por el o los servicios y/o productos.
 Para todo lo relativo a la interpretación, validez, cumplimiento y ejecución del presente instrumento, las Partes se someten expresamente a lo dispuesto por las leyes federales vigentes y aplicables de México y a la jurisdicción de los tribunales competentes en la Ciudad de Querétaro, que serán los únicos competentes para conocer de cualquier conciliación y/o juicio y/o reclamación derivada de este documento, renunciando a cualquier otro fuero que por razón de sus domicilios presentes o futuros o por cualquier otro motivo pudiere corresponderles.
 Leído que fue por ambas partes el presente instrumento y una vez enterados de su contenido y alcance, sabedores de las obligaciones que contraen, lo ratifican y firman por duplicado, quedando una copia en poder de cada una de las partes.
 El presente documento se firma de conformidad en el lugar y fecha que ha quedado manifestado en la carátula que se encuentra al anverso.
 `;
 
-    // Asegura espacio para el texto + footer
-    // (aprox: textoFinal + footer)
-    const finalHeight = doc.heightOfString(textoFinal, { width: 500, align: "justify" }) + 120;
-    ensureSpace(doc, finalHeight);
+    // Texto final más compacto y que se divide en páginas automáticamente
+    doc
+      .fontSize(8)
+      .fillColor("black")
+      .text(textoFinal, 50, doc.y, {
+        width: 500,
+        align: "justify",
+        lineGap: 0.5,
+      });
 
-    paragraph(textoFinal, { fontSize: 11, lineGap: 2 });
+    doc.moveDown(1);
+    doc.fontSize(11);
+    doc.x = 50;
 
+    ensureSpace(doc, 220);
     // ===========================
     // BLOQUE DE FIRMA
     // ===========================
     doc.moveDown(2);
-
     // Título
     doc.fontSize(11)
       .fillColor("black")
