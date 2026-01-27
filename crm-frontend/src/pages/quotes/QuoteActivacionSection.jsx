@@ -12,11 +12,15 @@ import {
   MenuItem,
   InputLabel,
   Button,
+  Switch,
 } from "@mui/material";
-import Switch from "@mui/material/Switch";
 import AddIcon from "@mui/icons-material/Add";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import dayjs from "dayjs";
 
 export default function QuoteActivacionSection({ form, setForm }) {
+  const isoToDayjs = (iso) => (iso ? dayjs(iso, "YYYY-MM-DD", true) : null);
+  const dayjsToISO = (d) => (d && d.isValid() ? d.format("YYYY-MM-DD") : "");
   const addFecha = () => {
     setForm(prev => {
       const fechas = [...prev.activacion.fechas];
@@ -39,27 +43,40 @@ export default function QuoteActivacionSection({ form, setForm }) {
     });
   };
 
+  const handleAddActivacion = () => {
+    setForm((prev) => ({
+      ...prev,
+      activacion: {
+        ...prev.activacion,
+        activo: true,
+      },
+    }));
+  };
+
   return (
     <Card elevation={2} sx={{ mb: 3 }}>
       <CardContent>
-        <Typography variant="h6" fontWeight={700} mb={2}>
-          Activación
-        </Typography>
+        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+          <Typography variant="h6" fontWeight={700}>
+            Activación
+          </Typography>
 
-        <Box display="flex" justifyContent="flex-end" mb={2}>
-          <Switch
-            checked={form.activacion.activo}
-            onChange={(e) =>
-              setForm((prev) => ({
-                ...prev,
-                activacion: {
-                  ...prev.activacion,
-                  activo: e.target.checked,
-                },
-              }))
-            }
-          />
+          <Box display="flex" alignItems="center" gap={1}>
+            <Switch
+              checked={form.activacion.activo}
+              onChange={(e) =>
+                setForm((prev) => ({
+                  ...prev,
+                  activacion: {
+                    ...prev.activacion,
+                    activo: e.target.checked,
+                  },
+                }))
+              }
+            />
+          </Box>
         </Box>
+
         {form.activacion.activo && (
           <Box mt={3}>
             <Grid container spacing={3} alignItems="center">
@@ -119,6 +136,7 @@ export default function QuoteActivacionSection({ form, setForm }) {
                     <MenuItem value="Entrega simultanea">Entrega simultánea</MenuItem>
                     <MenuItem value="Encarte">Encarte</MenuItem>
                     <MenuItem value="Walking banner">Walking banner</MenuItem>
+                    <MenuItem value="Fajillas">Fajillas</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>
@@ -128,17 +146,22 @@ export default function QuoteActivacionSection({ form, setForm }) {
                 <Grid container spacing={2}>
                   {form.activacion.fechas.map((fecha, i) => (
                     <Grid item xs={12} key={i}>
-                      <TextField
-                        fullWidth
-                        type="date"
+                      <DatePicker
                         label="Fecha"
-                        value={fecha}
-                        onChange={(e) => handleDateChange(i, e.target.value)}
-                        InputLabelProps={{ shrink: true }}
+                        value={isoToDayjs(fecha)}  // si ya guardas ISO o algo compatible
+                        onChange={(newValue) => handleDateChange(i, dayjsToISO(newValue))}
+                        format="DD/MM/YYYY"
+                        slotProps={{
+                          textField: {
+                            fullWidth: true,
+                            InputLabelProps: { shrink: true },
+                          },
+                        }}
                       />
                     </Grid>
                   ))}
                 </Grid>
+
                 {form.activacion.fechas.length < 2 && (
                   <Button
                     variant="outlined"
@@ -150,6 +173,7 @@ export default function QuoteActivacionSection({ form, setForm }) {
                   </Button>
                 )}
               </Grid>
+
 
               {/* PUNTOS DISTRIBUCIÓN */}
               <Grid item xs={12} md={4}>

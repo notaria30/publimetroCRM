@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { getInvoices } from "../../services/invoiceService";
-
 import {
   Box,
   Typography,
@@ -15,12 +14,16 @@ import {
   TableCell,
   TableContainer,
   TableRow,
-  Chip
+  Chip,
+  TextField,
+  InputAdornment,
 } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
 
 export default function InvoiceListPage() {
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     async function loadData() {
@@ -44,6 +47,29 @@ export default function InvoiceListPage() {
       </Typography>
     );
 
+  const filteredInvoices = invoices.filter((inv) => {
+    const q = search.toLowerCase().trim();
+    if (!q) return true;
+
+    const cliente = String(inv.client?.nombreComercial || "").toLowerCase();
+    const folio = String(inv.quote?.folio || "").toLowerCase();
+    const numFactura = String(inv.numeroFactura || "").toLowerCase();
+    const fecha = String(inv.fechaFactura?.slice(0, 10) || "").toLowerCase();
+    const importe = String(inv.importeConIVA ?? "").toLowerCase();
+
+    // si quieres que también busque "si/no" por pagado:
+    const pagado = inv.pagado ? "si" : "no";
+
+    return (
+      cliente.includes(q) ||
+      folio.includes(q) ||
+      numFactura.includes(q) ||
+      fecha.includes(q) ||
+      importe.includes(q) ||
+      pagado.includes(q)
+    );
+  });
+
   return (
     <Box sx={{ p: 3 }}>
       {/* HEADER */}
@@ -52,19 +78,42 @@ export default function InvoiceListPage() {
         justifyContent="space-between"
         alignItems="center"
         mb={3}
+        flexWrap="wrap"
+        gap={2}
       >
         <Typography variant="h4" fontWeight={700}>
           Facturación
         </Typography>
-
-        <Button
-          variant="contained"
-          color="primary"
-          component={Link}
-          to="/invoices/new"
-        >
-          Crear nueva factura
-        </Button>
+        <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
+          {/* ✅ BUSCADOR */}
+          <TextField
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar (cliente, folio, factura, fecha, importe)…"
+            size="small"
+            sx={{
+              width: { xs: "100%", sm: 420 },
+              backgroundColor: "white",
+              borderRadius: "10px",
+            }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+          />
+          <Button
+            variant="contained"
+            color="primary"
+            component={Link}
+            to="/invoices/new"
+            sx={{ textTransform: "none" }}
+          >
+            Crear nueva factura
+          </Button>
+        </Box>
       </Box>
 
       {/* TABLA */}
@@ -97,7 +146,7 @@ export default function InvoiceListPage() {
           </TableHead>
 
           <TableBody>
-            {invoices.length === 0 ? (
+            {filteredInvoices.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={7} align="center">
                   <Typography color="text.secondary">
@@ -106,7 +155,7 @@ export default function InvoiceListPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              invoices.map((inv) => (
+              filteredInvoices.map((inv) => (
                 <TableRow key={inv._id} hover>
                   <TableCell>{inv.client?.nombreComercial}</TableCell>
                   <TableCell>{inv.quote?.folio}</TableCell>

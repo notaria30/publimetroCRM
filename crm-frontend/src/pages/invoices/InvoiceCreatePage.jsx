@@ -37,6 +37,7 @@ export default function InvoiceCreatePage() {
     numeroFactura: "",
     fechaFactura: "",
     metodoPago: "PUE",
+    formaPago: "",
     importeSinIVA: "",
     importeConIVA: "",
     pagado: false,
@@ -74,8 +75,14 @@ export default function InvoiceCreatePage() {
 
   /** AUTOCOMPLETAR IMPORTE DE COTIZACION */
   useEffect(() => {
-    if (!form.quote) return;
-
+    if (!form.quote) {
+      setForm((prev) => ({
+        ...prev,
+        formaPago: "",
+      }));
+      return;
+    }
+    
     const selectedQuote = quotes.find((q) => q._id === form.quote);
     if (!selectedQuote) return;
 
@@ -85,6 +92,7 @@ export default function InvoiceCreatePage() {
       ...prev,
       importeSinIVA: importe,
       importeConIVA: Number((importe * 1.16).toFixed(2)),
+      formaPago: selectedQuote.formaPago || "",
     }));
   }, [form.quote, quotes]);
 
@@ -249,6 +257,26 @@ export default function InvoiceCreatePage() {
                   >
                     <MenuItem value="PUE">PUE - Pago en una sola exhibición</MenuItem>
                     <MenuItem value="PPD">PPD - Pago en parcialidades o diferido</MenuItem>
+                  </Select>
+                </FormControl>
+              </Grid>
+
+              <Grid size={{ xs: 12, md: 3 }}>
+                <FormControl fullWidth>
+                  <InputLabel>Forma de pago</InputLabel>
+                  <Select
+                    name="formaPago"
+                    value={form.formaPago}
+                    label="Forma de pago"
+                    onChange={handleChange}
+                    required
+                    disabled={!form.quote} // opcional: solo si hay cotización ligada
+                  >
+                    <MenuItem value="Efectivo">Efectivo</MenuItem>
+                    <MenuItem value="Transferencia">Transferencia</MenuItem>
+                    <MenuItem value="Tarjeta">Tarjeta</MenuItem>
+                    <MenuItem value="Cheque">Cheque</MenuItem>
+                    <MenuItem value="Otro">Otro</MenuItem>
                   </Select>
                 </FormControl>
               </Grid>

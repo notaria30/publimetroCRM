@@ -2,7 +2,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { getPostSales } from "../../services/postSaleService";
-
 import {
   Box,
   Typography,
@@ -13,11 +12,15 @@ import {
   Chip,
   Stack,
   Divider,
+  TextField,
+  InputAdornment
 } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
 
 export default function PostSaleListPage() {
   const [list, setList] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -38,6 +41,50 @@ export default function PostSaleListPage() {
     cerrado: { label: "Cerrado", color: "default" },
   };
 
+  const filteredList = useMemo(() => {
+    const q = search.toLowerCase().trim();
+    if (!q) return list;
+
+    return list.filter((item) => {
+      const cliente = String(item.client?.nombreComercial || "").toLowerCase();
+      const ejecutivo = String(item.assignedTo?.name || "").toLowerCase();
+
+      const saleFolio = String(
+        item?.sale?.folio ||
+        item?.sale?.folioVenta ||
+        item?.sale?._id ||
+        ""
+      ).toLowerCase();
+
+      const stage = String(item.postSaleStage || "").toLowerCase().replace(/_/g, " ");
+
+      const rating = String(
+        item?.encuestaSatisfaccion?.calificacion ??
+        item?.encuestaSatisfaccion?.rating ??
+        ""
+      ).toLowerCase();
+
+      const renovacion = (item?.renovacion?.requiereRenovacion ?? item?.renovacion?.requiere ?? false)
+        ? "si"
+        : "no";
+
+      const notas = String(item?.notas || "").toLowerCase();
+
+      // También puedes agregar fechas si quieres:
+      const updated = String(item.updatedAt ? new Date(item.updatedAt).toISOString().slice(0, 10) : "");
+
+      return (
+        cliente.includes(q) ||
+        ejecutivo.includes(q) ||
+        saleFolio.includes(q) ||
+        stage.includes(q) ||
+        rating.includes(q) ||
+        renovacion.includes(q) ||
+        notas.includes(q) ||
+        updated.includes(q)
+      );
+    });
+  }, [list, search]);
 
   const formatDate = (d) =>
     d
@@ -67,28 +114,57 @@ export default function PostSaleListPage() {
 
   return (
     <Box maxWidth="1300px" mx="auto" mt={4} px={3}>
-      <Stack direction="row" justifyContent="space-between" alignItems="center">
-        <Typography variant="h4" fontWeight={700} mb={3}>
+      <Box
+        display="flex"
+        alignItems="center"
+        justifyContent="space-between"
+        mb={3}
+        flexWrap="wrap"
+        gap={2}
+      >
+        <Typography variant="h4" fontWeight={700}>
           Post-Venta
         </Typography>
 
-        <Button
-          variant="contained"
-          component={Link}
-          to="/postsale/create"
-          sx={{ fontWeight: 600 }}
-        >
-          Nueva Post-Venta
-        </Button>
-      </Stack>
+        <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
+          {/* ✅ BUSCADOR */}
+          <TextField
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar (cliente, ejecutivo, venta, etapa, notas)…"
+            size="small"
+            sx={{
+              width: { xs: "100%", sm: 420 },
+              backgroundColor: "white",
+              borderRadius: "10px",
+            }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+          />
 
-      {list.length === 0 ? (
+          <Button
+            variant="contained"
+            component={Link}
+            to="/postsale/create"
+            sx={{ fontWeight: 600, textTransform: "none" }}
+          >
+            Nueva Post-Venta
+          </Button>
+        </Box>
+      </Box>
+
+      {filteredList.length === 0 ? (
         <Typography variant="h6" textAlign="center" mt={5} opacity={0.6}>
           No hay registros post-venta
         </Typography>
       ) : (
         <Grid container spacing={3}>
-          {list.map((item) => {
+          {filteredList.map((item) => {
             const stageChip = getStageChip(item.postSaleStage);
 
             // Si tu encuesta tiene estructura: { calificacion, comentarios }

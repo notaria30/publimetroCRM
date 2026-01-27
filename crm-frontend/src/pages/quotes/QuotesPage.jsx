@@ -24,7 +24,7 @@ import { useAuth } from "../../context/AuthContext";
 
 export default function QuotesPage() {
   const { isOwner } = useAuth();
-  const [tab, setTab] = useState("pendiente");
+  const [tab, setTab] = useState("todas");
   const [quotes, setQuotes] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -80,6 +80,7 @@ export default function QuotesPage() {
 
   // ✅ Primero filtra por TAB
   const tabFiltered = useMemo(() => {
+    if (tab === "todas") return quotes;
     return quotes.filter((q) => q.status === tab);
   }, [quotes, tab]);
 
@@ -162,7 +163,7 @@ export default function QuotesPage() {
 
       {/* ✅ contador opcional (dentro del tab) */}
       <Typography variant="body2" sx={{ mb: 2, opacity: 0.75 }}>
-        Mostrando {filtered.length} de {tabFiltered.length} en "{statusChip[tab]?.label || tab}"
+        Mostrando {filtered.length} de {tabFiltered.length} en "{tab === "todas" ? "Todas" : (statusChip[tab]?.label || tab)}"
       </Typography>
 
       {/* TABS */}
@@ -173,6 +174,10 @@ export default function QuotesPage() {
           textColor="primary"
           indicatorColor="primary"
         >
+          <Tab
+            label={`Todas (${quotes.length})`}
+            value="todas"
+          />
           <Tab
             label={`Pendientes (${quotes.filter((q) => q.status === "pendiente").length})`}
             value="pendiente"

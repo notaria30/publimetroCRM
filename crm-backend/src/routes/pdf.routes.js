@@ -11,8 +11,9 @@ const { auth } = require("../middlewares/auth.middleware");
 router.get("/quote/:id", auth, async (req, res) => {
   try {
     const quote = await Quote.findById(req.params.id)
-      .populate("client", "nombreComercial assignedTo")
-      .populate("createdBy", "_id role");
+      .populate("client", "nombreComercial razonSocial rfc")
+      .populate("createdBy", "name email role");
+
 
     if (!quote) return res.status(404).send("Cotización no encontrada");
 
@@ -59,7 +60,7 @@ router.get("/quote/:id", auth, async (req, res) => {
     doc
       .fontSize(22)
       .fillColor("#0A6A44")
-      .text(`Cotización #${quote.folio}`, { align: "left" });
+      .text(`Cotización`, { align: "left" });
 
     doc
       .moveDown()
@@ -105,15 +106,125 @@ Atentamente,`;
       doc.addPage();
     }
 
-    // dibuja el texto en la posición controlada
-    doc.text(intro, introX, doc.y, {
-      width: introWidth,
-      align: "left",
-      lineGap: 2,
-    });
 
     doc.moveDown(1.5);
 
+
+    // ---------------------------
+    // HELPERS PDF
+    // ---------------------------
+    const money = (n) =>
+      (Number(n) || 0).toLocaleString("es-MX", { style: "currency", currency: "MXN" });
+
+    const fmtDate = (d) => {
+      if (!d) return "—";
+      const dt = new Date(d);
+      if (Number.isNaN(dt.getTime())) return "—";
+      return dt.toLocaleDateString("es-MX");
+    };
+
+    const ensureSpace = (doc, needed = 90) => {
+      const bottomLimit = doc.page.height - 100;
+      if (doc.y + needed > bottomLimit) doc.addPage();
+    };
+
+    const paragraph = (text, opts = {}) => {
+      const width = opts.width ?? 500;
+      const x = opts.x ?? 50;
+      const lineGap = opts.lineGap ?? 2;
+      const fontSize = opts.fontSize ?? 11;
+      const color = opts.color ?? "black";
+
+      // calcula alto y evita que se coma el footer
+      const h = doc.heightOfString(text, { width, align: "justify" });
+      ensureSpace(doc, h + 20);
+
+      doc
+        .fontSize(fontSize)
+        .fillColor(color)
+        .text(text, x, doc.y, {
+          width,
+          align: "justify",
+          lineGap,
+        });
+
+      doc.moveDown(0.8);
+      doc.x = 50; // importante para que no se vaya a la derecha
+    };
+
+    // dibuja el texto en la posición controlada
+    paragraph(intro, { fontSize: 11, lineGap: 2 });
+    doc.moveDown(1.5);
+
+    const sectionTitle = (title) => {
+      ensureSpace(doc, 60);
+      doc.moveDown(0.6);
+      doc.fontSize(15).fillColor("#0A6A44").text(title);
+      doc.moveDown(0.3);
+      doc.strokeColor("#D7E9DF").lineWidth(1).moveTo(50, doc.y).lineTo(550, doc.y).stroke();
+      doc.moveDown(0.6);
+      doc.fillColor("black").fontSize(11);
+    };
+    const drawSimpleTable = (headers, rows, colWidths) => {
+      ensureSpace(doc, 70 + rows.length * 22);
+
+      const tableTop = doc.y;
+      const headerH = 26;
+
+      // Fondo header
+      doc.rect(50, tableTop, 500, headerH).fill("#0A6A44");
+
+      // Textos header
+      doc.fontSize(11).fillColor("white");
+      let x = 55;
+      headers.forEach((h, i) => {
+        doc.text(h, x, tableTop + 8, {
+          width: colWidths[i] - 10,
+          lineBreak: false,
+          ellipsis: true,
+        });
+        x += colWidths[i];
+      });
+
+      doc.fillColor("black");
+
+      // Filas
+      let y = tableTop + headerH + 8;
+
+      rows.forEach((row) => {
+        let xRow = 55;
+        row.forEach((cell, i) => {
+          doc.text(cell ?? "—", xRow, y, {
+            width: colWidths[i] - 10,
+            lineBreak: false,
+            ellipsis: true,
+          });
+          xRow += colWidths[i];
+        });
+
+        y += 20;
+        doc.moveTo(50, y).lineTo(550, y).strokeColor("#ccc").stroke();
+        y += 6;
+      });
+
+      doc.y = y;
+      doc.x = 50;
+    };
+
+    const keyValue = (label, value) => {
+      doc
+        .fontSize(12)
+        .fillColor("#444")
+        .text(label, { continued: true });
+
+      doc
+        .fontSize(12)
+        .fillColor("#000")
+        .text(` ${value ?? "—"}`);
+
+      doc.moveDown(0.35); // 👈 más separación entre renglones
+      doc.x = 50;
+    };
 
 
     // ===========================
@@ -163,11 +274,54 @@ Atentamente,`;
     doc.moveDown(5);
 
 
-    doc.addPage();
+    // ===========================
+    // DETALLES DE LA COTIZACIÓN (SOLO SI HAY DATOS)
+    // ===========================
+    sectionTitle("Detalles");
+
+    keyValue("Folio:", quote.folio);
+    keyValue("Cliente:", quote.client?.nombreComercial || "—");
+
+    if (quote.client?.razonSocial) keyValue("Razón social:", quote.client.razonSocial);
+    if (quote.client?.rfc) keyValue("RFC:", quote.client.rfc);
+
+    if (quote.createdBy?.name) keyValue("Creada por:", quote.createdBy.name);
+    if (quote.createdBy?.email) keyValue("Email:", quote.createdBy.email);
+
+
+    // PAGOS CFDI (solo si hay algo)
+    const hasPagoInfo =
+      !!quote.formaPago || !!quote.metodoPago || !!quote.usoCFDI || !!quote.facturacionEstado;
+
+    if (hasPagoInfo) {
+      doc.moveDown(0.6);
+      doc.fontSize(12).fillColor("#0A6A44").text("Datos de facturación");
+      doc.fillColor("black").fontSize(11).moveDown(0.2);
+
+      if (quote.formaPago) keyValue("Forma de pago:", quote.formaPago);
+      if (quote.metodoPago) keyValue("Método de pago:", quote.metodoPago);
+      if (quote.usoCFDI) keyValue("Uso CFDI:", quote.usoCFDI);
+
+      if (quote.facturacionEstado) {
+        keyValue(
+          "Estado de facturación:",
+          quote.facturacionEstado === "facturado" ? "Facturado" : "Por facturar"
+        );
+      }
+    }
+
+    // Duración (solo si hay)
+    if (quote.duracion) {
+      doc.moveDown(0.5);
+      keyValue("Duración:", quote.duracion, "mes");
+    }
+
 
     // ===========================
     // TABLA DE TARIFAS
     // ===========================
+    ensureSpace(doc, 120);
+
     doc.fontSize(16).fillColor("#0A6A44").text("Tarifas", { underline: true });
     doc.moveDown(0.5);
 
@@ -279,6 +433,223 @@ Atentamente,`;
         .strokeColor("#ccc")
         .stroke();
     });
+    // IMPORTANTE: al terminar la tabla, sincroniza doc.y con 'y'
+    // IMPORTANTE: al terminar la tabla, sincroniza doc.y con 'y' y RESETEA doc.x
+    doc.y = y + 10;
+    doc.x = 50;          // ✅ clave: vuelve al margen izquierdo
+    doc.moveDown(1);
+
+    // ===========================
+    // ACTIVACIÓN
+    // ===========================
+    if (quote.activacion?.activo) {
+      sectionTitle("Activación");
+
+      const fechasAct = (quote.activacion?.fechas || [])
+        .filter(Boolean)
+        .map(fmtDate)
+        .join(", ");
+
+      drawSimpleTable(
+        ["Tipo", "Cantidad", "Costo", "Fechas"],
+        [[
+          quote.activacion?.tipo || "—",
+          String(quote.activacion?.cantidad ?? 0),
+          money(quote.activacion?.costo),
+          fechasAct || "—",
+        ]],
+        [140, 90, 110, 160] // ancho columnas (suman ~500)
+      );
+
+      // Si quieres “Puntos de distribución” abajo (porque es largo)
+      if (quote.activacion?.puntosDistribucion) {
+        doc.moveDown(0.3);
+        doc.fontSize(10).fillColor("#444").text("Puntos de distribución:");
+        doc.fillColor("black").fontSize(10).text(quote.activacion.puntosDistribucion);
+        doc.moveDown(0.5);
+      }
+    }
+
+
+    // ===========================
+    // DESARROLLO INFORMATIVO
+    // ===========================
+    if (quote.desarrolloInformativo?.activo) {
+      sectionTitle("Desarrollo informativo");
+
+      drawSimpleTable(
+        ["Fecha", "Formato"],
+        [[
+          quote.desarrolloInformativo?.fecha ? fmtDate(quote.desarrolloInformativo.fecha) : "—",
+          quote.desarrolloInformativo?.formato || "—",
+        ]],
+        [160, 340]
+      );
+    }
+
+
+    // ===========================
+    // POSTEO REDES
+    // ===========================
+    if (quote.posteoRedesSociales?.activo) {
+      sectionTitle("Posteo redes sociales");
+
+      const fechasPost = (quote.posteoRedesSociales?.fechas || [])
+        .filter(Boolean)
+        .map(fmtDate)
+        .join(", ");
+
+      drawSimpleTable(
+        ["Cantidad", "Fechas"],
+        [[
+          String(quote.posteoRedesSociales?.cantidad ?? 0),
+          fechasPost || "—",
+        ]],
+        [120, 380]
+      );
+    }
+
+
+
+    // ===========================
+    // INTERCAMBIO
+    // ===========================
+    if (quote.intercambio?.activo) {
+      sectionTitle("Intercambio");
+
+      drawSimpleTable(
+        ["% Efectivo", "% Especie"],
+        [[
+          `${quote.intercambio?.porcentajeEfectivo ?? 0}%`,
+          `${quote.intercambio?.porcentajeEspecie ?? 0}%`,
+        ]],
+        [160, 340]
+      );
+
+      // Textos largos abajo (mejor legibilidad)
+      if (quote.intercambio?.ofrecemos) {
+        doc.moveDown(0.3);
+        doc.fontSize(10).fillColor("#444").text("Ofrecemos:");
+        doc.fillColor("black").fontSize(10).text(quote.intercambio.ofrecemos, { width: 500 });
+      }
+
+      if (quote.intercambio?.nosOfrecen) {
+        doc.moveDown(0.3);
+        doc.fontSize(10).fillColor("#444").text("Nos ofrecen:");
+        doc.fillColor("black").fontSize(10).text(quote.intercambio.nosOfrecen, { width: 500 });
+      }
+
+      doc.moveDown(0.5);
+    }
+
+
+    // ===========================
+    // CORTESÍAS
+    // ===========================
+    if (quote.cortesias?.activo) {
+      sectionTitle("Cortesías");
+
+      const fechasCor = (quote.cortesias?.fechas || [])
+        .filter(Boolean)
+        .map(fmtDate)
+        .join(", ");
+
+      drawSimpleTable(
+        ["Cantidad", "Formato", "Fechas"],
+        [[
+          String(quote.cortesias?.cantidad ?? 0),
+          quote.cortesias?.formato || "—",
+          fechasCor || "—",
+        ]],
+        [120, 150, 230]
+      );
+    }
+
+
+    // ===========================
+    // AJUSTES DE PRECIOS (solo si no es Ninguno o hay valores)
+    // ===========================
+    const aj = quote.ajustesPrecios || {};
+    const tieneAjustes =
+      aj.tipoAccion && aj.tipoAccion !== "Ninguno" && ((aj.porcentajeAjuste || 0) !== 0 || (aj.valorAjuste || 0) !== 0);
+
+    if (tieneAjustes) {
+      sectionTitle("Ajustes de precios");
+
+      drawSimpleTable(
+        ["Tipo de acción", "% Ajuste", "Valor ajuste"],
+        [[
+          aj.tipoAccion || "—",
+          `${aj.porcentajeAjuste || 0}%`,
+          money(aj.valorAjuste || 0),
+        ]],
+        [200, 130, 170]
+      );
+    }
+
+
+    // ===========================
+    // TOTAL (siempre)
+    // ===========================
+    sectionTitle("Total");
+    doc.moveUp(0.4);
+    doc.fontSize(18).fillColor("#0A6A44")
+      .text(money(quote.total), 50, doc.y, { width: 500, align: "right" });
+    doc.fillColor("black").fontSize(11);
+    doc.moveDown(1.2);
+    doc.x = 50;
+
+    // ===========================
+    // TEXTO FINAL (ANTES DEL FOOTER)
+    // ===========================
+    const textoFinal = `Así mismo, Publimetro Querétaro se reserva el derecho en lo presente y para lo futuro a no publicar diseños que vayan en contra de la calidad necesaria, tanto en especificaciones técnicas, como de imagen, valores, etc.
+Si Publimetro Querétaro solicita información adicional a la empresa para la contratación de los servicios, en términos de lo descrito en este instrumento, podrá suspender de manera temporal o definitiva sin perjuicio alguno cualquier servicio o producto, hasta que la empresa cumpla con sus obligaciones, perdiendo todo derecho a que le sea reembolsable cualquier monto que haya pagado por el o los servicios y/o productos.
+Para todo lo relativo a la interpretación, validez, cumplimiento y ejecución del presente instrumento, las Partes se someten expresamente a lo dispuesto por las leyes federales vigentes y aplicables de México y a la jurisdicción de los tribunales competentes en la Ciudad de Querétaro, que serán los únicos competentes para conocer de cualquier conciliación y/o juicio y/o reclamación derivada de este documento, renunciando a cualquier otro fuero que por razón de sus domicilios presentes o futuros o por cualquier otro motivo pudiere corresponderles.
+Leído que fue por ambas partes el presente instrumento y una vez enterados de su contenido y alcance, sabedores de las obligaciones que contraen, lo ratifican y firman por duplicado, quedando una copia en poder de cada una de las partes.
+El presente documento se firma de conformidad en el lugar y fecha que ha quedado manifestado en la carátula que se encuentra al anverso.
+`;
+
+    // Asegura espacio para el texto + footer
+    // (aprox: textoFinal + footer)
+    const finalHeight = doc.heightOfString(textoFinal, { width: 500, align: "justify" }) + 120;
+    ensureSpace(doc, finalHeight);
+
+    paragraph(textoFinal, { fontSize: 11, lineGap: 2 });
+
+    // ===========================
+    // BLOQUE DE FIRMA
+    // ===========================
+    doc.moveDown(2);
+
+    // Título
+    doc.fontSize(11)
+      .fillColor("black")
+      .text("FIRMANDO DE AUTORIZACIÓN DE PUBLIMETRO QUERÉTARO:", {
+        underline: true,
+      });
+
+    doc.moveDown(2);
+
+    // Coordenadas base
+    const startX = 70;
+    let currentY = doc.y;
+
+    // Nombre completo
+    doc.fontSize(11).text("Nombre Completo:", startX, currentY);
+
+    doc.moveTo(200, currentY + 12)
+      .lineTo(520, currentY + 12)
+      .strokeColor("#000")
+      .stroke();
+
+    currentY += 40;
+
+    // Firma
+    doc.fontSize(11).text("Firma:", startX, currentY);
+
+    doc.moveTo(200, currentY + 12)
+      .lineTo(520, currentY + 12)
+      .stroke();
 
     doc.moveDown(3);
 
@@ -304,5 +675,4 @@ Atentamente,`;
     res.status(500).send("Error generando PDF");
   }
 });
-
 module.exports = router;

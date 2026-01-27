@@ -44,6 +44,23 @@ export default function QuoteGeneralSection({ clients, form, setForm }) {
             />
           </Grid>
 
+          {/* MÉTODO DE PAGO */}
+          <Grid size={{ xs: 12, md: 2 }}>
+            <TextField
+              select
+              fullWidth
+              label="Método de pago"
+              value={form.metodoPago}
+              onChange={(e) =>
+                setForm((prev) => ({ ...prev, metodoPago: e.target.value }))
+              }
+            >
+              <MenuItem value="">Seleccione...</MenuItem>
+              <MenuItem value="PPD">PPD</MenuItem>
+              <MenuItem value="PUE">PUE</MenuItem>
+            </TextField>
+          </Grid>
+
           {/* FORMA DE PAGO */}
           <Grid size={{ xs: 12, md: 2.5 }}>
             <TextField

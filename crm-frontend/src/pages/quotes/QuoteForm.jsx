@@ -9,7 +9,6 @@ import QuoteTarifasSection from "./QuoteTarifasSection.jsx";
 import QuoteActivacionSection from "./QuoteActivacionSection.jsx";
 import QuoteDesarrolloInformativoSection from "./QuoteDesarrolloInformativoSection";
 import QuotePosteoRedesSection from "./QuotePosteoRedesSection.jsx";
-import QuoteFajillasSection from "./QuoteFajillasSection.jsx";
 import QuoteIntercambioSection from "./QuoteIntercambioSection.jsx";
 import QuoteCortesiasSection from "./QuoteCortesiasSection.jsx";
 import QuoteEstadoAprobacionSection from "./QuoteEstadoAprobacionSection.jsx";
@@ -47,12 +46,6 @@ const defaultForm = {
     cantidad: 0,
     fechas: [""],
   },
-  fajillas: {
-    activo: false,
-    cantidad: 0,
-    precio: 0,
-    puntosDistribucion: "",
-  },
   intercambio: {
     activo: false,
     porcentajeEfectivo: 0,
@@ -63,6 +56,7 @@ const defaultForm = {
   cortesias: {
     activo: false,
     cantidad: 0,
+    formato: "",
     fechas: ["", ""],
   },
   ajustesPrecios: {
@@ -103,11 +97,6 @@ function mapInitialQuoteToForm(quote) {
         .map(formatDateInput)
         .concat(Array(Math.max(0, 5 - (t.fechas || []).length)).fill(""))
         .slice(0, 5),
-      formaPago: quote.formaPago || "",
-      metodoPago: quote.metodoPago || "",
-      usoCFDI: quote.usoCFDI || "",
-      facturacionEstado: quote.facturacionEstado || "por_facturar",
-
       totalLinea: t.totalLinea ?? 0,
     })),
 
@@ -146,13 +135,6 @@ function mapInitialQuoteToForm(quote) {
         .slice(0, 5),
     },
 
-    fajillas: {
-      activo: quote.fajillas?.activo ?? false,
-      cantidad: quote.fajillas?.cantidad ?? 0,
-      precio: quote.fajillas?.precio ?? 0,
-      puntosDistribucion: quote.fajillas?.puntosDistribucion || "",
-    },
-
     intercambio: {
       activo: quote.intercambio?.activo ?? false,
       porcentajeEfectivo: quote.intercambio?.porcentajeEfectivo ?? 0,
@@ -164,12 +146,11 @@ function mapInitialQuoteToForm(quote) {
     cortesias: {
       activo: quote.cortesias?.activo ?? false,
       cantidad: quote.cortesias?.cantidad ?? 0,
+      formato: quote.cortesias?.formato || "",
       fechas: (quote.cortesias?.fechas || [])
         .map(formatDateInput)
-        .concat(
-          Array(Math.max(0, 2 - (quote.cortesias?.fechas || []).length)).fill("")
-        )
-        .slice(0, 2),
+        .concat(Array(Math.max(0, (quote.cortesias?.cantidad ?? 0) - (quote.cortesias?.fechas || []).length)).fill(""))
+        .slice(0, quote.cortesias?.cantidad ?? 0),
     },
 
     ajustesPrecios: {
@@ -177,6 +158,11 @@ function mapInitialQuoteToForm(quote) {
       valorAjuste: quote.ajustesPrecios?.valorAjuste ?? 0,
       tipoAccion: quote.ajustesPrecios?.tipoAccion || "Ninguno",
     },
+
+    formaPago: quote.formaPago || "",
+    metodoPago: quote.metodoPago || "",
+    usoCFDI: quote.usoCFDI || "",
+    facturacionEstado: quote.facturacionEstado || "por_facturar",
 
     total: quote.total ?? 0,
     status: quote.status || "pendiente",
@@ -335,12 +321,6 @@ export default function QuoteForm({
         (Number(form.activacion.cantidad) || 1);
     }
 
-    if (form.fajillas.activo) {
-      total +=
-        (Number(form.fajillas.precio) || 0) *
-        (Number(form.fajillas.cantidad) || 1);
-    }
-
     const aj = form.ajustesPrecios;
     if (aj.tipoAccion !== "Ninguno") {
       if (aj.porcentajeAjuste > 0) {
@@ -400,12 +380,6 @@ export default function QuoteForm({
       fechas: (form.posteoRedesSociales.fechas || []).filter(Boolean),
     },
 
-    fajillas: {
-      ...form.fajillas,
-      cantidad: Number(form.fajillas.cantidad) || 0,
-      precio: Number(form.fajillas.precio) || 0,
-    },
-
     intercambio: {
       ...form.intercambio,
       porcentajeEfectivo: Number(form.intercambio.porcentajeEfectivo) || 0,
@@ -424,10 +398,11 @@ export default function QuoteForm({
       porcentajeAjuste: Number(form.ajustesPrecios.porcentajeAjuste) || 0,
       valorAjuste: Number(form.ajustesPrecios.valorAjuste) || 0,
     },
+
     formaPago: form.formaPago,
     metodoPago: form.metodoPago,
     usoCFDI: form.usoCFDI,
-    facturacionEstado: form.facturacionEstado,
+    facturacionEstado: form.facturacionEstado || "por_facturar",
     total: Number(form.total) || 0,
   });
 
@@ -457,7 +432,7 @@ export default function QuoteForm({
           setForm={setForm}
           clients={clients}
         />
-        
+
         {/* Tarifas */}
         <QuoteTarifasSection
           form={form}
@@ -477,9 +452,6 @@ export default function QuoteForm({
 
         {/* Posteo redes */}
         <QuotePosteoRedesSection form={form} setForm={setForm} />
-
-        {/* Fajillas */}
-        <QuoteFajillasSection form={form} setForm={setForm} />
 
         {/* Intercambio */}
         <QuoteIntercambioSection form={form} setForm={setForm} />

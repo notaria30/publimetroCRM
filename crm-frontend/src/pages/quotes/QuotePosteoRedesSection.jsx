@@ -9,9 +9,12 @@ import {
 } from "@mui/material";
 import Switch from "@mui/material/Switch";
 import AddIcon from "@mui/icons-material/Add";
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import dayjs from "dayjs";
 
 export default function QuotePosteoRedesSection({ form, setForm }) {
-
+  const isoToDayjs = (iso) => (iso ? dayjs(iso, "YYYY-MM-DD", true) : null);
+  const dayjsToISO = (d) => (d && d.isValid() ? d.format("YYYY-MM-DD") : "");
   const addFecha = () => {
     setForm(prev => {
       const fechas = [...prev.posteoRedesSociales.fechas];
@@ -88,13 +91,17 @@ export default function QuotePosteoRedesSection({ form, setForm }) {
                 <Grid container spacing={2}>
                   {form.posteoRedesSociales.fechas.map((fecha, i) => (
                     <Grid item xs={12} md={2.4} key={i}>
-                      <TextField
-                        fullWidth
-                        type="date"
+                      <DatePicker
                         label="Fecha"
-                        value={fecha}
-                        onChange={(e) => handleFechaChange(i, e.target.value)}
-                        InputLabelProps={{ shrink: true }}
+                        value={isoToDayjs(fecha)}
+                        onChange={(newValue) => handleFechaChange(i, dayjsToISO(newValue))}
+                        format="DD/MM/YYYY"
+                        slotProps={{
+                          textField: {
+                            fullWidth: true,
+                            InputLabelProps: { shrink: true },
+                          },
+                        }}
                       />
                     </Grid>
                   ))}

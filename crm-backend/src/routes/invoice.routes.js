@@ -17,6 +17,7 @@ router.post("/", auth, async (req, res) => {
       fechaFactura,
       importeSinIVA,
       metodoPago,
+      formaPago,
       pagado,
       fechaPago,
       importePago,
@@ -58,18 +59,20 @@ router.post("/", auth, async (req, res) => {
       return res.status(404).json({ message: "Cotización no encontrada" });
     }
 
+    const finalFormaPago = formaPago || quoteData.formaPago || "";
     const saleData = await Sale.findOne({ quote });
 
     const factura = await Invoice.create({
       client,
       rfc: clientData.rfc,
       quote,
-      sale: saleData?._id || null,   
+      sale: saleData?._id || null,
       numeroFactura,
       fechaFactura,
       importeSinIVA: base,
       importeConIVA,
       metodoPago: metodoPago || "PUE",
+      formaPago: finalFormaPago,
       pagado,
       fechaPago,
       importePago,
@@ -111,6 +114,30 @@ router.get("/", auth, async (req, res) => {
     res.json(invoices);
   } catch (error) {
     console.error("Error al obtener facturas:", error);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
+// ✅ Ventas facturadas (para filtros en Sales)
+router.get("/sales-status", auth, async (req, res) => {
+  try {
+    // Traer solo sale y quote (ligas)
+    const invoices = await Invoice.find({}, "sale quote");
+
+    const saleIds = new Set();
+    const quoteIds = new Set();
+
+    invoices.forEach((inv) => {
+      if (inv.sale) saleIds.add(String(inv.sale));
+      if (inv.quote) quoteIds.add(String(inv.quote));
+    });
+
+    res.json({
+      saleIds: Array.from(saleIds),
+      quoteIds: Array.from(quoteIds),
+    });
+  } catch (error) {
+    console.error("Error en sales-status:", error);
     res.status(500).json({ message: "Error interno del servidor" });
   }
 });

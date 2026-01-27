@@ -5,7 +5,6 @@ import { getSales } from "../../services/salesService";
 import {
   Box,
   Typography,
-  Button,
   Paper,
   Table,
   TableBody,
@@ -13,12 +12,22 @@ import {
   TableContainer,
   TableHead,
   TableRow,
-  Chip
+  Chip,
+  Button,
+  FormControl,
+  Select,
+  MenuItem,
+  InputLabel,
+  TextField,
+  InputAdornment,
 } from "@mui/material";
+import SearchIcon from "@mui/icons-material/Search";
 
 export default function SalesListPage() {
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [facturadoFilter, setFacturadoFilter] = useState("all"); // all | yes | no
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     async function load() {
@@ -33,6 +42,7 @@ export default function SalesListPage() {
     }
     load();
   }, []);
+
 
   const getPaidChip = (paid) => {
     return paid ? (
@@ -77,26 +87,88 @@ export default function SalesListPage() {
     );
   };
 
+  const getFacturadoChip = (fact) =>
+    fact ? <Chip label="Sí" color="success" /> : <Chip label="No" color="error" />;
+
+  const isFacturado = (sale) => Boolean(sale.facturado);
+  const filteredSales = sales.filter((s) => {
+    // ✅ 1) filtro facturado
+    const fact = isFacturado(s);
+    if (facturadoFilter === "yes" && fact !== true) return false;
+    if (facturadoFilter === "no" && fact !== false) return false;
+
+    // ✅ 2) filtro buscador
+    const q = search.toLowerCase().trim();
+    if (!q) return true;
+
+    const folio = String(s.folio || s._id || "").toLowerCase();
+    const cliente = String(s.client?.nombreComercial || "").toLowerCase();
+    const total = String(s.quote?.total ?? "").toLowerCase();
+    const pipeline = String(PIPELINE_LABELS[s.pipelineStage] || s.pipelineStage || "").toLowerCase();
+
+    // Si quieres buscar también por “Sí/No” de pagada/facturado:
+    const pagada = s.paid ? "si" : "no";
+    const facturadoTxt = isFacturado(s) ? "si" : "no";
+
+    return (
+      folio.includes(q) ||
+      cliente.includes(q) ||
+      total.includes(q) ||
+      pipeline.includes(q) ||
+      pagada.includes(q) ||
+      facturadoTxt.includes(q)
+    );
+  });
 
   return (
     <Box sx={{ p: 3 }}>
-      {/* HEADER IGUAL QUE COTIZACIONES */}
       <Box
         display="flex"
         alignItems="center"
         justifyContent="space-between"
         mb={3}
+        flexWrap="wrap"
+        gap={2}
       >
         <Typography variant="h4" fontWeight={700}>
           Ventas
         </Typography>
 
-        {/* En ventas no hay botón, pero si lo quieres solo descomenta esto */}
-        {/*
-        <Button variant="contained" color="primary">
-          Nueva Venta
-        </Button>
-        */}
+        <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
+          {/* ✅ BUSCADOR */}
+          <TextField
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar (folio, cliente, total, pipeline)…"
+            size="small"
+            sx={{
+              width: { xs: "100%", sm: 420 },
+              backgroundColor: "white",
+              borderRadius: "10px",
+            }}
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <SearchIcon fontSize="small" />
+                </InputAdornment>
+              ),
+            }}
+          />
+
+          {/* ✅ FILTRO FACTURADO (se queda) */}
+          <FormControl size="small" sx={{ minWidth: 180, backgroundColor: "white", borderRadius: "10px" }}>
+            <InputLabel>Facturado</InputLabel>
+            <Select
+              label="Facturado"
+              value={facturadoFilter}
+              onChange={(e) => setFacturadoFilter(e.target.value)}
+            >
+              <MenuItem value="all">Todos</MenuItem>
+              <MenuItem value="yes">Sí</MenuItem>
+              <MenuItem value="no">No</MenuItem>
+            </Select>
+          </FormControl>
+        </Box>
       </Box>
 
       {/* TABLA ESTILO COTIZACIONES */}
@@ -109,12 +181,13 @@ export default function SalesListPage() {
               <TableCell sx={{ color: "white", fontWeight: 600 }}>Total</TableCell>
               <TableCell sx={{ color: "white", fontWeight: 600 }}>Pipeline</TableCell>
               <TableCell sx={{ color: "white", fontWeight: 600 }}>Pagada</TableCell>
+              <TableCell sx={{ color: "white", fontWeight: 600 }}>Facturado</TableCell>
               <TableCell sx={{ color: "white", fontWeight: 600 }}>Acciones</TableCell>
             </TableRow>
           </TableHead>
 
           <TableBody>
-            {sales.length === 0 ? (
+            {filteredSales.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={6} align="center">
                   <Typography color="text.secondary">
@@ -123,7 +196,7 @@ export default function SalesListPage() {
                 </TableCell>
               </TableRow>
             ) : (
-              sales.map((sale) => (
+              filteredSales.map((sale) => (
                 <TableRow key={sale._id} hover>
                   <TableCell>{sale.folio || sale._id}</TableCell>
 
@@ -136,6 +209,8 @@ export default function SalesListPage() {
                   <TableCell>{getPipelineChip(sale.pipelineStage)}</TableCell>
 
                   <TableCell>{getPaidChip(sale.paid)}</TableCell>
+
+                  <TableCell>{getFacturadoChip(isFacturado(sale))}</TableCell>
 
                   <TableCell>
                     <Button

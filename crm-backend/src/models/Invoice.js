@@ -54,6 +54,12 @@ const invoiceSchema = new mongoose.Schema(
       required: true,
     },
 
+    // FORMA DE PAGO (SAT): Efectivo, Transferencia, Tarjeta, etc.
+    formaPago: {
+      type: String,
+      default: "",
+    },
+
     // PAGO
     pagado: {
       type: Boolean,

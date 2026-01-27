@@ -40,7 +40,7 @@ const quoteSchema = new mongoose.Schema(
 
     // Presentación / introducción para el cliente (se usa en PDF / envío)
     presentation: { type: String, default: "" },
-    
+
     // ACTIVACIÓN
     activacion: {
       activo: { type: Boolean, default: false },
@@ -86,6 +86,7 @@ const quoteSchema = new mongoose.Schema(
     cortesias: {
       activo: { type: Boolean, default: false },
       cantidad: { type: Number, default: 0 },
+      formato: { type: String },
       fechas: [Date],
     },
 
@@ -96,8 +97,11 @@ const quoteSchema = new mongoose.Schema(
     // Forma de pago (EFECTIVO, TRANSFERENCIA, TARJETA, ETC.)
     formaPago: { type: String },
 
-    // ❌ Eliminado: metodoPago (era redundante)
-    // metodoPago: { type: String },
+    // Método de pago (PPD / PUE)
+    metodoPago: {
+      type: String,
+      enum: ["PPD", "PUE"],
+    },
 
     // Uso CFDI (G01, G03, P01, etc.)
     usoCFDI: { type: String },

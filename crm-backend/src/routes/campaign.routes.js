@@ -1,7 +1,7 @@
 // src/routes/campaign.routes.js
 const express = require("express");
 const router = express.Router();
-const { auth } = require("../middlewares/auth.middleware");
+const { auth } = require("../middlewares/auth.middleware"); 
 
 const Campaign = require("../models/Campaign");
 const Sale = require("../models/Sale");

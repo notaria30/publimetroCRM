@@ -13,9 +13,12 @@ import {
   InputLabel,
 } from "@mui/material";
 import { Switch } from "@mui/material";
-
+import { DatePicker } from "@mui/x-date-pickers/DatePicker";
+import dayjs from "dayjs";
 
 export default function QuoteDesarrolloInformativoSection({ form, setForm }) {
+  const isoToDayjs = (iso) => (iso ? dayjs(iso, "YYYY-MM-DD", true) : null);
+  const dayjsToISO = (d) => (d && d.isValid() ? d.format("YYYY-MM-DD") : "");
   return (
     <Card elevation={2} sx={{ mb: 3 }}>
       <CardContent>
@@ -43,26 +46,30 @@ export default function QuoteDesarrolloInformativoSection({ form, setForm }) {
             <Grid container spacing={3}>
               {/* FECHA */}
               <Grid item xs={12} md={6}>
-                <TextField
-                  fullWidth
-                  type="date"
+                <DatePicker
                   label="Fecha"
-                  InputLabelProps={{ shrink: true }}
-                  value={form.desarrolloInformativo.fecha}
-                  onChange={(e) =>
+                  value={isoToDayjs(form.desarrolloInformativo.fecha)}
+                  onChange={(newValue) =>
                     setForm((prev) => ({
                       ...prev,
                       desarrolloInformativo: {
                         ...prev.desarrolloInformativo,
-                        fecha: e.target.value,
+                        fecha: dayjsToISO(newValue),
                       },
                     }))
                   }
+                  format="DD/MM/YYYY"
+                  slotProps={{
+                    textField: {
+                      fullWidth: true,
+                      InputLabelProps: { shrink: true },
+                    },
+                  }}
                 />
               </Grid>
 
               {/* FORMATO */}
-               <Grid size={{ xs: 12, md: 2 }}>
+              <Grid size={{ xs: 12, md: 2 }}>
                 <FormControl fullWidth>
                   <InputLabel>Formato</InputLabel>
                   <Select

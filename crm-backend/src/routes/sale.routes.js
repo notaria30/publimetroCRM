@@ -6,6 +6,8 @@ const { auth } = require("../middlewares/auth.middleware");
 const PostSale = require("../models/PostSale");
 const router = express.Router();
 const Counter = require("../models/Counter");
+const Invoice = require("../models/Invoice");
+
 // Crear venta desde una cotización (creación automática)
 router.post("/", auth, async (req, res) => {
   try {
@@ -76,7 +78,26 @@ router.get("/", auth, async (req, res) => {
         .populate("quote", "folio total status")
         .populate("assignedTo", "name email");
     }
-    res.json(sales);
+    // ✅ Agregar campo facturado basado en facturas existentes
+    const saleIds = sales.map((s) => s._id);
+
+    const invoices = await Invoice.find({
+      sale: { $in: saleIds },
+    }).select("sale");
+
+    const facturadasSet = new Set(
+      invoices
+        .filter((inv) => inv.sale)
+        .map((inv) => String(inv.sale))
+    );
+
+    const salesWithFacturado = sales.map((s) => ({
+      ...s.toObject(),
+      facturado: facturadasSet.has(String(s._id)),
+    }));
+
+    return res.json(salesWithFacturado);
+    
   } catch (error) {
     console.error("Error al obtener ventas:", error);
     res.status(500).json({ message: "Error interno del servidor" });
