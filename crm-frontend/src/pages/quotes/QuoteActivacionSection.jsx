@@ -24,13 +24,22 @@ const EMPTY_ACTIVACION = {
   costoActivacion: 0,
   costoImpresion: 0,
   tipo: "",
-  fechas: [""],
+  cantidadTipo: 0,
+  fechas: [],
   puntosDistribucion: "",
 };
 
 export default function QuoteActivacionSection({ form, setForm }) {
   const isoToDayjs = (iso) => (iso ? dayjs(iso, "YYYY-MM-DD", true) : null);
   const dayjsToISO = (d) => (d && d.isValid() ? d.format("YYYY-MM-DD") : "");
+
+  const resizeFechas = (prevFechas = [], newLen) => {
+    const safeLen = Math.max(0, Number(newLen) || 0);
+    const next = prevFechas.slice(0, safeLen);
+    while (next.length < safeLen) next.push("");
+    return next;
+  };
+
 
   const activaciones = form.activaciones || [];
   const isEnabled = !!form.activacionesActivo;
@@ -71,19 +80,6 @@ export default function QuoteActivacionSection({ form, setForm }) {
     });
   };
 
-  const addFecha = (index) => {
-    setForm((prev) => {
-      const next = [...(prev.activaciones || [])];
-      const a = { ...next[index] };
-      const fechas = [...(a.fechas || [])];
-
-      if (fechas.length < 2) fechas.push("");
-      a.fechas = fechas;
-
-      next[index] = a;
-      return { ...prev, activaciones: next };
-    });
-  };
 
   const handleDateChange = (index, fechaIndex, value) => {
     setForm((prev) => {
@@ -175,11 +171,29 @@ export default function QuoteActivacionSection({ form, setForm }) {
                     label="Cantidad"
                     type="number"
                     value={act.cantidad}
-                    onChange={(e) =>
-                      updateActivacion(idx, {
-                        cantidad: e.target.value === "" ? "" : Number(e.target.value),
-                      })
-                    }
+                    onChange={(e) => {
+                      const raw = e.target.value;
+
+                      setForm((prev) => {
+                        const next = [...(prev.activaciones || [])];
+                        const a = { ...next[idx] };
+
+                        if (raw === "") {
+                          a.cantidad = "";
+                          a.fechas = [];
+                          next[idx] = a;
+                          return { ...prev, activaciones: next };
+                        }
+
+                        const newCantidad = Math.max(0, Number(raw));
+                        a.cantidad = newCantidad;
+                        a.fechas = resizeFechas(a.fechas || [], newCantidad);
+
+                        next[idx] = a;
+                        return { ...prev, activaciones: next };
+                      });
+                    }}
+
                   />
                 </Grid>
 
@@ -193,21 +207,6 @@ export default function QuoteActivacionSection({ form, setForm }) {
                     onChange={(e) =>
                       updateActivacion(idx, {
                         costoActivacion: e.target.value === "" ? "" : Number(e.target.value),
-                      })
-                    }
-                  />
-                </Grid>
-
-                {/* COSTO IMPRESIÓN */}
-                <Grid size={{ xs: 12, md: 1.6 }}>
-                  <TextField
-                    fullWidth
-                    label="Costo impresión"
-                    type="number"
-                    value={act.costoImpresion ?? 0}
-                    onChange={(e) =>
-                      updateActivacion(idx, {
-                        costoImpresion: e.target.value === "" ? "" : Number(e.target.value),
                       })
                     }
                   />
@@ -230,13 +229,43 @@ export default function QuoteActivacionSection({ form, setForm }) {
                   </FormControl>
                 </Grid>
 
+                {/* CANTIDAD DE TIPO */}
+                <Grid size={{ xs: 12, md: 1.6 }}>
+                  <TextField
+                    fullWidth
+                    label="Cantidad de tipo"
+                    type="number"
+                    value={act.cantidadTipo ?? 0}
+                    onChange={(e) =>
+                      updateActivacion(idx, {
+                        cantidadTipo: e.target.value === "" ? "" : Number(e.target.value),
+                      })
+                    }
+                  />
+                </Grid>
+
+                {/* COSTO IMPRESIÓN */}
+                <Grid size={{ xs: 12, md: 1.6 }}>
+                  <TextField
+                    fullWidth
+                    label="Costo impresión"
+                    type="number"
+                    value={act.costoImpresion ?? 0}
+                    onChange={(e) =>
+                      updateActivacion(idx, {
+                        costoImpresion: e.target.value === "" ? "" : Number(e.target.value),
+                      })
+                    }
+                  />
+                </Grid>
+
                 {/* FECHAS */}
-                <Grid size={{ xs: 12, md: 2.1 }}>
+                <Grid size={{ xs: 12, md: 12}}>
                   <Grid container spacing={2}>
                     {(act.fechas || []).map((fecha, i) => (
-                      <Grid item xs={12} key={i}>
+                     <Grid item xs={12} md={4} key={i}>
                         <DatePicker
-                          label="Fecha"
+                          label={`Fecha ${i + 1}`}
                           value={isoToDayjs(fecha)}
                           onChange={(newValue) =>
                             handleDateChange(idx, i, dayjsToISO(newValue))
@@ -252,21 +281,10 @@ export default function QuoteActivacionSection({ form, setForm }) {
                       </Grid>
                     ))}
                   </Grid>
-
-                  {(act.fechas || []).length < 2 && (
-                    <Button
-                      variant="outlined"
-                      sx={{ mt: 1 }}
-                      startIcon={<AddIcon />}
-                      onClick={() => addFecha(idx)}
-                    >
-                      Agregar fecha
-                    </Button>
-                  )}
                 </Grid>
 
                 {/* PUNTOS DISTRIBUCIÓN */}
-                <Grid size={{ xs: 10, md: 3}}>
+                <Grid size={{ xs: 9, md: 8 }}>
                   <TextField
                     fullWidth
                     label="Puntos de distribución"

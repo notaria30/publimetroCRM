@@ -28,7 +28,95 @@ function normalizeActivaciones(data) {
   data.activacion = undefined;
   return data;
 }
+function toDateAtNoonUTC(value) {
+  if (!value) return value;
 
+  // Si viene como "YYYY-MM-DD"
+  if (typeof value === "string") {
+    const m = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (m) {
+      const y = Number(m[1]);
+      const mo = Number(m[2]) - 1;
+      const d = Number(m[3]);
+      return new Date(Date.UTC(y, mo, d, 12, 0, 0));
+    }
+
+    // Si viene ISO u otro string parseable
+    const parsed = new Date(value);
+    if (!isNaN(parsed.getTime())) {
+      return new Date(Date.UTC(
+        parsed.getUTCFullYear(),
+        parsed.getUTCMonth(),
+        parsed.getUTCDate(),
+        12, 0, 0
+      ));
+    }
+    return value;
+  }
+
+  // Si ya viene como Date
+  if (value instanceof Date && !isNaN(value.getTime())) {
+    return new Date(Date.UTC(
+      value.getUTCFullYear(),
+      value.getUTCMonth(),
+      value.getUTCDate(),
+      12, 0, 0
+    ));
+  }
+
+  return value;
+}
+
+function mapDatesArray(arr) {
+  if (!Array.isArray(arr)) return arr;
+  return arr.filter(Boolean).map(toDateAtNoonUTC);
+}
+
+function normalizeQuoteDates(data) {
+  // TARIFAS
+  if (Array.isArray(data.tarifas)) {
+    data.tarifas = data.tarifas.map(t => ({
+      ...t,
+      fechas: mapDatesArray(t?.fechas),
+    }));
+  }
+  // ACTIVACION singular
+  if (data.activacion) {
+    data.activacion = {
+      ...data.activacion,
+      fechas: mapDatesArray(data.activacion?.fechas),
+    };
+  }
+  // ACTIVACIONES array
+  if (Array.isArray(data.activaciones)) {
+    data.activaciones = data.activaciones.map(a => ({
+      ...a,
+      fechas: mapDatesArray(a?.fechas),
+    }));
+  }
+  // DESARROLLO INFORMATIVO
+  if (data.desarrolloInformativo) {
+    data.desarrolloInformativo = {
+      ...data.desarrolloInformativo,
+      fecha: toDateAtNoonUTC(data.desarrolloInformativo?.fecha),
+    };
+  }
+  // POSTEO REDES SOCIALES
+  if (data.posteoRedesSociales) {
+    data.posteoRedesSociales = {
+      ...data.posteoRedesSociales,
+      fechas: mapDatesArray(data.posteoRedesSociales?.fechas),
+    };
+  }
+  // CORTESIAS
+  if (data.cortesias) {
+    data.cortesias = {
+      ...data.cortesias,
+      fechas: mapDatesArray(data.cortesias?.fechas),
+    };
+  }
+  return data;
+}
 
 // Crear cotización
 router.post("/", auth, async (req, res) => {
@@ -36,6 +124,7 @@ router.post("/", auth, async (req, res) => {
     const data = req.body;
 
     normalizeActivaciones(data);
+    normalizeQuoteDates(data);
 
     // Asignar usuario creador
     data.createdBy = req.user._id;
@@ -135,6 +224,7 @@ router.put("/:id", auth, async (req, res) => {
     const updateData = { ...req.body };
 
     normalizeActivaciones(updateData);
+    normalizeQuoteDates(updateData);
 
     // Si es WORKER, NO puede tocar estado de aprobación
     if (req.user.role === "WORKER") {

@@ -180,8 +180,8 @@ export default function SalesListPage() {
               <TableCell sx={{ color: "white", fontWeight: 600 }}>Cliente</TableCell>
               <TableCell sx={{ color: "white", fontWeight: 600 }}>Total</TableCell>
               <TableCell sx={{ color: "white", fontWeight: 600 }}>Pipeline</TableCell>
-              <TableCell sx={{ color: "white", fontWeight: 600 }}>Pagada</TableCell>
               <TableCell sx={{ color: "white", fontWeight: 600 }}>Facturado</TableCell>
+              <TableCell sx={{ color: "white", fontWeight: 600 }}>Pagada</TableCell>
               <TableCell sx={{ color: "white", fontWeight: 600 }}>Acciones</TableCell>
             </TableRow>
           </TableHead>

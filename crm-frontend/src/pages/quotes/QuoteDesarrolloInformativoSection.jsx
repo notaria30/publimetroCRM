@@ -87,6 +87,12 @@ export default function QuoteDesarrolloInformativoSection({ form, setForm }) {
                   >
                     <MenuItem value="1/4 plana">1/4 plana</MenuItem>
                     <MenuItem value="1/2 plana">1/2 plana</MenuItem>
+                    <MenuItem value="Plana">Plana</MenuItem>
+                    <MenuItem value="Doble Plana Central">Doble Plana Central</MenuItem>
+                    <MenuItem value="Contraportada">Contraportada</MenuItem>
+                    <MenuItem value="Cintillo en portada">Cintillo en portada</MenuItem>
+                    <MenuItem value="Cintillo interior">Cintillo interior</MenuItem>
+                    <MenuItem value="Robaplana">Robaplana</MenuItem>
                     {/* Puedes agregar más si los manejas */}
                   </Select>
                 </FormControl>

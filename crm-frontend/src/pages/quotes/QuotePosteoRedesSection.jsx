@@ -15,16 +15,6 @@ import dayjs from "dayjs";
 export default function QuotePosteoRedesSection({ form, setForm }) {
   const isoToDayjs = (iso) => (iso ? dayjs(iso, "YYYY-MM-DD", true) : null);
   const dayjsToISO = (d) => (d && d.isValid() ? d.format("YYYY-MM-DD") : "");
-  const addFecha = () => {
-    setForm(prev => {
-      const fechas = [...prev.posteoRedesSociales.fechas];
-      if (fechas.length < 5) fechas.push(""); // agrega una sola fecha
-      return {
-        ...prev,
-        posteoRedesSociales: { ...prev.posteoRedesSociales, fechas }
-      };
-    });
-  };
 
   const handleFechaChange = (index, value) => {
     setForm(prev => {
@@ -49,7 +39,6 @@ export default function QuotePosteoRedesSection({ form, setForm }) {
           <Typography variant="h6" fontWeight={700}>
             Posteo Redes Sociales
           </Typography>
-
           <Switch
             checked={form.posteoRedesSociales.activo}
             onChange={(e) =>
@@ -73,19 +62,44 @@ export default function QuotePosteoRedesSection({ form, setForm }) {
                   fullWidth
                   label="Cantidad"
                   type="number"
+                  inputProps={{ min: 0, max: 30 }}
                   value={form.posteoRedesSociales.cantidad}
-                  onChange={(e) =>
-                    setForm(prev => ({
-                      ...prev,
-                      posteoRedesSociales: {
-                        ...prev.posteoRedesSociales,
-                        cantidad: e.target.value === "" ? "" : Number(e.target.value),
+                  onChange={(e) => {
+                    const raw = e.target.value;
+
+                    setForm((prev) => {
+                      // Permitir limpiar el input
+                      if (raw === "") {
+                        return {
+                          ...prev,
+                          posteoRedesSociales: {
+                            ...prev.posteoRedesSociales,
+                            cantidad: "",
+                            fechas: [], // si quieres que al borrar se limpien fechas
+                          },
+                        };
                       }
-                    }))
-                  }
+                      // Normalizar cantidad y limitar a 5
+                      const n = Math.max(0, Math.min(30, Number(raw) || 0));
+
+                      const prevFechas = prev.posteoRedesSociales.fechas || [];
+                      let fechas = prevFechas.slice(0, n); // recorta si bajó
+
+                      // completa si subió
+                      while (fechas.length < n) fechas.push("");
+
+                      return {
+                        ...prev,
+                        posteoRedesSociales: {
+                          ...prev.posteoRedesSociales,
+                          cantidad: n,
+                          fechas,
+                        },
+                      };
+                    });
+                  }}
                 />
               </Grid>
-
               {/* FECHAS */}
               <Grid item xs={12}>
                 <Grid container spacing={2}>
@@ -106,23 +120,10 @@ export default function QuotePosteoRedesSection({ form, setForm }) {
                     </Grid>
                   ))}
                 </Grid>
-
-                {/* BOTÓN AGREGAR */}
-                {form.posteoRedesSociales.fechas.length < 5 && (
-                  <Button
-                    variant="outlined"
-                    sx={{ mt: 2 }}
-                    startIcon={<AddIcon />}
-                    onClick={addFecha}
-                  >
-                    Agregar fecha
-                  </Button>
-                )}
               </Grid>
             </Grid>
           </Box>
         )}
-
       </CardContent>
     </Card>
   );

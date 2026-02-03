@@ -19,6 +19,7 @@ const activacionSchema = new mongoose.Schema(
     costoImpresion: { type: Number, default: 0 },
     costo: { type: Number, default: 0 },
     tipo: { type: String },
+    cantidadTipo: { type: Number, default: 0 },
     fechas: [Date],
     puntosDistribucion: { type: String },
   },
@@ -58,7 +59,7 @@ const quoteSchema = new mongoose.Schema(
 
     // ACTIVACIÓN
     activacion: activacionSchema,
-
+    activacionesActivo: { type: Boolean, default: false },
     activaciones: {
       type: [activacionSchema],
       default: [],

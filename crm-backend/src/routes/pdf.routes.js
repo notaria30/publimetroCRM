@@ -166,50 +166,97 @@ Atentamente,`;
       doc.moveDown(0.6);
       doc.fillColor("black").fontSize(11);
     };
-    const drawSimpleTable = (headers, rows, colWidths) => {
-      ensureSpace(doc, 70 + rows.length * 22);
+    const drawSimpleTable = (headers, rows, colWidths, options = {}) => {
+      const startX = 50;
+      let y = doc.y;
 
-      const tableTop = doc.y;
-      const headerH = 26;
+      const {
+        headerBg = "#0A6A44",
+        headerColor = "white",
+        lineColor = "#CFCFCF",
+        headerFontSize = 11,
+        bodyFontSize = 12,
+        cellPadding = 6,
+        headerAlign = "center",
+        bodyAlign = "left",
+        headerH = 32,
+        minRowHeight = 26,
+      } = options;
 
-      // Fondo header
-      doc.rect(50, tableTop, 500, headerH).fill("#0A6A44");
+      const tableWidth = colWidths.reduce((a, b) => a + b, 0);
 
-      // Textos header
-      doc.fontSize(11).fillColor("white");
-      let x = 55;
+      // Asegura espacio mínimo (header + 1 fila)
+      ensureSpace(doc, headerH + minRowHeight + 20);
+
+      // ===== HEADER =====
+      doc.save();
+      doc.fillColor(headerBg).rect(startX, y, tableWidth, headerH).fill();
+      doc.restore();
+
+      doc.fontSize(headerFontSize).fillColor(headerColor);
+
+      let x = startX;
       headers.forEach((h, i) => {
-        doc.text(h, x, tableTop + 8, {
-          width: colWidths[i] - 10,
-          lineBreak: false,
-          ellipsis: true,
+        doc.text(String(h), x + cellPadding, y + 9, {
+          width: colWidths[i] - cellPadding * 2,
+          align: headerAlign,
+          lineBreak: true,
         });
         x += colWidths[i];
       });
 
-      doc.fillColor("black");
+      y += headerH;
 
-      // Filas
-      let y = tableTop + headerH + 8;
+      // línea debajo del header
+      doc.save();
+      doc.strokeColor(lineColor).lineWidth(1);
+      doc.moveTo(startX, y).lineTo(startX + tableWidth, y).stroke();
+      doc.restore();
+
+      // ===== BODY =====
+      doc.fontSize(bodyFontSize).fillColor("black");
 
       rows.forEach((row) => {
-        let xRow = 55;
+        // 1) calcular alto real de la fila según la celda más alta
+        let rowHeight = minRowHeight;
+
         row.forEach((cell, i) => {
-          doc.text(cell ?? "—", xRow, y, {
-            width: colWidths[i] - 10,
-            lineBreak: false,
-            ellipsis: true,
+          const txt = cell === null || cell === undefined || cell === "" ? "—" : String(cell);
+          const h = doc.heightOfString(txt, {
+            width: colWidths[i] - cellPadding * 2,
+            align: bodyAlign,
           });
-          xRow += colWidths[i];
+          rowHeight = Math.max(rowHeight, h + cellPadding * 2);
         });
 
-        y += 20;
-        doc.moveTo(50, y).lineTo(550, y).strokeColor("#ccc").stroke();
-        y += 6;
+        ensureSpace(doc, rowHeight + 10);
+
+        // 2) dibujar texto por celda
+        x = startX;
+        row.forEach((cell, i) => {
+          const txt = cell === null || cell === undefined || cell === "" ? "—" : String(cell);
+
+          doc.text(txt, x + cellPadding, y + cellPadding, {
+            width: colWidths[i] - cellPadding * 2,
+            align: bodyAlign,
+            lineBreak: true,     // ✅ permite salto de línea
+          });
+
+          x += colWidths[i];
+        });
+
+        // 3) línea inferior de fila (ya NO se atraviesa)
+        doc.save();
+        doc.strokeColor(lineColor).lineWidth(1);
+        doc.moveTo(startX, y + rowHeight).lineTo(startX + tableWidth, y + rowHeight).stroke();
+        doc.restore();
+
+        y += rowHeight;
       });
 
-      doc.y = y;
-      doc.x = 50;
+      // actualizar cursor del documento
+      doc.y = y + 6;
+      doc.x = startX;
     };
 
     const keyValue = (label, value, opts = {}) => {
@@ -444,8 +491,8 @@ Atentamente,`;
 
       let xRow = 55;
 
-      const rowH = 28;          // ✅ más alto
-      const textY = y + 6;      // ✅ baja un poquito el texto dentro de la fila
+      const rowH = 28;
+      const textY = y + 6;
 
       row.forEach((cell, i) => {
         doc.text(cell ?? "", xRow, textY, {
@@ -469,7 +516,7 @@ Atentamente,`;
       y += 6;
 
     });
-    // IMPORTANTE: al terminar la tabla, sincroniza doc.y con 'y'
+
     // IMPORTANTE: al terminar la tabla, sincroniza doc.y con 'y' y RESETEA doc.x
     doc.y = y + 10;
     doc.x = 50;          // ✅ clave: vuelve al margen izquierdo
@@ -497,7 +544,7 @@ Atentamente,`;
       sectionTitle("Activaciones");
 
       activas.forEach((act, idx) => {
-        ensureSpace(doc, 140);
+        ensureSpace(doc, 160); // un poco más para evitar cortes feos entre páginas
 
         doc
           .fontSize(12)
@@ -513,20 +560,30 @@ Atentamente,`;
 
         const { costoActivacion, costoImpresion } = getCostosActivacion(act);
 
+        // ✅ Encabezados cortos + anchos bien distribuidos
+        // ✅ drawSimpleTable debe manejar alto de fila dinámico (ver patch abajo)
         drawSimpleTable(
-          ["Tipo", "Cantidad", "Costo activación", "Costo impresión", "Fechas", "Puntos de distribución"],
+          ["Tipo", "Cant.", "Cant. tipo", "Activación", "Impresión", "Fechas", "Distribución"],
           [[
             act?.tipo || "—",
             String(act?.cantidad ?? 0),
+            String(act?.cantidadTipo ?? 0),
             money(costoActivacion),
             money(costoImpresion),
             fechasAct || "—",
             act?.puntosDistribucion || "—",
           ]],
-          [110, 60, 95, 95, 90, 50] // suma 500 aprox, ajusta si quieres
+          [75, 40, 65, 75, 75, 70, 110],
+          {
+            headerFontSize: 11,
+            bodyFontSize: 12,
+            cellPadding: 6,
+            headerAlign: "center",
+            bodyAlign: "left",
+          }
         );
 
-        doc.moveDown(0.6);
+        doc.moveDown(0.8);
       });
     }
 
@@ -709,8 +766,30 @@ El presente documento se firma de conformidad en el lugar y fecha que ha quedado
 
     currentY += 40;
 
-    // Firma
+    // Firma Publimetro
     doc.fontSize(11).text("Firma:", startX, currentY);
+
+    doc.moveTo(200, currentY + 12)
+      .lineTo(520, currentY + 12)
+      .stroke();
+
+    currentY += 40;
+
+    // ===========================
+    // FIRMA DEL CLIENTE
+    // ===========================
+
+    // Nombre Cliente
+    doc.fontSize(11).text("Nombre Cliente:", startX, currentY);
+
+    doc.moveTo(200, currentY + 12)
+      .lineTo(520, currentY + 12)
+      .stroke();
+
+    currentY += 40;
+
+    // Firma Cliente
+    doc.fontSize(11).text("Firma Cliente:", startX, currentY);
 
     doc.moveTo(200, currentY + 12)
       .lineTo(520, currentY + 12)
@@ -722,6 +801,9 @@ El presente documento se firma de conformidad en el lugar y fecha que ha quedado
     // PIE DE PÁGINA
     // ===========================
     const bottom = doc.page.height - 80;
+    if (doc.y > bottom - 100) {
+      doc.addPage();
+    }
 
     doc
       .fontSize(10)

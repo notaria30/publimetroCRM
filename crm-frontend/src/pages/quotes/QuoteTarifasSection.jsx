@@ -17,7 +17,6 @@ export default function QuoteTarifasSection({
   const isoToDayjs = (iso) => (iso ? dayjs(iso, "YYYY-MM-DD", true) : null);
   const dayjsToISO = (d) => (d && d.isValid() ? d.format("YYYY-MM-DD") : "");
 
-
   const normalizeToISO = (raw) => {
     if (!raw) return "";
     const s = String(raw).trim();
@@ -142,7 +141,7 @@ export default function QuoteTarifasSection({
                         onChange={(newValue) => {
                           handleTarifaFecha(index, iFecha, dayjsToISO(newValue));
                         }}
-                        format="DD/MM/YYYY"  
+                        format="DD/MM/YYYY"
                         slotProps={{
                           textField: {
                             fullWidth: true,
@@ -174,15 +173,18 @@ export default function QuoteTarifasSection({
               value={form.ajustesPrecios.porcentajeAjuste}
               onChange={(e) => {
                 const raw = e.target.value;
+                const pct = raw === "" ? "" : Number(raw);
+
                 setForm((prev) => ({
                   ...prev,
                   ajustesPrecios: {
-                    porcentajeAjuste: raw === "" ? "" : Number(raw),
+                    ...prev.ajustesPrecios,
+                    porcentajeAjuste: pct,
                     valorAjuste: raw !== "" && Number(raw) > 0 ? 0 : prev.ajustesPrecios.valorAjuste,
-                    tipoAccion: prev.ajustesPrecios.tipoAccion,
                   },
                 }));
               }}
+
             />
           </Grid>
 
@@ -194,17 +196,20 @@ export default function QuoteTarifasSection({
               type="number"
               value={form.ajustesPrecios.valorAjuste}
               onChange={(e) => {
-                const raw = e.target.value;
+                const nextTipo = e.target.value;
 
                 setForm((prev) => ({
                   ...prev,
                   ajustesPrecios: {
-                    porcentajeAjuste: raw !== "" && Number(raw) > 0 ? 0 : prev.ajustesPrecios.porcentajeAjuste,
-                    valorAjuste: raw === "" ? "" : Number(raw),
-                    tipoAccion: prev.ajustesPrecios.tipoAccion,
+                    ...prev.ajustesPrecios,
+                    tipoAccion: nextTipo,
+
+                    porcentajeAjuste: nextTipo === "Ninguno" ? 0 : prev.ajustesPrecios.porcentajeAjuste,
+                    valorAjuste: nextTipo === "Ninguno" ? 0 : prev.ajustesPrecios.valorAjuste,
                   },
                 }));
               }}
+
             />
           </Grid>
 
@@ -215,15 +220,19 @@ export default function QuoteTarifasSection({
               <Select
                 label="Tipo acción"
                 value={form.ajustesPrecios.tipoAccion}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const nextTipo = e.target.value;
+
                   setForm((prev) => ({
                     ...prev,
                     ajustesPrecios: {
                       ...prev.ajustesPrecios,
-                      tipoAccion: e.target.value,
+                      tipoAccion: nextTipo,
+                      porcentajeAjuste: nextTipo === "Ninguno" ? 0 : prev.ajustesPrecios.porcentajeAjuste,
+                      valorAjuste: nextTipo === "Ninguno" ? 0 : prev.ajustesPrecios.valorAjuste,
                     },
-                  }))
-                }
+                  }));
+                }}
               >
                 <MenuItem value="Ninguno">Ninguno</MenuItem>
                 <MenuItem value="Aumentar">Aumentar</MenuItem>

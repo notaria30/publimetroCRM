@@ -188,6 +188,47 @@ export default function QuoteDetailPage() {
       </Typography>
     </Box>
   );
+  // === Helpers UI: headers verdes reutilizables ===
+  const SectionHeader = ({ title }) => (
+    <Box
+      sx={{
+        backgroundColor: "#008F4F",
+        color: "white",
+        px: 2,
+        py: 1.2,
+        borderRadius: 1,
+        mb: 2,
+        boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
+      }}
+    >
+      <Typography variant="h6" fontWeight={800}>
+        {title}
+      </Typography>
+    </Box>
+  );
+
+  const CardHeaderGreen = ({ title }) => (
+    <Box
+      sx={{
+        backgroundColor: "#008F4F",
+        color: "white",
+        px: 2,
+        py: 1,
+        borderTopLeftRadius: 8,
+        borderTopRightRadius: 8,
+      }}
+    >
+      <Typography variant="subtitle1" fontWeight={800}>
+        {title}
+      </Typography>
+    </Box>
+  );
+
+  const Label = ({ children }) => (
+    <Typography sx={{ color: "#008F4F", fontWeight: 800, fontSize: 13 }}>
+      {children}
+    </Typography>
+  );
 
   return (
     <Box sx={{ p: 3 }}>
@@ -374,7 +415,6 @@ export default function QuoteDetailPage() {
         <Typography variant="h5" fontWeight={700} mb={2}>
           Tarifas
         </Typography>
-
         {!Array.isArray(quote.tarifas) || quote.tarifas.length === 0 ? (
           <Typography color="text.secondary">
             No hay tarifas registradas.
@@ -434,12 +474,10 @@ export default function QuoteDetailPage() {
       </Box>
 
       {/* ACTIVACIÓN */}
-      {/* ACTIVACIÓN */}
       <Box mb={4}>
         <Typography variant="h5" fontWeight={700} mb={2}>
           Activación
         </Typography>
-
         {activacionesList.length === 0 ? (
           <Typography color="text.secondary">
             No hay activación para esta cotización.
@@ -449,12 +487,24 @@ export default function QuoteDetailPage() {
             <Table size="small">
               <TableHead>
                 <TableRow sx={{ backgroundColor: "#008F4F" }}>
-                  <TableCell sx={{ color: "white", fontWeight: 700 }}>Tipo</TableCell>
-                  <TableCell sx={{ color: "white", fontWeight: 700 }}>Cantidad</TableCell>
-                  <TableCell sx={{ color: "white", fontWeight: 700 }}>Costo activación</TableCell>
-                  <TableCell sx={{ color: "white", fontWeight: 700 }}>Costo impresión</TableCell>
-                  <TableCell sx={{ color: "white", fontWeight: 700 }}>Fechas</TableCell>
-                  <TableCell sx={{ color: "white", fontWeight: 700 }}>Puntos de distribución</TableCell>
+                  <TableCell sx={{ color: "white", fontWeight: 700 }}>
+                    Tipo
+                  </TableCell>
+                  <TableCell sx={{ color: "white", fontWeight: 700 }}>
+                    Cantidad
+                  </TableCell>
+                  <TableCell sx={{ color: "white", fontWeight: 700 }}>
+                    Costo activación
+                  </TableCell>
+                  <TableCell sx={{ color: "white", fontWeight: 700 }}>
+                    Costo impresión
+                  </TableCell>
+                  <TableCell sx={{ color: "white", fontWeight: 700 }}>
+                    Fechas
+                  </TableCell>
+                  <TableCell sx={{ color: "white", fontWeight: 700 }}>
+                    Puntos de distribución
+                  </TableCell>
                 </TableRow>
               </TableHead>
 
@@ -494,19 +544,17 @@ export default function QuoteDetailPage() {
         <Typography variant="h5" fontWeight={700} mb={2}>
           Desarrollo informativo
         </Typography>
-
         {!quote.desarrolloInformativo?.activo ? (
           <Typography color="text.secondary">
             No hay desarrollo informativo para esta cotización.
           </Typography>
         ) : (
-          <Card>
+          <Card sx={{ overflow: "hidden" }}>
+            <CardHeaderGreen title="Detalle" />
             <CardContent>
               <Grid container spacing={3}>
                 <Grid item xs={12} md={4}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Fecha
-                  </Typography>
+                  <Label>Fecha</Label>
                   <Typography mt={0.5}>
                     {quote.desarrolloInformativo?.fecha
                       ? formatDate(quote.desarrolloInformativo.fecha)
@@ -515,9 +563,7 @@ export default function QuoteDetailPage() {
                 </Grid>
 
                 <Grid item xs={12} md={8}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Formato
-                  </Typography>
+                  <Label>Formato</Label>
                   <Typography mt={0.5}>
                     {quote.desarrolloInformativo?.formato || "—"}
                   </Typography>
@@ -533,28 +579,24 @@ export default function QuoteDetailPage() {
         <Typography variant="h5" fontWeight={700} mb={2}>
           Posteo redes sociales
         </Typography>
-
         {!quote.posteoRedesSociales?.activo ? (
           <Typography color="text.secondary">
             No hay posteos en redes sociales para esta cotización.
           </Typography>
         ) : (
-          <Card>
+          <Card sx={{ overflow: "hidden" }}>
+            <CardHeaderGreen title="Detalle" />
             <CardContent>
               <Grid container spacing={3}>
                 <Grid item xs={12} md={4}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Cantidad de posteos
-                  </Typography>
+                  <Label>Cantidad de posteos</Label>
                   <Typography mt={0.5}>
                     {quote.posteoRedesSociales?.cantidad ?? 0}
                   </Typography>
                 </Grid>
 
                 <Grid item xs={12} md={8}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Fechas
-                  </Typography>
+                  <Label>Fechas</Label>
                   <Typography mt={0.5}>
                     {Array.isArray(quote.posteoRedesSociales?.fechas) &&
                       quote.posteoRedesSociales.fechas.length > 0
@@ -575,46 +617,38 @@ export default function QuoteDetailPage() {
         <Typography variant="h5" fontWeight={700} mb={2}>
           Intercambio
         </Typography>
-
         {!quote.intercambio?.activo ? (
           <Typography color="text.secondary">
             No hay intercambio para esta cotización.
           </Typography>
         ) : (
-          <Card>
+          <Card sx={{ overflow: "hidden" }}>
+            <CardHeaderGreen title="Detalle" />
             <CardContent>
               <Grid container spacing={3}>
                 <Grid item xs={12} md={3}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    % Efectivo
-                  </Typography>
+                  <Label>% Efectivo</Label>
                   <Typography mt={0.5}>
                     {quote.intercambio?.porcentajeEfectivo ?? 0}%
                   </Typography>
                 </Grid>
 
                 <Grid item xs={12} md={3}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    % Especie
-                  </Typography>
+                  <Label>% Especie</Label>
                   <Typography mt={0.5}>
                     {quote.intercambio?.porcentajeEspecie ?? 0}%
                   </Typography>
                 </Grid>
 
                 <Grid item xs={12} md={6}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Ofrecemos
-                  </Typography>
+                  <Label>Ofrecemos</Label>
                   <Typography mt={0.5}>
                     {quote.intercambio?.ofrecemos || "—"}
                   </Typography>
                 </Grid>
 
                 <Grid item xs={12}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Nos ofrecen
-                  </Typography>
+                  <Label>Nos ofrecen</Label>
                   <Typography mt={0.5}>
                     {quote.intercambio?.nosOfrecen || "—"}
                   </Typography>
@@ -630,28 +664,24 @@ export default function QuoteDetailPage() {
         <Typography variant="h5" fontWeight={700} mb={2}>
           Cortesías
         </Typography>
-
         {!quote.cortesias?.activo ? (
           <Typography color="text.secondary">
             No hay cortesías para esta cotización.
           </Typography>
         ) : (
-          <Card>
+          <Card sx={{ overflow: "hidden" }}>
+            <CardHeaderGreen title="Detalle" />
             <CardContent>
               <Grid container spacing={3}>
                 <Grid item xs={12} md={3}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Cantidad
-                  </Typography>
+                  <Label>Cantidad</Label>
                   <Typography mt={0.5}>
                     {quote.cortesias?.cantidad ?? 0}
                   </Typography>
                 </Grid>
 
                 <Grid item xs={12} md={9}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Fechas
-                  </Typography>
+                  <Label>Fechas</Label>
                   <Typography mt={0.5}>
                     {Array.isArray(quote.cortesias?.fechas) &&
                       quote.cortesias.fechas.length > 0
@@ -672,37 +702,29 @@ export default function QuoteDetailPage() {
         <Typography variant="h5" fontWeight={700} mb={2}>
           Ajustes de precios
         </Typography>
-
         {!tieneAjustes ? (
-          <Typography color="text.secondary">
-            Sin ajustes registrados.
-          </Typography>
+          <Typography color="text.secondary">Sin ajustes registrados.</Typography>
         ) : (
-          <Card>
+          <Card sx={{ overflow: "hidden" }}>
+            <CardHeaderGreen title="Detalle" />
             <CardContent>
               <Grid container spacing={3}>
                 <Grid item xs={12} md={4}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Tipo de acción
-                  </Typography>
+                  <Label>Tipo de acción</Label>
                   <Typography mt={0.5}>
                     {ajustes.tipoAccion || "Ninguno"}
                   </Typography>
                 </Grid>
 
                 <Grid item xs={12} md={4}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    % Ajuste
-                  </Typography>
+                  <Label>% Ajuste</Label>
                   <Typography mt={0.5}>
                     {ajustes.porcentajeAjuste || 0}%
                   </Typography>
                 </Grid>
 
                 <Grid item xs={12} md={4}>
-                  <Typography variant="subtitle2" color="text.secondary">
-                    Valor ajuste
-                  </Typography>
+                  <Label>Valor ajuste</Label>
                   <Typography mt={0.5}>
                     $
                     {(ajustes.valorAjuste || 0).toLocaleString("es-MX", {

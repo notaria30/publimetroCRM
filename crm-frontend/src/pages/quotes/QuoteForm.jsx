@@ -308,48 +308,61 @@ export default function QuoteForm({
       };
     });
   };
-
   // ----------------------
   // TOTAL
   // ----------------------
   const totalCalculado = useMemo(() => {
-    let total = 0;
+    let subtotalTarifas = 0;
+    let subtotalExtras = 0;
 
+    // 1) TARIFAS
     form.tarifas.forEach((t) => {
-      total += Number(t.totalLinea) || 0;
+      subtotalTarifas += Number(t.totalLinea) || 0;
     });
 
+    // 2) ACTIVACIONES (y demás extras)
     if (form.activacionesActivo) {
       (form.activaciones || []).forEach((a) => {
         if (a.activo) {
-          const cant = Number(a.cantidad) || 1;
+          const cantActiv = Number(a.cantidad) || 0;
           const ca = Number(a.costoActivacion) || 0;
+
+          const cantTipo = Number(a.cantidadTipo) || 0;     // fajillas etc
           const ci = Number(a.costoImpresion) || 0;
 
-          total += (ca + ci) * cant;
+          // ✅ activación por cantidad + impresiones por cantidadTipo
+          subtotalExtras += (cantActiv * ca) + (cantTipo * ci);
         }
       });
-
     }
 
+    // 3) APLICAR AJUSTE SOLO A TARIFAS
     const aj = form.ajustesPrecios;
+    let tarifasAjustadas = subtotalTarifas;
+
     if (aj.tipoAccion !== "Ninguno") {
-      if (aj.porcentajeAjuste > 0) {
-        const mod = (total * aj.porcentajeAjuste) / 100;
-        total = aj.tipoAccion === "Aumentar" ? total + mod : total - mod;
+      const porc = Number(aj.porcentajeAjuste) || 0;
+      const val = Number(aj.valorAjuste) || 0;
+
+      if (porc > 0) {
+        const mod = (tarifasAjustadas * porc) / 100;
+        tarifasAjustadas =
+          aj.tipoAccion === "Aumentar" ? tarifasAjustadas + mod : tarifasAjustadas - mod;
       }
-      if (aj.valorAjuste > 0) {
-        total =
-          aj.tipoAccion === "Aumentar"
-            ? total + aj.valorAjuste
-            : total - aj.valorAjuste;
+
+      if (val > 0) {
+        tarifasAjustadas =
+          aj.tipoAccion === "Aumentar" ? tarifasAjustadas + val : tarifasAjustadas - val;
       }
     }
+
+    // 4) TOTAL FINAL = tarifas ajustadas + extras sin ajustar
+    let total = tarifasAjustadas + subtotalExtras;
 
     if (total < 0) total = 0;
-
     return total;
   }, [form]);
+
 
   useEffect(() => {
     setForm((prev) =>
