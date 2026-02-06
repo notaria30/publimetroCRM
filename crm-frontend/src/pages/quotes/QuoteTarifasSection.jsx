@@ -7,12 +7,79 @@ import dayjs from "dayjs";
 export default function QuoteTarifasSection({
   form,
   setForm,
+  subtotalTarifas,
   handleTarifaField,
   handleTarifaFecha,
   handlePeriodicidadChange,
   addTarifa,
   removeTarifa,
 }) {
+  // ============================
+  // AJUSTES DE PRECIOS (AUTO)
+  // ============================
+
+  const handlePorcentajeChange = (raw) => {
+    // permitir borrar
+    if (raw === "") {
+      setForm((prev) => ({
+        ...prev,
+        ajustesPrecios: {
+          ...prev.ajustesPrecios,
+          porcentajeAjuste: "",
+          valorAjuste: "",
+        },
+      }));
+      return;
+    }
+
+    // solo números
+    if (!/^\d+$/.test(raw)) return;
+
+    const pct = Number(raw);
+    const valor = Math.round((subtotalTarifas * pct) / 100);
+
+    setForm((prev) => ({
+      ...prev,
+      ajustesPrecios: {
+        ...prev.ajustesPrecios,
+        porcentajeAjuste: pct,
+        valorAjuste: valor,
+      },
+    }));
+  };
+
+  const handleValorChange = (raw) => {
+    // permitir borrar
+    if (raw === "") {
+      setForm((prev) => ({
+        ...prev,
+        ajustesPrecios: {
+          ...prev.ajustesPrecios,
+          valorAjuste: "",
+          porcentajeAjuste: "",
+        },
+      }));
+      return;
+    }
+
+    if (!/^\d+$/.test(raw)) return;
+
+    const val = Number(raw);
+    const pct =
+      subtotalTarifas > 0
+        ? Math.round((val * 100) / subtotalTarifas)
+        : 0;
+
+    setForm((prev) => ({
+      ...prev,
+      ajustesPrecios: {
+        ...prev.ajustesPrecios,
+        valorAjuste: val,
+        porcentajeAjuste: pct,
+      },
+    }));
+  };
+
   const sanitizeDateTyping = (raw) => raw.replace(/[^\d-]/g, "").slice(0, 10);
   const isoToDayjs = (iso) => (iso ? dayjs(iso, "YYYY-MM-DD", true) : null);
   const dayjsToISO = (d) => (d && d.isValid() ? d.format("YYYY-MM-DD") : "");
@@ -169,22 +236,10 @@ export default function QuoteTarifasSection({
             <TextField
               fullWidth
               label="% Ajuste"
-              type="number"
+              type="text"
+              inputMode="numeric"
               value={form.ajustesPrecios.porcentajeAjuste}
-              onChange={(e) => {
-                const raw = e.target.value;
-                const pct = raw === "" ? "" : Number(raw);
-
-                setForm((prev) => ({
-                  ...prev,
-                  ajustesPrecios: {
-                    ...prev.ajustesPrecios,
-                    porcentajeAjuste: pct,
-                    valorAjuste: raw !== "" && Number(raw) > 0 ? 0 : prev.ajustesPrecios.valorAjuste,
-                  },
-                }));
-              }}
-
+              onChange={(e) => handlePorcentajeChange(e.target.value)}
             />
           </Grid>
 
@@ -193,23 +248,10 @@ export default function QuoteTarifasSection({
             <TextField
               fullWidth
               label="Valor ajuste"
-              type="number"
+              type="text"
+              inputMode="numeric"
               value={form.ajustesPrecios.valorAjuste}
-              onChange={(e) => {
-                const nextTipo = e.target.value;
-
-                setForm((prev) => ({
-                  ...prev,
-                  ajustesPrecios: {
-                    ...prev.ajustesPrecios,
-                    tipoAccion: nextTipo,
-
-                    porcentajeAjuste: nextTipo === "Ninguno" ? 0 : prev.ajustesPrecios.porcentajeAjuste,
-                    valorAjuste: nextTipo === "Ninguno" ? 0 : prev.ajustesPrecios.valorAjuste,
-                  },
-                }));
-              }}
-
+              onChange={(e) => handleValorChange(e.target.value)}
             />
           </Grid>
 

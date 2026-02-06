@@ -311,57 +311,60 @@ export default function QuoteForm({
   // ----------------------
   // TOTAL
   // ----------------------
+  const subtotalTarifas = useMemo(() => {
+    return form.tarifas.reduce(
+      (acc, t) => acc + (Number(t.totalLinea) || 0),
+      0
+    );
+  }, [form.tarifas]);
+
   const totalCalculado = useMemo(() => {
-    let subtotalTarifas = 0;
     let subtotalExtras = 0;
+    let tarifasBase = subtotalTarifas;
 
-    // 1) TARIFAS
-    form.tarifas.forEach((t) => {
-      subtotalTarifas += Number(t.totalLinea) || 0;
-    });
-
-    // 2) ACTIVACIONES (y demás extras)
+    // 1) ACTIVACIONES (extras)
     if (form.activacionesActivo) {
       (form.activaciones || []).forEach((a) => {
         if (a.activo) {
           const cantActiv = Number(a.cantidad) || 0;
           const ca = Number(a.costoActivacion) || 0;
 
-          const cantTipo = Number(a.cantidadTipo) || 0;     // fajillas etc
+          const cantTipo = Number(a.cantidadTipo) || 0;
           const ci = Number(a.costoImpresion) || 0;
 
-          // ✅ activación por cantidad + impresiones por cantidadTipo
           subtotalExtras += (cantActiv * ca) + (cantTipo * ci);
         }
       });
     }
 
-    // 3) APLICAR AJUSTE SOLO A TARIFAS
+    // 2) AJUSTE SOLO SOBRE TARIFAS
     const aj = form.ajustesPrecios;
-    let tarifasAjustadas = subtotalTarifas;
+    let tarifasAjustadas = tarifasBase;
 
     if (aj.tipoAccion !== "Ninguno") {
       const porc = Number(aj.porcentajeAjuste) || 0;
       const val = Number(aj.valorAjuste) || 0;
 
-      if (porc > 0) {
-        const mod = (tarifasAjustadas * porc) / 100;
-        tarifasAjustadas =
-          aj.tipoAccion === "Aumentar" ? tarifasAjustadas + mod : tarifasAjustadas - mod;
-      }
-
-      if (val > 0) {
-        tarifasAjustadas =
-          aj.tipoAccion === "Aumentar" ? tarifasAjustadas + val : tarifasAjustadas - val;
-      }
+if (porc > 0) {
+  const mod = (tarifasBase * porc) / 100;
+  tarifasAjustadas =
+    aj.tipoAccion === "Aumentar"
+      ? tarifasBase + mod
+      : tarifasBase - mod;
+} else if (val > 0) {
+  tarifasAjustadas =
+    aj.tipoAccion === "Aumentar"
+      ? tarifasBase + val
+      : tarifasBase - val;
+}
     }
 
-    // 4) TOTAL FINAL = tarifas ajustadas + extras sin ajustar
     let total = tarifasAjustadas + subtotalExtras;
-
     if (total < 0) total = 0;
+
     return total;
-  }, [form]);
+  }, [subtotalTarifas, form.activaciones, form.activacionesActivo, form.ajustesPrecios]);
+
 
 
   useEffect(() => {
@@ -463,6 +466,7 @@ export default function QuoteForm({
         <QuoteTarifasSection
           form={form}
           setForm={setForm}
+          subtotalTarifas={subtotalTarifas}
           handleTarifaField={handleTarifaField}
           handleTarifaFecha={handleTarifaFecha}
           handlePeriodicidadChange={handlePeriodicidadChange}
