@@ -92,8 +92,12 @@ function mapInitialQuoteToForm(quote) {
 
   const activaciones = activacionesRaw.map((a) => ({
     cantidad: a?.cantidad ?? 0,
-    costoActivacion: a?.costoActivacion ?? a?.costo ?? 0, // soporta legacy
+    costoActivacion: a?.costoActivacion ?? a?.costo ?? 0,
     costoImpresion: a?.costoImpresion ?? 0,
+    cantidadTipo: a?.cantidadTipo ?? 0,
+    totalImpresion:
+      a?.totalImpresion ??
+      ((a?.cantidadTipo ?? 0) * (a?.costoImpresion ?? 0)),
     tipo: a?.tipo || "",
     fechas: (a?.fechas || [])
       .map(formatDateInput)
@@ -329,10 +333,9 @@ export default function QuoteForm({
           const cantActiv = Number(a.cantidad) || 0;
           const ca = Number(a.costoActivacion) || 0;
 
-          const cantTipo = Number(a.cantidadTipo) || 0;
-          const ci = Number(a.costoImpresion) || 0;
+          const totalImp = Number(a.totalImpresion) || 0;
 
-          subtotalExtras += (cantActiv * ca) + (cantTipo * ci);
+          subtotalExtras += (cantActiv * ca) + totalImp;
         }
       });
     }
@@ -345,18 +348,18 @@ export default function QuoteForm({
       const porc = Number(aj.porcentajeAjuste) || 0;
       const val = Number(aj.valorAjuste) || 0;
 
-if (porc > 0) {
-  const mod = (tarifasBase * porc) / 100;
-  tarifasAjustadas =
-    aj.tipoAccion === "Aumentar"
-      ? tarifasBase + mod
-      : tarifasBase - mod;
-} else if (val > 0) {
-  tarifasAjustadas =
-    aj.tipoAccion === "Aumentar"
-      ? tarifasBase + val
-      : tarifasBase - val;
-}
+      if (porc > 0) {
+        const mod = (tarifasBase * porc) / 100;
+        tarifasAjustadas =
+          aj.tipoAccion === "Aumentar"
+            ? tarifasBase + mod
+            : tarifasBase - mod;
+      } else if (val > 0) {
+        tarifasAjustadas =
+          aj.tipoAccion === "Aumentar"
+            ? tarifasBase + val
+            : tarifasBase - val;
+      }
     }
 
     let total = tarifasAjustadas + subtotalExtras;
@@ -390,6 +393,7 @@ if (porc > 0) {
         cantidad: Number(a.cantidad) || 0,
         costoActivacion: Number(a.costoActivacion) || 0,
         costoImpresion: Number(a.costoImpresion) || 0,
+        totalImpresion: Number(a.totalImpresion) || 0,
         fechas: (a.fechas || []).filter(Boolean),
       }))
       : [],

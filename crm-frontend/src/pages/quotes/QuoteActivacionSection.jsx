@@ -25,6 +25,7 @@ const EMPTY_ACTIVACION = {
   costoImpresion: 0,
   tipo: "",
   cantidadTipo: 0,
+  totalImpresion: 0,
   fechas: [],
   puntosDistribucion: "",
 };
@@ -259,11 +260,26 @@ export default function QuoteActivacionSection({ form, setForm }) {
                   />
                 </Grid>
 
+                {/* TOTAL IMPRESIÓN (MANUAL) */}
+                <Grid size={{ xs: 12, md: 1.8 }}>
+                  <TextField
+                    fullWidth
+                    label="Total impresión"
+                    type="number"
+                    value={act.totalImpresion ?? 0}
+                    onChange={(e) =>
+                      updateActivacion(idx, {
+                        totalImpresion: e.target.value === "" ? "" : Number(e.target.value),
+                      })
+                    }
+                  />
+                </Grid>
+
                 {/* FECHAS */}
-                <Grid size={{ xs: 12, md: 12}}>
+                <Grid size={{ xs: 12, md: 12 }}>
                   <Grid container spacing={2}>
                     {(act.fechas || []).map((fecha, i) => (
-                     <Grid item xs={12} md={4} key={i}>
+                      <Grid item xs={12} md={4} key={i}>
                         <DatePicker
                           label={`Fecha ${i + 1}`}
                           value={isoToDayjs(fecha)}
