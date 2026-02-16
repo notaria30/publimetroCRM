@@ -66,8 +66,25 @@ export default function DashboardPage() {
     { label: "Total Clientes", value: overview.totalClientes, color: "#00C26A", icon: "👥" },
     { label: "Ventas Cerradas", value: overview.ventasCerradas, color: "#008F4F", icon: "💼" },
     { label: "Total Cotizaciones", value: overview.totalCotizaciones, color: "#1976D2", icon: "🧾" },
-    { label: "Total Facturado", value: `$${overview.totalFacturado.toFixed(2)}`, color: "#00663A", icon: "💵" },
-    { label: "Pendiente de Pago", value: `$${overview.totalPendiente.toFixed(2)}`, color: "#B00020", icon: "⏳" },
+{ 
+  label: "Total Facturado", 
+  value: `$${overview.totalFacturado.toLocaleString("es-MX", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`, 
+  color: "#00663A", 
+  icon: "💵" 
+},
+{ 
+  label: "Pendiente de Pago", 
+  value: `$${overview.totalPendiente.toLocaleString("es-MX", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })}`, 
+  color: "#B00020", 
+  icon: "⏳" 
+},
+
   ];
 
   return (
@@ -160,12 +177,12 @@ export default function DashboardPage() {
       <Card sx={{ p: 2, borderRadius: 2, mb: 4 }}>
         <Typography sx={{ fontSize: 18, mb: 1 }}>
           <strong style={{ color: "#008F4F" }}>Pagado:</strong>{" "}
-          ${billing.pagado.toFixed(2)}
+          ${billing.pagado.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
         </Typography>
 
         <Typography sx={{ fontSize: 18, mb: 1 }}>
           <strong style={{ color: "#B00020" }}>Pendiente:</strong>{" "}
-          ${billing.pendiente.toFixed(2)}
+          ${billing.pendiente.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
         </Typography>
 
         {billing.pagado + billing.pendiente > 0 && (
