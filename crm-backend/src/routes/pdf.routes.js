@@ -113,6 +113,11 @@ Atentamente,`;
       if (Number.isNaN(dt.getTime())) return "—";
       return dt.toLocaleDateString("es-MX");
     };
+    const fmtDur = (d) => {
+      const n = Number(d) || 0;
+      if (!n) return "—";
+      return `${n} ${n === 1 ? "mes" : "meses"}`;
+    };
     const getCostosActivacion = (act) => {
       const costoActivacion =
         Number(act?.costoActivacion ?? act?.costo ?? 0) || 0; // ✅ si viene viejo "costo" úsalo
@@ -159,16 +164,15 @@ Atentamente,`;
 
     const sectionTitle = (title) => {
       ensureSpace(doc, 60);
-      doc.moveDown(0.6);
-      doc.fontSize(15).fillColor("#0A6A44").text(title);
-      doc.moveDown(0.3);
-      doc.strokeColor("#D7E9DF").lineWidth(1).moveTo(50, doc.y).lineTo(550, doc.y).stroke();
-      doc.moveDown(0.6);
+      const atTop = doc.y < 70; // evitar espacios extra al inicio de página
+      if (!atTop) doc.moveDown(0.6);
+      // Título subrayado (como Tarifas) y sin línea verde decorativa
+      doc.fontSize(16).fillColor("#0A6A44").text(title, { underline: true });
+      if (!atTop) doc.moveDown(0.6);
       doc.fillColor("black").fontSize(11);
     };
     const drawSimpleTable = (headers, rows, colWidths, options = {}) => {
       const startX = 50;
-      let y = doc.y;
 
       const {
         headerBg = "#0A6A44",
@@ -178,15 +182,25 @@ Atentamente,`;
         bodyFontSize = 12,
         cellPadding = 6,
         headerAlign = "center",
-        bodyAlign = "left",
+        bodyAlign = "center",
         headerH = 32,
         minRowHeight = 26,
       } = options;
 
       const tableWidth = colWidths.reduce((a, b) => a + b, 0);
 
+      // Control de espacio usando Y local
+      let y = doc.y;
+      const ensureSpaceY = (needed) => {
+        const bottomLimit = doc.page.height - 100;
+        if (y + needed > bottomLimit) {
+          doc.addPage();
+          y = doc.y;
+        }
+      };
+
       // Asegura espacio mínimo (header + 1 fila)
-      ensureSpace(doc, headerH + minRowHeight + 20);
+      ensureSpaceY(headerH + minRowHeight + 20);
 
       // ===== HEADER =====
       doc.save();
@@ -229,7 +243,7 @@ Atentamente,`;
           rowHeight = Math.max(rowHeight, h + cellPadding * 2);
         });
 
-        ensureSpace(doc, rowHeight + 10);
+        ensureSpaceY(rowHeight + 10);
 
         // 2) dibujar texto por celda
         x = startX;
@@ -372,9 +386,7 @@ Atentamente,`;
       !!quote.formaPago || !!quote.metodoPago || !!quote.usoCFDI || !!quote.facturacionEstado;
 
     if (hasPagoInfo) {
-      doc.moveDown(0.6);
-      doc.fontSize(12).fillColor("#0A6A44").text("Datos de facturación");
-      doc.fillColor("black").fontSize(11).moveDown(0.2);
+      sectionTitle("Datos de facturación");
 
       if (quote.formaPago) keyValue("Forma de pago:", quote.formaPago);
       if (quote.metodoPago) keyValue("Método de pago:", quote.metodoPago);
@@ -386,12 +398,27 @@ Atentamente,`;
           quote.facturacionEstado === "facturado" ? "Facturado" : "Por facturar"
         );
       }
+
+      // Duración justo antes del título principal
+      if (quote.duracion) {
+        doc.moveDown(0.5);
+        keyValue("Duración:", fmtDur(quote.duracion));
+      }
+
+      // Título centrado de la sección principal de la cotización
+      doc.moveDown(1);
+      doc.fontSize(18).fillColor("#0A6A44").text("Cotización de Servicios", {
+        align: "center",
+        underline: true,
+      });
+      doc.fillColor("black").fontSize(11);
+      doc.moveDown(0.5);
     }
 
-    // Duración (solo si hay)
-    if (quote.duracion) {
+    // Duración (si no hubo datos de facturación)
+    if (!hasPagoInfo && quote.duracion) {
       doc.moveDown(0.5);
-      keyValue("Duración:", quote.duracion, "mes");
+      keyValue("Duración:", fmtDur(quote.duracion));
     }
 
     // ===========================
@@ -425,6 +452,7 @@ Atentamente,`;
         width: colWidths[i] - 10,
         lineBreak: false,
         ellipsis: true,
+        align: "center",
       });
       x += colWidths[i];
     });
@@ -499,6 +527,7 @@ Atentamente,`;
           width: colWidths[i] - 10,
           ellipsis: true,
           lineBreak: false,
+          align: "center",
         });
         xRow += colWidths[i];
       });
@@ -544,12 +573,17 @@ Atentamente,`;
       sectionTitle("Activaciones");
 
       activas.forEach((act, idx) => {
-        ensureSpace(doc, 160); // un poco más para evitar cortes feos entre páginas
-
+        // Bloque atómico: título + tabla de 1 fila
+        {
+        const needed = 24 /*título*/ + 32 /*header*/ + 28 /*fila*/ + 18;
+        const bottomLimit = doc.page.height - 100;
+        if (doc.y + needed > bottomLimit) doc.addPage();
+        }
+        
         doc
-          .fontSize(12)
-          .fillColor("#0A6A44")
-          .text(`Activación ${idx + 1}`);
+        .fontSize(12)
+        .fillColor("#0A6A44")
+        .text(`Activación ${idx + 1}`);
         doc.fillColor("black").fontSize(11);
         doc.moveDown(0.3);
 
@@ -579,7 +613,7 @@ Atentamente,`;
             bodyFontSize: 12,
             cellPadding: 6,
             headerAlign: "center",
-            bodyAlign: "left",
+            bodyAlign: "center",
           }
         );
 
@@ -707,6 +741,7 @@ Atentamente,`;
       .text(money(quote.total), 50, doc.y, { width: 500, align: "right" });
     doc.fillColor("black").fontSize(11);
     doc.moveDown(1.2);
+    doc.addPage();
     doc.x = 50;
 
     // ===========================
@@ -724,14 +759,14 @@ Leído que fue por ambas partes el presente instrumento y una vez enterados de s
 El presente documento se firma de conformidad en el lugar y fecha que ha quedado manifestado en la carátula que se encuentra al anverso.
 `;
 
-    // Texto final más compacto y que se divide en páginas automáticamente
+    // Texto final más compacto con letra aún más pequeña
     doc
-      .fontSize(8)
+      .fontSize(7)
       .fillColor("black")
       .text(textoFinal, 50, doc.y, {
         width: 500,
         align: "justify",
-        lineGap: 0.5,
+        lineGap: 0.4,
       });
 
     doc.moveDown(1);
@@ -801,9 +836,6 @@ El presente documento se firma de conformidad en el lugar y fecha que ha quedado
     // PIE DE PÁGINA
     // ===========================
     const bottom = doc.page.height - 80;
-    if (doc.y > bottom - 100) {
-      doc.addPage();
-    }
 
     doc
       .fontSize(10)

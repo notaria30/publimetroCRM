@@ -5,20 +5,20 @@ export const getSalesReport = (params) =>
   api.get("/reports/sales", { params });
 
 // Proyecciones
-export const getProjections = () =>
-  api.get("/reports/projections");
+export const getProjections = (options = {}) =>
+  api.get("/reports/projections", options);
 
 // Clientes activos
 export const getActiveClients = () =>
   api.get("/reports/clientes-activos");
 
 // Publicidad
-export const getPublicidadReport = () =>
-  api.get("/reports/publicidad");
+export const getPublicidadReport = (options = {}) =>
+  api.get("/reports/publicidad", options);
 
 // Activaciones
-export const getActivacionesReport = () =>
-  api.get("/reports/activaciones");
+export const getActivacionesReport = (options = {}) =>
+  api.get("/reports/activaciones", options);
 
 // Analytics
 export const getAnalytics = () =>

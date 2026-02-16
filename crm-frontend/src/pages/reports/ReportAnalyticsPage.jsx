@@ -10,32 +10,44 @@ import {
   Button,
   CircularProgress,
   Chip,
+  TextField,
 } from "@mui/material";
 
 export default function ReportAnalyticsPage() {
   const [data, setData] = useState(null);
+  const [filters, setFilters] = useState({ startDate: "", endDate: "", userId: "" });
+  const [loading, setLoading] = useState(false);
+
+  async function load(params) {
+    try {
+      setLoading(true);
+      const res = await getAnalytics({ params });
+      setData(res.data);
+    } catch (e) {
+      setData(null);
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handleApply = () => {
+    const params = {};
+    if (filters.startDate) params.startDate = filters.startDate;
+    if (filters.endDate) params.endDate = filters.endDate;
+    if (filters.userId) params.userId = filters.userId;
+    load(params);
+  };
 
   useEffect(() => {
-    async function load() {
-      const res = await getAnalytics();
-      setData(res.data);
-    }
-    load();
+    // No cargar sin rango de fechas (es obligatorio). El usuario debe aplicar filtros.
   }, []);
 
-  if (!data)
+  if (loading)
     return (
-      <Box
-        display="flex"
-        justifyContent="center"
-        alignItems="center"
-        mt={10}
-      >
+      <Box display="flex" justifyContent="center" alignItems="center" mt={10}>
         <CircularProgress />
       </Box>
     );
-
-  const diferenciaPositiva = data.comparativo >= 0;
 
   return (
     <Box maxWidth="1200px" mx="auto" mt={4} px={3}>
@@ -43,87 +55,120 @@ export default function ReportAnalyticsPage() {
         Analítica de Ventas
       </Typography>
 
-      {/* TARJETA PRINCIPAL */}
-      <Card elevation={4} sx={{ borderRadius: 3, p: 2 }}>
+      <Card elevation={3} sx={{ mb: 2 }}>
         <CardContent>
-          <Grid container spacing={4}>
-            
-            {/* MES ACTUAL */}
-            <Grid item xs={12} md={4}>
-              <Card
-                elevation={2}
-                sx={{
-                  p: 3,
-                  borderRadius: 3,
-                  backgroundColor: "#F0F4FF",
-                }}
-              >
-                <Typography variant="h6" fontWeight={600}>
-                  Ventas Mes Actual
-                </Typography>
-                <Typography variant="h4" fontWeight={700} mt={1}>
-                  ${data.mesActual.toLocaleString("es-MX")}
-                </Typography>
-              </Card>
+          <Grid container spacing={2}>
+            <Grid item xs={12} md={3}>
+              <TextField
+                fullWidth
+                label="Fecha inicio"
+                type="date"
+                InputLabelProps={{ shrink: true }}
+                value={filters.startDate}
+                onChange={(e) => setFilters((f) => ({ ...f, startDate: e.target.value }))}
+              />
             </Grid>
-
-            {/* MES ANTERIOR */}
-            <Grid item xs={12} md={4}>
-              <Card
-                elevation={2}
-                sx={{
-                  p: 3,
-                  borderRadius: 3,
-                  backgroundColor: "#FFF5E6",
-                }}
-              >
-                <Typography variant="h6" fontWeight={600}>
-                  Ventas Mes Anterior
-                </Typography>
-                <Typography variant="h4" fontWeight={700} mt={1}>
-                  ${data.mesAnterior.toLocaleString("es-MX")}
-                </Typography>
-              </Card>
+            <Grid item xs={12} md={3}>
+              <TextField
+                fullWidth
+                label="Fecha fin"
+                type="date"
+                InputLabelProps={{ shrink: true }}
+                value={filters.endDate}
+                onChange={(e) => setFilters((f) => ({ ...f, endDate: e.target.value }))}
+              />
             </Grid>
-
-            {/* DIFERENCIA */}
             <Grid item xs={12} md={4}>
-              <Card
-                elevation={2}
-                sx={{
-                  p: 3,
-                  borderRadius: 3,
-                  backgroundColor: diferenciaPositiva ? "#E8F7EE" : "#FDEAEA",
-                }}
-              >
-                <Typography variant="h6" fontWeight={600}>
-                  Diferencia
-                </Typography>
-
-                <Box mt={2}>
-                  <Chip
-                    label={
-                      (diferenciaPositiva ? "+" : "") +
-                      data.comparativo.toLocaleString("es-MX")
-                    }
-                    color={diferenciaPositiva ? "success" : "error"}
-                    sx={{ fontSize: "1.1rem", px: 2, py: 2 }}
-                  />
-                </Box>
-              </Card>
+              <TextField
+                fullWidth
+                label="Vendedor (opcional)"
+                placeholder="ID de usuario"
+                value={filters.userId}
+                onChange={(e) => setFilters((f) => ({ ...f, userId: e.target.value }))}
+              />
             </Grid>
-
+            <Grid item xs={12} md={2} display="flex" alignItems="center">
+              <Button variant="contained" onClick={handleApply}>Aplicar</Button>
+            </Grid>
           </Grid>
         </CardContent>
       </Card>
 
-      {/* VOLVER */}
+      {!data ? (
+        <Typography variant="body1" color="text.secondary">
+          Selecciona un rango de fechas y aplica filtros para ver la analítica.
+        </Typography>
+      ) : (
+        <Grid container spacing={3}>
+          {/* Funnel Comercial */}
+          <Grid item xs={12} md={6}>
+            <Card elevation={4} sx={{ borderRadius: 3, p: 2 }}>
+              <CardContent>
+                <Typography variant="h6" fontWeight={700} mb={2}>Funnel Comercial</Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={6}>
+                    <Typography variant="body2" color="text.secondary">Cotizaciones</Typography>
+                    <Typography variant="h5" fontWeight={700}>{Number(data.funnel.totalQuotes || 0)}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="body2" color="text.secondary">Aprobadas</Typography>
+                    <Typography variant="h5" fontWeight={700}>{Number(data.funnel.approvedQuotes || 0)}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="body2" color="text.secondary">Ventas Cerradas</Typography>
+                    <Typography variant="h5" fontWeight={700}>{Number(data.funnel.closedSales || 0)}</Typography>
+                  </Grid>
+                  <Grid item xs={6}>
+                    <Typography variant="body2" color="text.secondary">Conversión</Typography>
+                    <Typography variant="h5" fontWeight={700}>{Number(data.funnel.conversionRate || 0).toFixed(1)}%</Typography>
+                  </Grid>
+                  <Grid item xs={12}>
+                    <Typography variant="body2" color="text.secondary">Cancelación</Typography>
+                    <Typography variant="h6" fontWeight={700}>{Number(data.funnel.cancelRate || 0).toFixed(1)}%</Typography>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Tiempo promedio de cierre */}
+          <Grid item xs={12} md={6}>
+            <Card elevation={4} sx={{ borderRadius: 3, p: 2 }}>
+              <CardContent>
+                <Typography variant="h6" fontWeight={700} mb={2}>Tiempo Promedio de Cierre</Typography>
+                <Typography variant="h3" fontWeight={800}>{Number(data.avgCloseTimeDays || 0).toFixed(1)} días</Typography>
+                <Typography variant="body2" color="text.secondary">Promedio entre creación de la cotización y creación de la venta.</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Retención */}
+          <Grid item xs={12}>
+            <Card elevation={4} sx={{ borderRadius: 3, p: 2 }}>
+              <CardContent>
+                <Typography variant="h6" fontWeight={700} mb={2}>Retención de Clientes</Typography>
+                <Grid container spacing={2}>
+                  <Grid item xs={12} md={4}>
+                    <Typography variant="body2" color="text.secondary">Clientes retenidos</Typography>
+                    <Typography variant="h5" fontWeight={700}>{Number(data.retention.clientesRetenidos || 0)}</Typography>
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <Typography variant="body2" color="text.secondary">Clientes activos</Typography>
+                    <Typography variant="h5" fontWeight={700}>{Number(data.retention.totalClientesActivos || 0)}</Typography>
+                  </Grid>
+                  <Grid item xs={12} md={4}>
+                    <Typography variant="body2" color="text.secondary">Tasa de Retención</Typography>
+                    <Typography variant="h5" fontWeight={700}>{Number(data.retention.retentionRate || 0).toFixed(1)}%</Typography>
+                  </Grid>
+                </Grid>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
+
       <Box mt={4}>
-        <Button
-          variant="outlined"
-          size="large"
-          onClick={() => window.history.back()}
-        >
+        <Button variant="outlined" size="large" onClick={() => window.history.back()}>
           Volver
         </Button>
       </Box>

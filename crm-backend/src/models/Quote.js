@@ -20,7 +20,7 @@ const activacionSchema = new mongoose.Schema(
     costo: { type: Number, default: 0 },
     tipo: { type: String },
     cantidadTipo: { type: Number, default: 0 },
-    totalImpresion: { type: Number, default: 0 }, 
+    total: { type: Number, default: 0 },
     fechas: [Date],
     puntosDistribucion: { type: String },
   },
@@ -202,6 +202,23 @@ quoteSchema.pre("validate", function (next) {
       return a;
     });
   }
+  
+  // Recalcular total de cada activación automáticamente
+  if (Array.isArray(this.activaciones)) {
+    this.activaciones = this.activaciones.map((a) => {
+      if (!a) return a;
+
+      const totalActivacion =
+        (Number(a.cantidad) || 0) * (Number(a.costoActivacion) || 0) +
+        (Number(a.cantidadTipo) || 0) * (Number(a.costoImpresion) || 0);
+
+      return {
+        ...a.toObject?.() ?? a,
+        total: totalActivacion,
+      };
+    });
+  }
+
 
   next();
 });

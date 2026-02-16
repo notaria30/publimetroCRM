@@ -25,7 +25,7 @@ const EMPTY_ACTIVACION = {
   costoImpresion: 0,
   tipo: "",
   cantidadTipo: 0,
-  totalImpresion: 0,
+  total: 0,
   fechas: [],
   puntosDistribucion: "",
 };
@@ -43,6 +43,15 @@ export default function QuoteActivacionSection({ form, setForm }) {
 
 
   const activaciones = form.activaciones || [];
+  const calcularTotalActivacion = (a) => {
+    const cantidad = Number(a.cantidad) || 0;
+    const costoActivacion = Number(a.costoActivacion) || 0;
+    const cantidadTipo = Number(a.cantidadTipo) || 0;
+    const costoImpresion = Number(a.costoImpresion) || 0;
+
+    return (cantidad * costoActivacion) + (cantidadTipo * costoImpresion);
+  };
+
   const isEnabled = !!form.activacionesActivo;
 
   const addActivacion = () => {
@@ -76,11 +85,22 @@ export default function QuoteActivacionSection({ form, setForm }) {
   const updateActivacion = (index, patch) => {
     setForm((prev) => {
       const next = [...(prev.activaciones || [])];
-      next[index] = { ...next[index], ...patch };
+      const updated = { ...next[index], ...patch };
+
+      const cantidad = Number(updated.cantidad) || 0;
+      const costoActivacion = Number(updated.costoActivacion) || 0;
+      const cantidadTipo = Number(updated.cantidadTipo) || 0;
+      const costoImpresion = Number(updated.costoImpresion) || 0;
+
+      updated.total =
+        (cantidad * costoActivacion) +
+        (cantidadTipo * costoImpresion);
+
+      next[index] = updated;
+
       return { ...prev, activaciones: next };
     });
   };
-
 
   const handleDateChange = (index, fechaIndex, value) => {
     setForm((prev) => {
@@ -188,6 +208,8 @@ export default function QuoteActivacionSection({ form, setForm }) {
 
                         const newCantidad = Math.max(0, Number(raw));
                         a.cantidad = newCantidad;
+                        a.total = (newCantidad * (Number(a.costoActivacion) || 0)) +
+                          ((Number(a.cantidadTipo) || 0) * (Number(a.costoImpresion) || 0));
                         a.fechas = resizeFechas(a.fechas || [], newCantidad);
 
                         next[idx] = a;
@@ -260,18 +282,16 @@ export default function QuoteActivacionSection({ form, setForm }) {
                   />
                 </Grid>
 
-                {/* TOTAL IMPRESIÓN (MANUAL) */}
+                {/* TOTAL (AUTOMÁTICO) */}
                 <Grid size={{ xs: 12, md: 1.8 }}>
                   <TextField
                     fullWidth
-                    label="Total impresión"
+                    label="Total"
                     type="number"
-                    value={act.totalImpresion ?? 0}
-                    onChange={(e) =>
-                      updateActivacion(idx, {
-                        totalImpresion: e.target.value === "" ? "" : Number(e.target.value),
-                      })
-                    }
+                    value={calcularTotalActivacion(act)}
+                    InputProps={{
+                      readOnly: true,
+                    }}
                   />
                 </Grid>
 
