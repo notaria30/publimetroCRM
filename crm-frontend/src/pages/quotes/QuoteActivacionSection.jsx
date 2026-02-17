@@ -46,10 +46,9 @@ export default function QuoteActivacionSection({ form, setForm }) {
   const calcularTotalActivacion = (a) => {
     const cantidad = Number(a.cantidad) || 0;
     const costoActivacion = Number(a.costoActivacion) || 0;
-    const cantidadTipo = Number(a.cantidadTipo) || 0;
     const costoImpresion = Number(a.costoImpresion) || 0;
 
-    return (cantidad * costoActivacion) + (cantidadTipo * costoImpresion);
+    return (cantidad * costoActivacion) + costoImpresion;
   };
 
   const isEnabled = !!form.activacionesActivo;
@@ -94,7 +93,7 @@ export default function QuoteActivacionSection({ form, setForm }) {
 
       updated.total =
         (cantidad * costoActivacion) +
-        (cantidadTipo * costoImpresion);
+        costoImpresion;
 
       next[index] = updated;
 
@@ -208,8 +207,9 @@ export default function QuoteActivacionSection({ form, setForm }) {
 
                         const newCantidad = Math.max(0, Number(raw));
                         a.cantidad = newCantidad;
-                        a.total = (newCantidad * (Number(a.costoActivacion) || 0)) +
-                          ((Number(a.cantidadTipo) || 0) * (Number(a.costoImpresion) || 0));
+                        a.total =
+                          (newCantidad * (Number(a.costoActivacion) || 0)) +
+                          (Number(a.costoImpresion) || 0);
                         a.fechas = resizeFechas(a.fechas || [], newCantidad);
 
                         next[idx] = a;

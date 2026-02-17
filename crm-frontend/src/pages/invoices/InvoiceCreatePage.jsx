@@ -29,7 +29,7 @@ export default function InvoiceCreatePage() {
   const [selectedClient, setSelectedClient] = useState(null);
   const isoToDayjs = (iso) => (iso ? dayjs(iso) : null);
   const dayjsToISO = (d) => (d ? d.toISOString() : "");
-
+  const [paymentManuallyEdited, setPaymentManuallyEdited] = useState(false);
 
   const [form, setForm] = useState({
     client: "",
@@ -73,16 +73,17 @@ export default function InvoiceCreatePage() {
     loadQuotes();
   }, [form.client, clients]);
 
-  /** AUTOCOMPLETAR IMPORTE DE COTIZACION */
+  /** AUTOCOMPLETAR DATOS DE COTIZACION */
   useEffect(() => {
     if (!form.quote) {
       setForm((prev) => ({
         ...prev,
         formaPago: "",
+        metodoPago: "PUE", // valor default si no hay cotización
       }));
       return;
     }
-    
+
     const selectedQuote = quotes.find((q) => q._id === form.quote);
     if (!selectedQuote) return;
 
@@ -92,7 +93,8 @@ export default function InvoiceCreatePage() {
       ...prev,
       importeSinIVA: importe,
       importeConIVA: Number((importe * 1.16).toFixed(2)),
-      formaPago: selectedQuote.formaPago || "",
+      formaPago: paymentManuallyEdited ? prev.formaPago : (selectedQuote.formaPago || ""),
+      metodoPago: paymentManuallyEdited ? prev.metodoPago : (selectedQuote.metodoPago || "PUE"),
     }));
   }, [form.quote, quotes]);
 
@@ -112,9 +114,17 @@ export default function InvoiceCreatePage() {
 
 
   const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-  };
+    const { name, value } = e.target;
 
+    if (name === "formaPago" || name === "metodoPago") {
+      setPaymentManuallyEdited(true);
+    }
+
+    setForm((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -270,7 +280,6 @@ export default function InvoiceCreatePage() {
                     label="Forma de pago"
                     onChange={handleChange}
                     required
-                    disabled={!form.quote} // opcional: solo si hay cotización ligada
                   >
                     <MenuItem value="Efectivo">Efectivo</MenuItem>
                     <MenuItem value="Transferencia">Transferencia</MenuItem>

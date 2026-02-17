@@ -95,10 +95,9 @@ function mapInitialQuoteToForm(quote) {
     costoActivacion: a?.costoActivacion ?? a?.costo ?? 0,
     costoImpresion: a?.costoImpresion ?? 0,
     cantidadTipo: a?.cantidadTipo ?? 0,
-    total:
-      a?.total ??
-      ((a?.cantidad ?? 0) * (a?.costoActivacion ?? 0)) +
-      ((a?.cantidadTipo ?? 0) * (a?.costoImpresion ?? 0)),
+total:
+  a?.total ??
+  ((a?.cantidad ?? 0) * (a?.costoActivacion ?? 0)),
     tipo: a?.tipo || "",
     fechas: (a?.fechas || [])
       .map(formatDateInput)
