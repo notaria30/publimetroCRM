@@ -185,7 +185,7 @@ function ReportSalesPage() {
 
 
   return (
-    <Box maxWidth="1400px" mx="auto" mt={4} px={3} pb={6}>
+    <Box width="100%" maxWidth="1800px" mx="auto" mt={4} px={3} pb={6}>
       {/* HEADER */}
       <Box
         display="flex"
@@ -213,7 +213,7 @@ function ReportSalesPage() {
 
       {/* FILTROS */}
       <Card elevation={3} sx={{ mb: 3 }}>
-        <CardContent>
+        <CardContent sx={{ p: 3 }}>
           <Box
             display="flex"
             justifyContent="space-between"
@@ -348,7 +348,7 @@ function ReportSalesPage() {
         <Grid container spacing={2} mb={3}>
           <Grid item xs={12} md={4}>
             <Card elevation={1}>
-              <CardContent>
+              <CardContent sx={{ p: 3 }}>
                 <Typography
                   variant="overline"
                   color="text.secondary"
@@ -368,7 +368,7 @@ function ReportSalesPage() {
 
           <Grid item xs={12} md={4}>
             <Card elevation={1}>
-              <CardContent>
+              <CardContent sx={{ p: 3 }}>
                 <Typography
                   variant="overline"
                   color="text.secondary"
@@ -388,7 +388,7 @@ function ReportSalesPage() {
 
           <Grid item xs={12} md={4}>
             <Card elevation={1}>
-              <CardContent>
+              <CardContent sx={{ p: 3 }}>
                 <Typography
                   variant="overline"
                   color="text.secondary"
@@ -410,23 +410,29 @@ function ReportSalesPage() {
 
       {/* GRÁFICAS */}
       {stats && (
-        <Grid container spacing={3} mb={4}>
+        <Grid container spacing={4} mb={4}>
           {/* Ventas por Cliente */}
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={7}>
             <Card elevation={2} sx={{ height: "100%" }}>
-              <CardContent>
+              <CardContent sx={{ p: 3 }}>
                 <Typography variant="h6" mb={1.5}>
                   Ventas por Cliente
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
                 <Box sx={{ width: "100%", height: 300 }}>
                   <ResponsiveContainer>
-                    <BarChart data={toChartDataNumber(stats.porCliente)}>
-                      <XAxis dataKey="name" />
+                    <BarChart data={toChartDataNumber(stats.porCliente)}
+                      margin={{ top: 10, right: 30, left: 20, bottom: 60 }}>
+                      <XAxis
+                        dataKey="name"
+                        angle={-25}
+                        textAnchor="end"
+                        height={70}
+                      />
                       <YAxis />
                       <Tooltip />
                       <Legend />
-                      <Bar dataKey="value" />
+                      <Bar dataKey="value" barSize={40} />
                     </BarChart>
                   </ResponsiveContainer>
                 </Box>
@@ -435,21 +441,27 @@ function ReportSalesPage() {
           </Grid>
 
           {/* Ventas por Ejecutivo */}
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={7}>
             <Card elevation={2} sx={{ height: "100%" }}>
-              <CardContent>
+              <CardContent sx={{ p: 3 }}>
                 <Typography variant="h6" mb={1.5}>
                   Ventas por Ejecutivo
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
-                <Box sx={{ width: "100%", height: 300 }}>
+                <Box sx={{ width: "100%", height: 420 }}>
                   <ResponsiveContainer>
-                    <BarChart data={toChartDataAmount(stats.porEjecutivo)}>
-                      <XAxis dataKey="name" />
+                    <BarChart data={toChartDataAmount(stats.porEjecutivo)}
+                      margin={{ top: 10, right: 30, left: 20, bottom: 60 }}>
+                      <XAxis
+                        dataKey="name"
+                        angle={-25}
+                        textAnchor="end"
+                        height={70}
+                      />
                       <YAxis />
                       <Tooltip />
                       <Legend />
-                      <Bar dataKey="totalMonto" name="Monto total" />
+                      <Bar dataKey="totalMonto" name="Monto total" barSize={40} />
                     </BarChart>
                   </ResponsiveContainer>
                 </Box>
@@ -460,12 +472,12 @@ function ReportSalesPage() {
           {/* Tipo de Cliente */}
           <Grid item xs={12} md={6}>
             <Card elevation={2} sx={{ height: "100%" }}>
-              <CardContent>
+              <CardContent sx={{ p: 3 }}>
                 <Typography variant="h6" mb={1.5}>
                   Distribución por Tipo de Cliente
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
-                <Box sx={{ width: "100%", height: 300 }}>
+                <Box sx={{ width: "100%", height: 420 }}>
                   <ResponsiveContainer>
                     <PieChart>
                       <Pie
@@ -492,12 +504,12 @@ function ReportSalesPage() {
           {/* Ventas por Mes */}
           <Grid item xs={12} md={6}>
             <Card elevation={2} sx={{ height: "100%" }}>
-              <CardContent>
+              <CardContent sx={{ p: 3 }}>
                 <Typography variant="h6" mb={1.5}>
                   Ventas por Mes
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
-                <Box sx={{ width: "100%", height: 300 }}>
+                <Box sx={{ width: "100%", height: 420 }}>
                   <ResponsiveContainer>
                     <LineChart data={toChartDataAmount(stats.porMes)}>
                       <XAxis dataKey="name" />
@@ -516,7 +528,7 @@ function ReportSalesPage() {
 
       {/* TABLA DETALLE */}
       <Card elevation={3}>
-        <CardContent>
+        <CardContent sx={{ p: 3 }}>
           <Box
             display="flex"
             justifyContent="space-between"
@@ -590,5 +602,4 @@ function ReportSalesPage() {
     </Box>
   );
 }
-
 export default ReportSalesPage;
