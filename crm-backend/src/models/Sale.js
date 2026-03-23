@@ -32,8 +32,19 @@ const saleSchema = new mongoose.Schema(
       default: "prospeccion",
     },
 
-    // ❗ YA NO USAREMOS "notes" COMO STRING
-    // Notas de seguimiento (cada nota en lista)
+    // 👈 NUEVOS CAMPOS PARA FACTURACIÓN
+    metodoPago: {
+      type: String,
+      enum: ["PUE", "PPD"],
+      default: "PUE",
+    },
+    formaPago: {
+      type: String,
+      enum: ["Efectivo", "Transferencia", "Tarjeta", "Cheque", "Otro"],
+      default: "Transferencia",
+    },
+
+    // Notas de seguimiento
     followUpNotes: [
       {
         text: String,
@@ -42,7 +53,7 @@ const saleSchema = new mongoose.Schema(
       },
     ],
 
-    // Tareas / Próximos pasos
+    // Tareas
     tasks: [
       {
         title: String,

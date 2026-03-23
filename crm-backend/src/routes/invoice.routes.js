@@ -13,6 +13,7 @@ router.post("/", auth, async (req, res) => {
     const {
       client,
       quote,
+      sale,
       numeroFactura,
       fechaFactura,
       importeSinIVA,
@@ -66,7 +67,7 @@ router.post("/", auth, async (req, res) => {
       client,
       rfc: clientData.rfc,
       quote,
-      sale: saleData?._id || null,
+      sale: sale || saleData?._id || null,
       numeroFactura,
       fechaFactura,
       importeSinIVA: base,
@@ -78,10 +79,16 @@ router.post("/", auth, async (req, res) => {
       importePago,
       createdBy: req.user._id,
     });
-    if (pagado && saleData) {
-      saleData.paid = true;
-      saleData.paidAt = fechaPago || new Date();
-      await saleData.save();
+    // 👈 Buscar la venta: primero por saleId enviado, luego por quote
+    let targetSale = saleData;
+    if (sale) {
+      targetSale = await Sale.findById(sale);
+    }
+
+    if (pagado && targetSale) {
+      targetSale.paid = true;
+      targetSale.paidAt = fechaPago || new Date();
+      await targetSale.save();
     }
 
     res.status(201).json({

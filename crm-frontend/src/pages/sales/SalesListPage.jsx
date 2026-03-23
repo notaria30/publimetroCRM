@@ -1,6 +1,6 @@
 // src/pages/sales/SalesListPage.jsx
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { getSales } from "../../services/salesService";
 import {
   Box,
@@ -22,8 +22,10 @@ import {
   InputAdornment,
 } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
+import ReceiptIcon from "@mui/icons-material/Receipt";
 
 export default function SalesListPage() {
+  const navigate = useNavigate();
   const [sales, setSales] = useState([]);
   const [loading, setLoading] = useState(true);
   const [facturadoFilter, setFacturadoFilter] = useState("all"); // all | yes | no
@@ -89,7 +91,9 @@ export default function SalesListPage() {
 
   const getFacturadoChip = (fact) =>
     fact ? <Chip label="Sí" color="success" /> : <Chip label="No" color="error" />;
-
+  const handleGenerateInvoice = (saleId) => {
+    navigate(`/invoices/new?saleId=${saleId}`);
+  };
   const isFacturado = (sale) => Boolean(sale.facturado);
   const filteredSales = sales.filter((s) => {
     // ✅ 1) filtro facturado
@@ -179,7 +183,6 @@ export default function SalesListPage() {
               <TableCell sx={{ color: "white", fontWeight: 600 }}>ID</TableCell>
               <TableCell sx={{ color: "white", fontWeight: 600 }}>Cliente</TableCell>
               <TableCell sx={{ color: "white", fontWeight: 600 }}>Total</TableCell>
-              <TableCell sx={{ color: "white", fontWeight: 600 }}>Pipeline</TableCell>
               <TableCell sx={{ color: "white", fontWeight: 600 }}>Facturado</TableCell>
               <TableCell sx={{ color: "white", fontWeight: 600 }}>Pagada</TableCell>
               <TableCell sx={{ color: "white", fontWeight: 600 }}>Acciones</TableCell>
@@ -189,7 +192,7 @@ export default function SalesListPage() {
           <TableBody>
             {filteredSales.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} align="center">
+                <TableCell colSpan={5} align="center">
                   <Typography color="text.secondary">
                     No hay ventas registradas aún
                   </Typography>
@@ -206,21 +209,32 @@ export default function SalesListPage() {
                     ${(sale.quote?.total || 0).toLocaleString("es-MX")}
                   </TableCell>
 
-                  <TableCell>{getPipelineChip(sale.pipelineStage)}</TableCell>
-
                   <TableCell>{getPaidChip(sale.paid)}</TableCell>
 
                   <TableCell>{getFacturadoChip(isFacturado(sale))}</TableCell>
 
                   <TableCell>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      component={Link}
-                      to={`/sales/${sale._id}`}
-                    >
-                      Ver
-                    </Button>
+                    <Box sx={{ display: "flex", gap: 1 }}> {/* 👈 AGREGAR Box para los botones */}
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        component={Link}
+                        to={`/sales/${sale._id}`}
+                      >
+                        Ver
+                      </Button>
+                      {/* 👈 AGREGAR BOTÓN FACTURAR */}
+                      <Button
+                        variant="contained"
+                        size="small"
+                        color="primary"
+                        startIcon={<ReceiptIcon />}
+                        onClick={() => handleGenerateInvoice(sale._id)}
+                        disabled={isFacturado(sale)} // Deshabilitar si ya está facturado
+                      >
+                        Facturar
+                      </Button>
+                    </Box>
                   </TableCell>
                 </TableRow>
               ))

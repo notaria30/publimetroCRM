@@ -317,7 +317,7 @@ router.get("/publicidad", auth, async (req, res) => {
       { $match: { $or: [ { "campaignDoc.status": { $exists: false } }, { "campaignDoc.status": { $nin: ["cancelled", "inactive"] } } ] } },
       {
         $group: {
-          _id: "$ _id", // asegurar no duplicar ventas
+          _id: "$_id", // asegurar no duplicar ventas
           amount: { $max: { $ifNull: ["$quoteDoc.total", 0] } },
           campaignId: { $first: "$campaign" },
           campaignName: { $first: "$campaignDoc.name" },

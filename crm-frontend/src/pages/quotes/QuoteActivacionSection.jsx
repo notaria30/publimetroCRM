@@ -307,6 +307,7 @@ export default function QuoteActivacionSection({ form, setForm }) {
                             handleDateChange(idx, i, dayjsToISO(newValue))
                           }
                           format="DD/MM/YYYY"
+                          disablePast
                           slotProps={{
                             textField: {
                               fullWidth: true,

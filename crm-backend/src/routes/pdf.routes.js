@@ -326,15 +326,12 @@ Atentamente,`;
     const boxTop = doc.y;
     const boxX = 50;
     const boxW = 500;
-    const boxH = 95;
-
-    // Fondo suave
+    const boxH = 65;  
     doc
       .rect(boxX, boxTop, boxW, boxH)
       .fillColor("#F4FBF7")
       .fill();
 
-    // Borde
     doc
       .rect(boxX, boxTop, boxW, boxH)
       .strokeColor("#0A6A44")
@@ -351,8 +348,7 @@ Atentamente,`;
 
     doc.fontSize(11).fillColor("#333");
     doc.text("Cliente:", labelX, boxTop + 36);
-    doc.text("Status:", labelX, boxTop + 54);
-    doc.text("Total:", labelX, boxTop + 72);
+    doc.text("Total:", labelX, boxTop + 54);  
 
     const totalFmt = (quote.total || 0).toLocaleString("es-MX", {
       style: "currency",
@@ -361,11 +357,10 @@ Atentamente,`;
 
     doc.fillColor("#000");
     doc.text(`${quote.client?.nombreComercial || "N/A"}`, valueX, boxTop + 36);
-    doc.text(`${quote.status || "N/A"}`, valueX, boxTop + 54);
-    doc.text(`${totalFmt}`, valueX, boxTop + 72);
+    doc.text(`${totalFmt}`, valueX, boxTop + 54);  
 
     doc.moveDown(5);
-
+  
     // ===========================
     // DETALLES DE LA COTIZACIÓN (SOLO SI HAY DATOS)
     // ===========================
@@ -575,15 +570,15 @@ Atentamente,`;
       activas.forEach((act, idx) => {
         // Bloque atómico: título + tabla de 1 fila
         {
-        const needed = 24 /*título*/ + 32 /*header*/ + 28 /*fila*/ + 18;
-        const bottomLimit = doc.page.height - 100;
-        if (doc.y + needed > bottomLimit) doc.addPage();
+          const needed = 24 /*título*/ + 32 /*header*/ + 28 /*fila*/ + 18;
+          const bottomLimit = doc.page.height - 100;
+          if (doc.y + needed > bottomLimit) doc.addPage();
         }
-        
+
         doc
-        .fontSize(12)
-        .fillColor("#0A6A44")
-        .text(`Activación ${idx + 1}`);
+          .fontSize(12)
+          .fillColor("#0A6A44")
+          .text(`Activación ${idx + 1}`);
         doc.fillColor("black").fontSize(11);
         doc.moveDown(0.3);
 
@@ -737,12 +732,17 @@ Atentamente,`;
     // ===========================
     sectionTitle("Total");
     doc.moveUp(0.4);
+
+    const totalY = doc.y;
+
     doc.fontSize(18).fillColor("#0A6A44")
-      .text(money(quote.total), 50, doc.y, { width: 500, align: "right" });
+      .text(money(quote.total), 50, totalY, { width: 500, align: "right" });
+
+    doc.fontSize(9).fillColor("#666")
+      .text("(SIN IVA y MXN)", 50, totalY + 22, { width: 500, align: "right" });
+
     doc.fillColor("black").fontSize(11);
-    doc.moveDown(1.2);
-    doc.addPage();
-    doc.x = 50;
+    doc.moveDown(1.8);
 
     // ===========================
     // TEXTO FINAL (ANTES DEL FOOTER)
@@ -759,9 +759,9 @@ Leído que fue por ambas partes el presente instrumento y una vez enterados de s
 El presente documento se firma de conformidad en el lugar y fecha que ha quedado manifestado en la carátula que se encuentra al anverso.
 `;
 
-    // Texto final más compacto con letra aún más pequeña
+    // Texto final 
     doc
-      .fontSize(7)
+      .fontSize(6.5)
       .fillColor("black")
       .text(textoFinal, 50, doc.y, {
         width: 500,

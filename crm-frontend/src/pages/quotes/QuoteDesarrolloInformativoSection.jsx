@@ -59,6 +59,7 @@ export default function QuoteDesarrolloInformativoSection({ form, setForm }) {
                     }))
                   }
                   format="DD/MM/YYYY"
+                  disablePast
                   slotProps={{
                     textField: {
                       fullWidth: true,

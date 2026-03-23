@@ -97,7 +97,7 @@ router.get("/", auth, async (req, res) => {
     }));
 
     return res.json(salesWithFacturado);
-    
+
   } catch (error) {
     console.error("Error al obtener ventas:", error);
     res.status(500).json({ message: "Error interno del servidor" });
@@ -107,8 +107,8 @@ router.get("/", auth, async (req, res) => {
 router.get("/:id", auth, async (req, res) => {
   try {
     const sale = await Sale.findById(req.params.id)
-      .populate("client", "nombreComercial status")
-      .populate("quote", "folio total status")
+      .populate("client", "nombreComercial status rfc")
+      .populate("quote", "folio total status metodoPago formaPago")
       .populate("assignedTo", "name email");
     if (!sale) {
       return res.status(404).json({ message: "Venta no encontrada" });
@@ -125,6 +125,13 @@ router.get("/:id", auth, async (req, res) => {
           .status(403)
           .json({ message: "No tienes permiso para ver esta venta" });
       }
+    }
+
+    const saleData = sale.toObject();
+
+    if (saleData.quote) {
+      saleData.metodoPago = saleData.quote.metodoPago || "PUE";
+      saleData.formaPago = saleData.quote.formaPago || "";
     }
 
     res.json(sale);

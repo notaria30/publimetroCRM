@@ -209,6 +209,7 @@ export default function QuoteTarifasSection({
                           handleTarifaFecha(index, iFecha, dayjsToISO(newValue));
                         }}
                         format="DD/MM/YYYY"
+                        disablePast
                         slotProps={{
                           textField: {
                             fullWidth: true,

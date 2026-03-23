@@ -148,6 +148,7 @@ export default function QuoteCortesiasSection({ form, setForm }) {
                         value={isoToDayjs(fecha)}
                         onChange={(newValue) => handleFechaChange(i, dayjsToISO(newValue))}
                         format="DD/MM/YYYY"
+                        disablePast
                         slotProps={{
                           textField: {
                             fullWidth: true,

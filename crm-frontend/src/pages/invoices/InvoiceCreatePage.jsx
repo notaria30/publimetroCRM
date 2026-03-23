@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom"; // 👈 AGREGAR useSearchParams
 import { createInvoice } from "../../services/invoiceService";
 import { getClients } from "../../services/clientService";
 import { getQuotes } from "../../services/quoteService";
+import { getSaleById } from "../../services/salesService"; // 👈 AGREGAR este import
 import {
   Box,
   Card,
@@ -17,16 +18,23 @@ import {
   Button,
   FormControlLabel,
   Switch,
+  Alert,
+  CircularProgress,
 } from "@mui/material";
 import dayjs from "dayjs";
 import { DatePicker } from "@mui/x-date-pickers/DatePicker";
 
 export default function InvoiceCreatePage() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams(); // 👈 OBTENER parámetros de URL
+  const saleId = searchParams.get("saleId"); // 👈 OBTENER saleId de la URL
 
   const [clients, setClients] = useState([]);
   const [quotes, setQuotes] = useState([]);
   const [selectedClient, setSelectedClient] = useState(null);
+  const [loadingSale, setLoadingSale] = useState(false); // 👈 Estado de carga
+  const [saleError, setSaleError] = useState(null); // 👈 Estado de error
+
   const isoToDayjs = (iso) => (iso ? dayjs(iso) : null);
   const dayjsToISO = (d) => (d ? d.toISOString() : "");
   const [paymentManuallyEdited, setPaymentManuallyEdited] = useState(false);
@@ -35,7 +43,7 @@ export default function InvoiceCreatePage() {
     client: "",
     quote: "",
     numeroFactura: "",
-    fechaFactura: "",
+    fechaFactura: dayjs().toISOString(), // 👈 Fecha actual por defecto
     metodoPago: "PUE",
     formaPago: "",
     importeSinIVA: "",
@@ -53,6 +61,43 @@ export default function InvoiceCreatePage() {
     }
     loadClients();
   }, []);
+
+  /** 👈 NUEVO: CARGAR DATOS DE LA VENTA SI VIENE saleId */
+  useEffect(() => {
+    async function loadSaleData() {
+      if (!saleId) return;
+
+      setLoadingSale(true);
+      setSaleError(null);
+
+      try {
+        const res = await getSaleById(saleId);
+        const sale = res.data;
+
+        // Precargar cliente y cotización
+        const clientId = sale.client?._id || sale.client;
+        const quoteId = sale.quote?._id || sale.quote;
+
+        // Esperar a que se carguen clientes y quotes (o hacerlo después)
+        setForm((prev) => ({
+          ...prev,
+          client: clientId || "",
+          quote: quoteId || "",
+          // Opcional: si la venta ya tiene datos de facturación
+          metodoPago: sale.metodoPago || prev.metodoPago,
+          formaPago: sale.formaPago || prev.formaPago,
+        }));
+
+      } catch (error) {
+        console.error("Error cargando venta:", error);
+        setSaleError("No se pudo cargar la venta. Por favor, selecciona los datos manualmente.");
+      } finally {
+        setLoadingSale(false);
+      }
+    }
+
+    loadSaleData();
+  }, [saleId]);
 
   /** CARGAR COTIZACIONES SEGÚN CLIENTE */
   useEffect(() => {
@@ -79,7 +124,9 @@ export default function InvoiceCreatePage() {
       setForm((prev) => ({
         ...prev,
         formaPago: "",
-        metodoPago: "PUE", // valor default si no hay cotización
+        metodoPago: "PUE",
+        importeSinIVA: "",
+        importeConIVA: "",
       }));
       return;
     }
@@ -93,11 +140,10 @@ export default function InvoiceCreatePage() {
       ...prev,
       importeSinIVA: importe,
       importeConIVA: Number((importe * 1.16).toFixed(2)),
-      formaPago: paymentManuallyEdited ? prev.formaPago : (selectedQuote.formaPago || ""),
-      metodoPago: paymentManuallyEdited ? prev.metodoPago : (selectedQuote.metodoPago || "PUE"),
+      formaPago: paymentManuallyEdited ? prev.formaPago : (selectedQuote.formaPago || prev.formaPago),
+      metodoPago: paymentManuallyEdited ? prev.metodoPago : (selectedQuote.metodoPago || prev.metodoPago),
     }));
-  }, [form.quote, quotes]);
-
+  }, [form.quote, quotes, paymentManuallyEdited]);
 
   /** CALCULAR IVA AUTOMATICO SI IMPORTE SIN IVA CAMBIA */
   useEffect(() => {
@@ -111,7 +157,6 @@ export default function InvoiceCreatePage() {
       importeConIVA: conIVA,
     }));
   }, [form.importeSinIVA]);
-
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -129,13 +174,39 @@ export default function InvoiceCreatePage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    // Validaciones
+    if (!form.numeroFactura) {
+      alert("El número de factura es obligatorio");
+      return;
+    }
+    if (!form.fechaFactura) {
+      alert("La fecha de factura es obligatoria");
+      return;
+    }
+
     try {
-      await createInvoice(form);
+      // 👈 CREAR OBJETO CON saleId PARA ENVIAR AL BACKEND
+      const invoiceData = {
+        ...form,
+        sale: saleId,  // 👈 AGREGAR ESTA LÍNEA
+      };
+
+      await createInvoice(invoiceData);
       navigate("/invoices");
     } catch (error) {
       alert(error.response?.data?.message || "Error al crear factura");
     }
   };
+
+  // 👈 Mostrar loading mientras se carga la venta
+  if (loadingSale) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" minHeight="60vh">
+        <CircularProgress />
+        <Typography ml={2}>Cargando datos de la venta...</Typography>
+      </Box>
+    );
+  }
 
   return (
     <Box maxWidth="1200px" mx="auto" mt={4} px={3}>
@@ -146,6 +217,20 @@ export default function InvoiceCreatePage() {
       <Button variant="outlined" sx={{ mb: 3 }} onClick={() => navigate("/invoices")}>
         Volver
       </Button>
+
+      {/* 👈 Mostrar error si no se pudo cargar la venta */}
+      {saleError && (
+        <Alert severity="warning" sx={{ mb: 2 }}>
+          {saleError}
+        </Alert>
+      )}
+
+      {/* 👈 Indicador de que viene de una venta */}
+      {saleId && !saleError && (
+        <Alert severity="info" sx={{ mb: 2 }}>
+          Creando factura a partir de la venta #{saleId.slice(-6)}. Los datos del cliente y cotización ya están precargados.
+        </Alert>
+      )}
 
       <Card elevation={3}>
         <CardContent>
@@ -166,6 +251,7 @@ export default function InvoiceCreatePage() {
                     label="Cliente"
                     onChange={handleChange}
                     required
+                    disabled={!!saleId && !saleError} // 👈 Deshabilitar si viene de venta exitosa
                   >
                     {clients.map((c) => (
                       <MenuItem key={c._id} value={c._id}>
@@ -202,6 +288,7 @@ export default function InvoiceCreatePage() {
                     value={form.quote}
                     label="Cotización"
                     onChange={handleChange}
+                    disabled={!!saleId && !saleError} // 👈 Deshabilitar si viene de venta exitosa
                   >
                     {quotes.length === 0 && (
                       <MenuItem disabled>No hay cotizaciones</MenuItem>
@@ -245,6 +332,7 @@ export default function InvoiceCreatePage() {
                     }));
                   }}
                   format="DD/MM/YYYY"
+                  disablePast
                   slotProps={{
                     textField: {
                       fullWidth: true,
@@ -298,6 +386,7 @@ export default function InvoiceCreatePage() {
                   name="importeSinIVA"
                   value={form.importeSinIVA}
                   onChange={handleChange}
+                  disabled={!!saleId && !saleError} // 👈 Deshabilitar si viene de venta
                 />
               </Grid>
 
@@ -339,6 +428,7 @@ export default function InvoiceCreatePage() {
                       }));
                     }}
                     format="DD/MM/YYYY"
+                    disablePast
                     slotProps={{
                       textField: {
                         fullWidth: true,
