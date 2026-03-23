@@ -1,29 +1,58 @@
 import api from "./api";
 
-// Reporte de ventas con filtros
-export const getSalesReport = (params) =>
-  api.get("/reports/sales", { params });
+// ============================================
+// REPORTE 1: Ventas mensuales
+// ============================================
+export const getSalesMonthlyReport = (params) => {
+  return api.get("/reports/sales-monthly", { params });
+};
 
-// Proyecciones
-export const getProjections = (options = {}) =>
-  api.get("/reports/projections", options);
+// ============================================
+// REPORTE 2: Ventas por ejecutivo
+// ============================================
+export const getExecutiveReport = (params) => {
+  return api.get("/reports/executive", { params });
+};
 
-// Clientes activos
-export const getActiveClients = () =>
-  api.get("/reports/clientes-activos");
+// ============================================
+// REPORTE 3: Comparativo ventas
+// ============================================
+export const getComparativeReport = (params) => {
+  return api.get("/reports/comparative", { params });
+};
 
-// Publicidad
-export const getPublicidadReport = (options = {}) =>
-  api.get("/reports/publicidad", options);
+// ============================================
+// REPORTE 4: Publicidad
+// ============================================
+export const getAdvertisingReport = (params) => {
+  return api.get("/reports/advertising", { params });
+};
 
-// Activaciones
-export const getActivacionesReport = (options = {}) =>
-  api.get("/reports/activaciones", options);
+// ============================================
+// REPORTE 5: Clientes activos
+// ============================================
+export const getActiveClientsReport = () => {
+  return api.get("/reports/active-clients");
+};
 
-// Analytics
-export const getAnalytics = () =>
-  api.get("/reports/analytics");
+// ============================================
+// SERVICIOS COMUNES (filtros)
+// ============================================
+export const getReportClients = () => {
+  return api.get("/reports/clients");
+};
 
-// Metas vendedores
-export const getMetas = (params) => api.get("/reports/metas", { params });
+export const getReportExecutives = () => {
+  return api.get("/reports/executives");
+};
 
+// ============================================
+// METAS DE VENTAS
+// ============================================
+export const getSalesGoals = (params) => {
+  return api.get("/reports/goals", { params });
+};
+
+export const createOrUpdateGoal = (data) => {
+  return api.post("/reports/goals", data);
+};

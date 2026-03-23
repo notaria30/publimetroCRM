@@ -35,20 +35,13 @@ import InvoiceDetailPage from "./pages/invoices/InvoiceDetailPage";
 
 // Reports
 import ReportsHomePage from "./pages/reports/ReportsHomePage";
-import ReportSalesPage from "./pages/reports/ReportSalesPage";
-import ReportProjectionsPage from "./pages/reports/ReportProjectionsPage";
-import ReportClientesActivosPage from "./pages/reports/ReportClientesActivosPage";
-import ReportPublicidadPage from "./pages/reports/ReportPublicidadPage";
-import ReportActivacionesPage from "./pages/reports/ReportActivacionesPage";
-import ReportAnalyticsPage from "./pages/reports/ReportAnalyticsPage";
-import ReportMetasPage from "./pages/reports/ReportMetasPage";
-import PostSaleCreatePage from "./pages/postsale/PostSaleCreatePage";
 
+import PostSaleCreatePage from "./pages/postsale/PostSaleCreatePage";
 import CampaignListPage from "./pages/campaigns/CampaignListPage.jsx";
 import CampaignDetailPage from "./pages/campaigns/CampaignDetailPage.jsx";
 import CampaignFormPage from "./pages/campaigns/CampaignFormPage.jsx";
 import ClientCampaignsPage from "./pages/clients/ClientCampaignsPage";
-import ReportGoalsAdminPage from "./pages/reports/ReportGoalsAdminPage";
+
 
 
 function PrivateRoute({ children }) {
@@ -318,24 +311,6 @@ function App() {
               </PrivateRoute>
             }
           />
-          <Route path="/reports/sales" element={<ProtectedLayout><ReportSalesPage /></ProtectedLayout>} />
-          <Route path="/reports/projections" element={<ProtectedLayout><ReportProjectionsPage /></ProtectedLayout>} />
-          <Route path="/reports/clientes-activos" element={<ProtectedLayout><ReportClientesActivosPage /></ProtectedLayout>} />
-          <Route path="/reports/publicidad" element={<ProtectedLayout><ReportPublicidadPage /></ProtectedLayout>} />
-          <Route path="/reports/activaciones" element={<ProtectedLayout><ReportActivacionesPage /></ProtectedLayout>} />
-          <Route path="/reports/analytics" element={<ProtectedLayout><ReportAnalyticsPage /></ProtectedLayout>} />
-          <Route path="/reports/metas" element={<ProtectedLayout><ReportMetasPage /></ProtectedLayout>} />
-          <Route
-            path="/reports/goals-admin"
-            element={
-              <OwnerRoute>
-                <ProtectedLayout>
-                  <ReportGoalsAdminPage />
-                </ProtectedLayout>
-              </OwnerRoute>
-            }
-          />
-
           {/* 404 */}
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
 
@@ -344,5 +319,4 @@ function App() {
     </AuthProvider>
   );
 }
-
 export default App;
