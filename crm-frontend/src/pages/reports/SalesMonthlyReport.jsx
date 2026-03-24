@@ -31,6 +31,21 @@ import {
 } from "../../services/reportService";
 import { useAuth } from "../../context/AuthContext";
 
+// Importar recharts para gráficas
+import {
+  BarChart,
+  Bar,
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+  ReferenceLine,
+} from "recharts";
+
 export default function SalesMonthlyReport() {
   const { isOwner } = useAuth();
   const [loading, setLoading] = useState(false);
@@ -38,6 +53,7 @@ export default function SalesMonthlyReport() {
   const [data, setData] = useState([]);
   const [clients, setClients] = useState([]);
   const [goalsMap, setGoalsMap] = useState({});
+  const [hasSearched, setHasSearched] = useState(false);
 
   // Filtros
   const [filters, setFilters] = useState({
@@ -72,8 +88,10 @@ export default function SalesMonthlyReport() {
         map[key] = goal.goalAmount;
       });
       setGoalsMap(map);
+      return map;
     } catch (err) {
       console.error("Error cargando metas:", err);
+      return {};
     }
   };
 
@@ -81,7 +99,10 @@ export default function SalesMonthlyReport() {
   const handleSearch = async () => {
     setLoading(true);
     setError(null);
+    setHasSearched(true);
     try {
+      const goals = await loadGoals();
+      
       const params = {
         startDate: filters.startDate,
         endDate: filters.endDate,
@@ -91,7 +112,6 @@ export default function SalesMonthlyReport() {
       };
       const res = await getSalesMonthlyReport(params);
       
-      // Enriquecer datos con metas del mapa
       const dataWithGoals = res.data.data.map(item => {
         const [monthName, yearStr] = item.fecha.split(" ");
         const year = parseInt(yearStr);
@@ -100,13 +120,24 @@ export default function SalesMonthlyReport() {
           "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"
         ].indexOf(monthName.toLowerCase()) + 1;
         const key = `${year}-${monthIndex}`;
-        const meta = goalsMap[key] || 0;
+        const meta = goals[key] || 0;
+        
+        // Calcular porcentaje - limitado a 100% para la gráfica
+        let porcentajeCumplimiento = 0;
+        if (meta > 0) {
+          porcentajeCumplimiento = Math.min((item.totalVentas / meta) * 100, 100);
+        } else if (item.totalVentas > 0) {
+          porcentajeCumplimiento = 100; // Si hay ventas pero no hay meta, mostrar 100%
+        }
         
         return {
           ...item,
           meta,
           diferencia: item.totalVentas - meta,
-          porcentajeCumplimiento: meta > 0 ? (item.totalVentas / meta) * 100 : 0,
+          porcentajeCumplimiento: Math.round(porcentajeCumplimiento), // Redondear a entero
+          porcentajeCumplimientoDecimal: (meta > 0 ? (item.totalVentas / meta) * 100 : 0), // Para tabla
+          mesCorto: monthName.substring(0, 3),
+          anio: year,
         };
       });
       
@@ -128,9 +159,14 @@ export default function SalesMonthlyReport() {
     }).format(value || 0);
   };
 
-  // Formatear porcentaje
-  const formatPercent = (value) => {
+  // Formatear porcentaje para tabla (con decimales)
+  const formatPercentTable = (value) => {
     return `${(value || 0).toFixed(2)}%`;
+  };
+
+  // Formatear porcentaje para gráfica (sin decimales)
+  const formatPercentChart = (value) => {
+    return `${Math.round(value || 0)}%`;
   };
 
   // Color según cumplimiento
@@ -140,11 +176,23 @@ export default function SalesMonthlyReport() {
     return "error";
   };
 
-  // Cargar datos iniciales
-  useEffect(() => {
-    loadGoals();
-    handleSearch();
-  }, []);
+  // Preparar datos para gráficas (invertir orden para mostrar cronológico)
+  const chartData = [...data].reverse().map(item => ({
+    nombre: item.fecha.split(" ")[0],
+    mesCompleto: item.fecha,
+    ventas: item.totalVentas,
+    meta: item.meta,
+    cumplimiento: item.porcentajeCumplimiento, // Usar entero para gráfica
+  }));
+
+  // Calcular resumen estadístico
+  const totalVentas = data.reduce((sum, item) => sum + item.totalVentas, 0);
+  const totalMeta = data.reduce((sum, item) => sum + item.meta, 0);
+  const promedioCumplimiento = data.length > 0 
+    ? data.reduce((sum, item) => sum + item.porcentajeCumplimientoDecimal, 0) / data.length 
+    : 0;
+  const mesesConMeta = data.filter(item => item.meta > 0).length;
+  const mesesCumplidos = data.filter(item => item.porcentajeCumplimientoDecimal >= 100).length;
 
   return (
     <Box>
@@ -249,8 +297,120 @@ export default function SalesMonthlyReport() {
         </Alert>
       )}
 
-      {/* Tabla de resultados */}
-      {!loading && data.length > 0 && (
+      {/* KPI Cards - solo si ya se buscó y hay datos */}
+      {hasSearched && !loading && data.length > 0 && (
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Paper sx={{ p: 2, textAlign: "center", bgcolor: "#e3f2fd" }}>
+              <Typography variant="caption" color="text.secondary">Total Ventas</Typography>
+              <Typography variant="h6" fontWeight={700}>{formatMoney(totalVentas)}</Typography>
+            </Paper>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Paper sx={{ p: 2, textAlign: "center", bgcolor: "#f3e5f5" }}>
+              <Typography variant="caption" color="text.secondary">Total Meta</Typography>
+              <Typography variant="h6" fontWeight={700}>{formatMoney(totalMeta)}</Typography>
+            </Paper>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Paper sx={{ p: 2, textAlign: "center", bgcolor: "#e8f5e9" }}>
+              <Typography variant="caption" color="text.secondary">Promedio Cumplimiento</Typography>
+              <Typography variant="h6" fontWeight={700} color={promedioCumplimiento >= 80 ? "green" : "orange"}>
+                {formatPercentTable(promedioCumplimiento)}
+              </Typography>
+            </Paper>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+            <Paper sx={{ p: 2, textAlign: "center", bgcolor: "#fff3e0" }}>
+              <Typography variant="caption" color="text.secondary">Meses con meta cumplida</Typography>
+              <Typography variant="h6" fontWeight={700}>
+                {mesesCumplidos} / {mesesConMeta}
+              </Typography>
+            </Paper>
+          </Grid>
+        </Grid>
+      )}
+
+      {/* GRÁFICAS - solo si ya se buscó y hay datos */}
+      {hasSearched && !loading && data.length > 0 && (
+        <Grid container spacing={3} sx={{ mb: 3 }}>
+          {/* Gráfica 1: Ventas vs Meta */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Card>
+              <CardContent>
+                <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                  Ventas vs Meta mensual
+                </Typography>
+                <Typography variant="caption" color="text.secondary" gutterBottom display="block">
+                  Comparación de ventas reales contra meta establecida
+                </Typography>
+                <Box sx={{ width: "100%", height: 320 }}>
+                  <ResponsiveContainer>
+                    <BarChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="nombre" />
+                      <YAxis tickFormatter={(value) => `$${(value / 1000).toFixed(0)}k`} />
+                      <Tooltip 
+                        formatter={(value) => formatMoney(value)}
+                        labelFormatter={(label) => `Mes: ${label}`}
+                      />
+                      <Legend />
+                      <Bar dataKey="ventas" name="Ventas reales" fill="#007A3E" />
+                      <Bar dataKey="meta" name="Meta" fill="#FFB74D" />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+
+          {/* Gráfica 2: % Cumplimiento - CORREGIDA */}
+          <Grid size={{ xs: 12, md: 6 }}>
+            <Card>
+              <CardContent>
+                <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+                  Evolución del % de cumplimiento
+                </Typography>
+                <Typography variant="caption" color="text.secondary" gutterBottom display="block">
+                  Porcentaje de meta alcanzada por mes
+                </Typography>
+                <Box sx={{ width: "100%", height: 320 }}>
+                  <ResponsiveContainer>
+                    <LineChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="nombre" />
+                      <YAxis 
+                        tickFormatter={(value) => `${value}%`} 
+                        domain={[0, 100]} 
+                        ticks={[0, 25, 50, 75, 100]}
+                      />
+                      <Tooltip formatter={(value) => `${value}%`} />
+                      <Legend />
+                      <Line 
+                        type="monotone" 
+                        dataKey="cumplimiento" 
+                        name="% Cumplimiento" 
+                        stroke="#007A3E" 
+                        strokeWidth={2}
+                        dot={{ fill: "#007A3E", r: 4 }}
+                      />
+                      <ReferenceLine 
+                        y={100} 
+                        stroke="red" 
+                        strokeDasharray="3 3" 
+                        label={{ value: "Meta", position: "right", fill: "red", fontSize: 10 }}
+                      />
+                    </LineChart>
+                  </ResponsiveContainer>
+                </Box>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+      )}
+
+      {/* Tabla de resultados - solo si ya se buscó y hay datos */}
+      {hasSearched && !loading && data.length > 0 && (
         <TableContainer component={Paper}>
           <Table>
             <TableHead sx={{ backgroundColor: "#007A3E" }}>
@@ -278,9 +438,7 @@ export default function SalesMonthlyReport() {
                 <TableRow key={idx} hover>
                   <TableCell>{row.fecha}</TableCell>
                   <TableCell align="right">{formatMoney(row.totalVentas)}</TableCell>
-                  <TableCell align="right">
-                    {formatMoney(row.meta)}
-                  </TableCell>
+                  <TableCell align="right">{formatMoney(row.meta)}</TableCell>
                   <TableCell
                     align="right"
                     sx={{ color: row.diferencia >= 0 ? "green" : "red" }}
@@ -289,8 +447,8 @@ export default function SalesMonthlyReport() {
                   </TableCell>
                   <TableCell align="center">
                     <Chip
-                      label={formatPercent(row.porcentajeCumplimiento)}
-                      color={getCumplimientoColor(row.porcentajeCumplimiento)}
+                      label={formatPercentTable(row.porcentajeCumplimientoDecimal)}
+                      color={getCumplimientoColor(row.porcentajeCumplimientoDecimal)}
                       size="small"
                     />
                   </TableCell>
@@ -302,11 +460,20 @@ export default function SalesMonthlyReport() {
         </TableContainer>
       )}
 
-      {/* Mensaje sin datos */}
-      {!loading && data.length === 0 && !error && (
+      {/* Mensaje sin datos - solo si ya se buscó y no hay datos */}
+      {hasSearched && !loading && data.length === 0 && !error && (
         <Paper sx={{ p: 4, textAlign: "center" }}>
           <Typography color="text.secondary">
             No hay datos para los filtros seleccionados
+          </Typography>
+        </Paper>
+      )}
+
+      {/* Mensaje cuando no se ha generado reporte */}
+      {!hasSearched && !loading && (
+        <Paper sx={{ p: 4, textAlign: "center", bgcolor: "#f5f5f5" }}>
+          <Typography color="text.secondary">
+            Selecciona los filtros y haz clic en "Generar reporte" para ver los datos
           </Typography>
         </Paper>
       )}
