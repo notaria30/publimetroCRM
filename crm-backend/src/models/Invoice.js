@@ -61,18 +61,17 @@ const invoiceSchema = new mongoose.Schema(
     },
 
     // PAGO
-    pagado: {
-      type: Boolean,
-      default: false,
-    },
+    pagos: [
+      {
+        fecha: { type: Date, required: true },
+        importe: { type: Number, required: true },
+        nota: { type: String, default: "" },
+      }
+    ],
 
-    fechaPago: {
-      type: Date,
-    },
-
-    importePago: {
-      type: Number,
-    },
+    // campo calculado automático
+    pagado: { type: Boolean, default: false },
+    saldoPendiente: { type: Number, default: 0 },
 
     // Usuario que generó la factura
     createdBy: {
@@ -95,6 +94,17 @@ invoiceSchema.pre("save", function (next) {
   if (this.importeSinIVA) {
     this.importeConIVA = this.importeSinIVA * 1.16;
   }
+  next();
+});
+
+invoiceSchema.pre("save", function (next) {
+  if (this.importeSinIVA) {
+    this.importeConIVA = this.importeSinIVA * 1.16;
+  }
+  // Calcular saldo y estado pagado automáticamente
+  const totalPagado = (this.pagos || []).reduce((acc, p) => acc + (p.importe || 0), 0);
+  this.saldoPendiente = Math.max(0, (this.importeConIVA || 0) - totalPagado);
+  this.pagado = this.saldoPendiente === 0 && (this.pagos || []).length > 0;
   next();
 });
 

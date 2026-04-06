@@ -148,5 +148,76 @@ router.get("/users", auth, async (req, res) => {
   res.json(users);
 });
 
+// Obtener un usuario por ID (solo OWNER)
+router.get("/users/:id", auth, isOwner, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id).select("name email role");
+    if (!user) return res.status(404).json({ message: "Usuario no encontrado" });
+    res.json(user);
+  } catch (error) {
+    res.status(500).json({ message: "Error en el servidor" });
+  }
+});
+
+// Editar usuario (solo OWNER)
+router.put("/users/:id", auth, isOwner, async (req, res) => {
+  try {
+    const { name, email, password, role } = req.body;
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: "Usuario no encontrado" });
+
+    if (name)  user.name  = name;
+    if (email) user.email = email;
+    if (role)  user.role  = role;
+    if (password) {
+      const bcrypt = require("bcryptjs");
+      user.password = await bcrypt.hash(password, 10);
+    }
+
+    await user.save();
+    res.json({ message: "Usuario actualizado", user: { id: user._id, name: user.name, email: user.email, role: user.role } });
+  } catch (error) {
+    res.status(500).json({ message: "Error en el servidor" });
+  }
+});
+
+// Eliminar usuario (solo OWNER)
+router.delete("/users/:id", auth, isOwner, async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: "Usuario no encontrado" });
+    if (String(user._id) === String(req.user._id))
+      return res.status(400).json({ message: "No puedes eliminarte a ti mismo" });
+
+    await user.deleteOne();
+    res.json({ message: "Usuario eliminado" });
+  } catch (error) {
+    res.status(500).json({ message: "Error en el servidor" });
+  }
+});
+
+// Cambiar contraseña (usuario autenticado)
+router.put("/change-password", auth, async (req, res) => {
+  try {
+    const { currentPassword, newPassword } = req.body;
+
+    if (!currentPassword || !newPassword)
+      return res.status(400).json({ message: "Faltan campos requeridos." });
+    if (newPassword.length < 6)
+      return res.status(400).json({ message: "La nueva contraseña debe tener al menos 6 caracteres." });
+
+    const user = await User.findById(req.user._id);
+    const isMatch = await bcrypt.compare(currentPassword, user.password);
+    if (!isMatch)
+      return res.status(400).json({ message: "La contraseña actual es incorrecta." });
+
+    user.password = await bcrypt.hash(newPassword, 10);
+    await user.save();
+
+    res.json({ message: "Contraseña actualizada correctamente." });
+  } catch (error) {
+    res.status(500).json({ message: "Error en el servidor." });
+  }
+});
 
 module.exports = router;

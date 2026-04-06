@@ -1,16 +1,16 @@
+// src/components/ProtectedLayout.jsx
 import Navbar from "./Navbar";
 import "./ProtectedLayout.css";
 
 function ProtectedLayout({ children }) {
   return (
-    <div>
+    <div className="app-shell">
       <Navbar />
-      
-      <div className="layout-container">
-        <div className="layout-content">
+      <main className="app-main">
+        <div className="app-content">
           {children}
         </div>
-      </div>
+      </main>
     </div>
   );
 }

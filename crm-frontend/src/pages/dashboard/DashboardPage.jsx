@@ -1,20 +1,7 @@
-// src/pages/dashboard/DashboardPage.jsx
-
 import { useEffect, useState } from "react";
 import {
-  Box,
-  Grid,
-  Card,
-  Typography,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Paper,
-} from "@mui/material";
-
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer
+} from "recharts";
 import {
   getDashboardOverview,
   getDashboardPipeline,
@@ -22,6 +9,21 @@ import {
   getDashboardClients,
   getDashboardQuotes,
 } from "../../services/dashboardService";
+import "./DashboardPage.css";
+import { useAuth } from "../../context/AuthContext";
+import { getDashboardActiveClients } from "../../services/dashboardService";
+import { useTheme } from "../../context/ThemeContext";
+import { LoadingDashboard } from "./LoadingDashboard";
+
+function MetricCard({ label, value, sub }) {
+  return (
+    <div className="db-metric-card">
+      <p className="db-metric-label">{label}</p>
+      <p className="db-metric-value">{value}</p>
+      {sub && <p className="db-metric-sub">{sub}</p>}
+    </div>
+  );
+}
 
 export default function DashboardPage() {
   const [overview, setOverview] = useState(null);
@@ -31,23 +33,28 @@ export default function DashboardPage() {
   const [quotesStats, setQuotesStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [activeClients, setActiveClients] = useState(null);
+  const { user } = useAuth();
+  const { darkMode } = useTheme();
+
 
   useEffect(() => {
     async function load() {
       try {
-        const [ovRes, plRes, biRes, clRes, quRes] = await Promise.all([
+        const [ovRes, plRes, biRes, clRes, quRes, acRes] = await Promise.all([
           getDashboardOverview(),
           getDashboardPipeline(),
           getDashboardBilling(),
           getDashboardClients(),
           getDashboardQuotes(),
+          getDashboardActiveClients(),
         ]);
-
         setOverview(ovRes.data);
         setPipeline(plRes.data);
         setBilling(biRes.data);
         setClientsStats(clRes.data);
         setQuotesStats(quRes.data);
+        setActiveClients(acRes.data);
       } catch (err) {
         console.error("Error cargando dashboard:", err);
         setError("No se pudo cargar el dashboard");
@@ -58,184 +65,189 @@ export default function DashboardPage() {
     load();
   }, []);
 
-  if (loading)
-    return <Typography sx={{ p: 4 }}>Cargando dashboard...</Typography>;
-  if (error) return <Typography sx={{ p: 4 }}>{error}</Typography>;
+  if (loading) return <LoadingDashboard />;
+  if (error) return <div className="db-status db-error">{error}</div>;
 
-  const KPI_ITEMS = [
-    { label: "Total Clientes", value: overview.totalClientes, color: "#00C26A", icon: "👥" },
-    { label: "Ventas Cerradas", value: overview.ventasCerradas, color: "#008F4F", icon: "💼" },
-    { label: "Total Cotizaciones", value: overview.totalCotizaciones, color: "#1976D2", icon: "🧾" },
-{ 
-  label: "Total Facturado", 
-  value: `$${overview.totalFacturado.toLocaleString("es-MX", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`, 
-  color: "#00663A", 
-  icon: "💵" 
-},
-{ 
-  label: "Pendiente de Pago", 
-  value: `$${overview.totalPendiente.toLocaleString("es-MX", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })}`, 
-  color: "#B00020", 
-  icon: "⏳" 
-},
+  const fmt = (n) =>
+    `$${n.toLocaleString("es-MX", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+  const pct =
+    billing.pagado + billing.pendiente > 0
+      ? ((billing.pagado / (billing.pagado + billing.pendiente)) * 100).toFixed(1) + "%"
+      : "0%";
+
+  const pipelineData = [
+    { etapa: "Prosp.", cantidad: pipeline.prospeccion },
+    { etapa: "Present.", cantidad: pipeline.presentacion },
+    { etapa: "Propuesta", cantidad: pipeline.propuesta },
+    { etapa: "Cierre", cantidad: pipeline.cierre },
   ];
 
   return (
-    <Box sx={{ p: 3 }}>
-      {/* TITLE */}
-      <Typography variant="h4" fontWeight={700} mb={4}>
-        Dashboard General
-      </Typography>
+    <div className="db-page">
 
-      {/* KPI GRID - Más pequeño */}
-      <Grid container spacing={2} mb={4}>
-        {KPI_ITEMS.map((kpi, i) => (
-          <Grid item xs={12} sm={6} md={4} lg={2.4} key={i}>
-            <Card
-              sx={{
-                p: 2,
-                borderRadius: 2,
-                background: `linear-gradient(135deg, ${kpi.color}, #ffffff 130%)`,
-                color: "white",
-                minHeight: 110,
-                display: "flex",
-                flexDirection: "column",
-                justifyContent: "center",
-                boxShadow: "0 4px 14px rgba(0,0,0,0.12)",
-              }}
-            >
-              <Typography variant="subtitle1" fontWeight={600}>
-                {kpi.icon} {kpi.label}
-              </Typography>
-              <Typography
-                variant="h5"
-                fontWeight={700}
-                mt={0.5}
-                sx={{ fontSize: "1.8rem" }}
-              >
-                {kpi.value}
-              </Typography>
-            </Card>
-          </Grid>
-        ))}
-      </Grid>
+      {/* HEADER */}
+      <div className="db-header">
+        <div>
+          <h1 className="db-greeting">Dashboard General</h1>
+          <h1 className="db-greeting-sub">Bienvenido de nuevo {user?.name}</h1>
+        </div>
+      </div>
 
-      {/* PIPELINE */}
-      <Typography variant="h5" fontWeight={700} mb={2}>
-        Pipeline de Ventas
-      </Typography>
+      {/* KPI CARDS */}
+      <div className="db-metrics-grid">
+        <MetricCard label="Total Clientes" value={overview.totalClientes} />
+        <MetricCard label="Ventas Cerradas" value={overview.ventasCerradas} />
+        <MetricCard label="Total Cotizaciones" value={overview.totalCotizaciones} />
+        <MetricCard label="Total Facturado" value={fmt(overview.totalFacturado)} />
+        <MetricCard label="Pendiente de Pago" value={fmt(overview.totalPendiente)} />
+      </div>
 
-      <TableContainer component={Paper} sx={{ mb: 4 }}>
-        <Table>
-          <TableHead>
-            <TableRow sx={{ backgroundColor: "#008F4F" }}>
-              <TableCell sx={{ color: "white", fontWeight: 700 }}>
-                Etapa
-              </TableCell>
-              <TableCell sx={{ color: "white", fontWeight: 700 }}>
-                Cantidad
-              </TableCell>
-            </TableRow>
-          </TableHead>
+      {/* CHARTS ROW */}
+      <div className="db-charts-grid">
 
-          <TableBody>
-            <TableRow hover>
-              <TableCell>Prospección</TableCell>
-              <TableCell>{pipeline.prospeccion}</TableCell>
-            </TableRow>
+        {/* Pipeline — barra */}
+        <div className="db-card">
+          <div className="db-card-header">
+            <p className="db-card-title">Pipeline de Ventas</p>
+          </div>
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={pipelineData} barSize={32}>
+              <XAxis
+                dataKey="etapa"
+                axisLine={false} tickLine={false}
+                tick={{ fontSize: 11, fill: "#9ca3af" }}
+              />
+              <YAxis hide />
+              <Tooltip
+                cursor={{ fill: darkMode ? "#334155" : "#f3f4f6" }}
+                contentStyle={{
+                  background: darkMode ? "#1e293b" : "#fff",
+                  border: `1px solid ${darkMode ? "#334155" : "#e5e7eb"}`,
+                  color: darkMode ? "#f1f5f9" : "#111827",
+                }}
+              />
+              <Bar dataKey="cantidad" fill="#16a34a" radius={[5, 5, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
 
-            <TableRow hover>
-              <TableCell>Presentación</TableCell>
-              <TableCell>{pipeline.presentacion}</TableCell>
-            </TableRow>
+        {/* Facturación — resumen */}
+        <div className="db-card">
+          <p className="db-card-title">Facturación</p>
+          <div className="db-billing-rows">
+            <div className="db-billing-row">
+              <span className="db-billing-dot green" />
+              <span className="db-billing-label">Pagado</span>
+              <span className="db-billing-val green-txt">
+                {fmt(billing.pagado)}
+              </span>
+            </div>
+            <div className="db-billing-row">
+              <span className="db-billing-dot red" />
+              <span className="db-billing-label">Pendiente</span>
+              <span className="db-billing-val red-txt">
+                {fmt(billing.pendiente)}
+              </span>
+            </div>
+            <div className="db-billing-divider" />
+            <div className="db-billing-row">
+              <span className="db-billing-dot blue" />
+              <span className="db-billing-label">% Cobrado</span>
+              <span className="db-billing-val blue-txt">{pct}</span>
+            </div>
+          </div>
+        </div>
 
-            <TableRow hover>
-              <TableCell>Propuesta</TableCell>
-              <TableCell>{pipeline.propuesta}</TableCell>
-            </TableRow>
-
-            <TableRow hover>
-              <TableCell>Cierre</TableCell>
-              <TableCell>{pipeline.cierre}</TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </TableContainer>
-
-      {/* BILLING */}
-      <Typography variant="h5" fontWeight={700} mb={2}>
-        Facturación
-      </Typography>
-
-      <Card sx={{ p: 2, borderRadius: 2, mb: 4 }}>
-        <Typography sx={{ fontSize: 18, mb: 1 }}>
-          <strong style={{ color: "#008F4F" }}>Pagado:</strong>{" "}
-          ${billing.pagado.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
-        </Typography>
-
-        <Typography sx={{ fontSize: 18, mb: 1 }}>
-          <strong style={{ color: "#B00020" }}>Pendiente:</strong>{" "}
-          ${billing.pendiente.toLocaleString("es-MX", { minimumFractionDigits: 2 })}
-        </Typography>
-
-        {billing.pagado + billing.pendiente > 0 && (
-          <Typography sx={{ fontSize: 18 }}>
-            <strong style={{ color: "#1976D2" }}>Porcentaje Cobrado:</strong>{" "}
-            {(
-              (billing.pagado / (billing.pagado + billing.pendiente)) *
-              100
-            ).toFixed(1)}
-            %
-          </Typography>
-        )}
-      </Card>
+      </div>
 
       {/* CLIENTES Y COTIZACIONES */}
-      <Typography variant="h5" fontWeight={700} mb={2}>
-        Clientes y Cotizaciones
-      </Typography>
+      <div className="db-card db-bottom-card">
+        <p className="db-card-title">Clientes y Cotizaciones</p>
+        <div className="db-stats-row">
+          <div className="db-stat-box">
+            <p className="db-stat-label">Clientes activos</p>
+            <p className="db-stat-val">{clientsStats.activos}</p>
+          </div>
+          <div className="db-stat-box">
+            <p className="db-stat-label">Nuevos este mes</p>
+            <p className="db-stat-val">{clientsStats.nuevosMes}</p>
+          </div>
+          <div className="db-stat-box">
+            <p className="db-stat-label">Cotizaciones del mes</p>
+            <p className="db-stat-val">{quotesStats.cotizacionesMes}</p>
+          </div>
+        </div>
+      </div>
+      {/* CLIENTES ACTIVOS E INACTIVOS */}
+      {activeClients && (
+        <div className="db-card db-clients-card">
+          <p className="db-card-title">Clientes por Actividad</p>
 
-      <Grid container spacing={2}>
-        <Grid item xs={12} md={4}>
-          <Card sx={{ p: 2, borderRadius: 2 }}>
-            <Typography variant="subtitle1" fontWeight={700}>
-              Clientes activos
-            </Typography>
-            <Typography variant="h5" fontWeight={700} mt={1}>
-              {clientsStats.activos}
-            </Typography>
-          </Card>
-        </Grid>
+          <div className="db-clients-grid">
 
-        <Grid item xs={12} md={4}>
-          <Card sx={{ p: 2, borderRadius: 2 }}>
-            <Typography variant="subtitle1" fontWeight={700}>
-              Nuevos este mes
-            </Typography>
-            <Typography variant="h5" fontWeight={700} mt={1}>
-              {clientsStats.nuevosMes}
-            </Typography>
-          </Card>
-        </Grid>
+            {/* ACTIVOS */}
+            <div>
+              <p className="db-clients-section-label db-clients-label-active">
+                ✅ Activos ({activeClients.resumen.activos})
+              </p>
+              <div className="db-clients-list">
+                {activeClients.data
+                  .filter(c => c.estado === "Activo")
+                  .slice(0, 5)
+                  .map((c, i) => (
+                    <div key={i} className="db-client-row">
+                      <div className="db-client-avatar">
+                        {c.cliente.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="db-client-info">
+                        <p className="db-client-name">{c.cliente}</p>
+                        <p className="db-client-sub">
+                          Última venta: {c.ultimaVenta}
+                        </p>
+                      </div>
+                      <span className="db-client-amount">
+                        ${c.totalVentas.toLocaleString("es-MX", {
+                          minimumFractionDigits: 0,
+                          maximumFractionDigits: 0,
+                        })}
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
 
-        <Grid item xs={12} md={4}>
-          <Card sx={{ p: 2, borderRadius: 2 }}>
-            <Typography variant="subtitle1" fontWeight={700}>
-              Cotizaciones del mes
-            </Typography>
-            <Typography variant="h5" fontWeight={700} mt={1}>
-              {quotesStats.cotizacionesMes}
-            </Typography>
-          </Card>
-        </Grid>
-      </Grid>
-    </Box>
+            {/* INACTIVOS */}
+            <div>
+              <p className="db-clients-section-label db-clients-label-inactive">
+                ⚠️ Inactivos ({activeClients.resumen.inactivos})
+              </p>
+              <div className="db-clients-list">
+                {activeClients.data
+                  .filter(c => c.estado === "Inactivo")
+                  .slice(0, 5)
+                  .map((c, i) => (
+                    <div key={i} className="db-client-row">
+                      <div className="db-client-avatar db-client-avatar--inactive">
+                        {c.cliente.charAt(0).toUpperCase()}
+                      </div>
+                      <div className="db-client-info">
+                        <p className="db-client-name">{c.cliente}</p>
+                        <p className="db-client-sub">
+                          Última venta: {c.ultimaVenta}
+                        </p>
+                      </div>
+                      <span className="db-client-amount db-client-amount--inactive">
+                        Sin ventas recientes
+                      </span>
+                    </div>
+                  ))}
+              </div>
+            </div>
+
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

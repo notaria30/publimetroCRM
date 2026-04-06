@@ -1,78 +1,48 @@
-// src/pages/postsale/PostSaleCreatePage.jsx
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { createPostSale } from "../../services/postSaleService";
 import { getSales } from "../../services/salesService";
-import dayjs from "dayjs";
-import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import {
-  Box,
-  Card,
-  CardContent,
-  Grid,
-  Typography,
-  TextField,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  Switch,
-  FormControlLabel,
-  Button,
-} from "@mui/material";
+import { ArrowLeft } from "lucide-react";
+import "./postsale.css";
+import "../sales/sales.css";
+
+const STAGES = [
+  "servicio_post_venta",
+  "medicion_resultados",
+  "encuesta_satisfaccion",
+  "renovacion",
+  "reportes",
+  "cerrado",
+];
+
+const STAGE_LABELS = {
+  servicio_post_venta:   "Servicio Post-Venta",
+  medicion_resultados:   "Medición de resultados",
+  encuesta_satisfaccion: "Encuesta de satisfacción",
+  renovacion:            "Renovación",
+  reportes:              "Reportes",
+  cerrado:               "Cerrado",
+};
 
 export default function PostSaleCreatePage() {
   const navigate = useNavigate();
-  const isoToDayjs = (iso) => (iso ? dayjs(iso) : null);
-  const dayjsToISO = (d) => (d ? d.toISOString() : "");
   const [sales, setSales] = useState([]);
   const [form, setForm] = useState({
-    sale: "",
+    sale:          "",
     postSaleStage: "servicio_post_venta",
     medicionResultados: "",
-    encuestaSatisfaccion: {
-      calificacion: "",
-      comentarios: "",
-    },
-    renovacion: {
-      requiereRenovacion: false,
-      fechaPosibleRenovacion: "",
-    },
+    encuestaSatisfaccion: { calificacion: "", comentarios: "" },
+    renovacion: { requiereRenovacion: false, fechaPosibleRenovacion: "" },
     notas: "",
   });
 
-  const STAGES = [
-    "servicio_post_venta",
-    "medicion_resultados",
-    "encuesta_satisfaccion",
-    "renovacion",
-    "reportes",
-    "cerrado",
-  ];
-
-  const stageLabels = {
-    servicio_post_venta: "Servicio Post-Venta",
-    medicion_resultados: "Medición de resultados",
-    encuesta_satisfaccion: "Encuesta de satisfacción",
-    renovacion: "Renovación",
-    reportes: "Reportes",
-    cerrado: "Cerrado",
-  };
-
-  /** Cargar ventas */
   useEffect(() => {
-    async function loadSales() {
-      const res = await getSales();
-      setSales(res.data);
-    }
-    loadSales();
+    getSales().then((res) => setSales(res.data)).catch(console.error);
   }, []);
 
-  /** Handler general */
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name, value, type, checked } = e.target;
 
-    //si cambia etapa
     if (name === "postSaleStage") {
       setForm((prev) => ({
         ...prev,
@@ -83,223 +53,207 @@ export default function PostSaleCreatePage() {
       }));
       return;
     }
-
-    //encuesta
     if (["calificacion", "comentarios"].includes(name)) {
       setForm((prev) => ({
         ...prev,
-        encuestaSatisfaccion: {
-          ...prev.encuestaSatisfaccion,
-          [name]: value,
-        },
+        encuestaSatisfaccion: { ...prev.encuestaSatisfaccion, [name]: value },
       }));
       return;
     }
-
-    // renovación
     if (name === "requiereRenovacion") {
-      setForm({
-        ...form,
-        renovacion: {
-          ...form.renovacion,
-          requiereRenovacion: e.target.checked,
-        },
-      });
+      setForm((prev) => ({
+        ...prev,
+        renovacion: { ...prev.renovacion, requiereRenovacion: checked },
+      }));
       return;
     }
-    setForm({ ...form, [name]: value });
+    if (name === "fechaPosibleRenovacion") {
+      setForm((prev) => ({
+        ...prev,
+        renovacion: { ...prev.renovacion, fechaPosibleRenovacion: value },
+      }));
+      return;
+    }
+    setForm((prev) => ({ ...prev, [name]: value }));
   };
 
-  /** Guardar */
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (!form.sale) return alert("Selecciona una venta");
     try {
       await createPostSale(form);
       navigate("/postsale");
-    } catch (error) {
+    } catch (err) {
       alert("Error al crear registro");
-      console.error(error);
+      console.error(err);
     }
   };
 
   return (
-    <Box maxWidth="1200px" mx="auto" mt={4} px={3}>
-      <Typography variant="h4" fontWeight={700} mb={3}>
-        Crear Post-Venta
-      </Typography>
+    <div className="sl-page">
+      {/* HEADER */}
+      <div className="sl-header">
+        <h1 className="sl-title">Crear Post-Venta</h1>
+        <div className="sl-header-actions">
+          <button className="sl-btn-secondary" onClick={() => navigate("/postsale")}>
+            <ArrowLeft size={14} /> Volver
+          </button>
+        </div>
+      </div>
 
-      <Button variant="outlined" sx={{ mb: 3 }} onClick={() => navigate("/postsale")}>
-        Volver
-      </Button>
+      <form onSubmit={handleSubmit}>
 
-      <Card elevation={3}>
-        <CardContent>
-          <form onSubmit={handleSubmit}>
+        {/* VENTA ASOCIADA */}
+        <div className="sl-card">
+          <div className="sl-card-header">Venta Asociada</div>
+          <div className="sl-card-body">
+            <div className="ps-form-grid-2">
+              <div className="sl-form-group">
+                <label className="sl-label">Venta *</label>
+                <select
+                  className="sl-select-full"
+                  name="sale"
+                  value={form.sale}
+                  onChange={handleChange}
+                  required
+                >
+                  <option value="">Seleccionar venta…</option>
+                  {sales.map((s) => (
+                    <option key={s._id} value={s._id}>
+                      {s.folio || s._id} — {s.client?.nombreComercial}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="sl-form-group">
+                <label className="sl-label">Etapa</label>
+                <select
+                  className="sl-select-full"
+                  name="postSaleStage"
+                  value={form.postSaleStage}
+                  onChange={handleChange}
+                >
+                  {STAGES.map((s) => (
+                    <option key={s} value={s}>{STAGE_LABELS[s]}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+        </div>
 
-            {/* SECCIÓN: Venta */}
-            <Typography variant="h6" fontWeight={700} mb={2}>
-              Venta Asociada
-            </Typography>
+        {/* MEDICIÓN DE RESULTADOS */}
+        <div className="sl-card">
+          <div className="sl-card-header">📊 Medición de Resultados</div>
+          <div className="sl-card-body">
+            <div className="sl-form-group">
+              <label className="sl-label">Descripción</label>
+              <textarea
+                className="sl-textarea"
+                rows={3}
+                name="medicionResultados"
+                value={form.medicionResultados}
+                onChange={handleChange}
+                placeholder="Describe KPIs, cumplimiento, desempeño…"
+              />
+            </div>
+          </div>
+        </div>
 
-            <Grid container spacing={3}>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <FormControl fullWidth required>
-                  <InputLabel>Venta</InputLabel>
-                  <Select
-                    name="sale"
-                    value={form.sale}
-                    label="Venta"
-                    onChange={handleChange}
-                  >
-                    {sales.map((s) => (
-                      <MenuItem key={s._id} value={s._id}>
-                        {s._id} — {s.client?.nombreComercial}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              <Grid size={{ xs: 12, md: 3 }}>
-                <FormControl fullWidth>
-                  <InputLabel>Etapa</InputLabel>
-                  <Select
-                    name="postSaleStage"
-                    value={form.postSaleStage}
-                    label="Etapa"
-                    onChange={handleChange}
-                  >
-                    {STAGES.map((s) => (
-                      <MenuItem key={s} value={s}>
-                        {stageLabels[s] || s.replace(/_/g, " ")}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-            </Grid>
-
-            {/* SECCIÓN: Medición */}
-            <Typography variant="h6" fontWeight={700} mt={4} mb={2}>
-              Medición de resultados
-            </Typography>
-
-            <TextField
-              fullWidth
-              multiline
-              rows={3}
-              name="medicionResultados"
-              value={form.medicionResultados}
-              onChange={handleChange}
-              placeholder="Describe KPIs, cumplimiento, desempeño…"
-            />
-
-            {/* SECCIÓN: Encuesta */}
-            <Typography variant="h6" fontWeight={700} mt={4} mb={2}>
-              Encuesta de satisfacción
-            </Typography>
-
-            <Grid container spacing={3}>
-              <Grid size={{ xs: 12, md: 2.2 }}>
-                <TextField
-                  label="Calificación (1–10)"
+        {/* ENCUESTA DE SATISFACCIÓN */}
+        <div className="sl-card">
+          <div className="sl-card-header">😊 Encuesta de Satisfacción</div>
+          <div className="sl-card-body">
+            <div className="ps-form-grid-rating">
+              <div className="sl-form-group">
+                <label className="sl-label">Calificación (1–10)</label>
+                <input
+                  className="sl-input"
                   type="number"
-                  fullWidth
                   name="calificacion"
+                  min={1} max={10}
                   value={form.encuestaSatisfaccion.calificacion}
                   onChange={handleChange}
-                  inputProps={{ min: 1, max: 10 }}
+                  placeholder="1–10"
                 />
-              </Grid>
-
-              <Grid size={{ xs: 12, md: 9 }}>
-                <TextField
-                  label="Comentarios"
-                  fullWidth
-                  multiline
+              </div>
+              <div className="sl-form-group">
+                <label className="sl-label">Comentarios</label>
+                <textarea
+                  className="sl-textarea"
                   rows={3}
                   name="comentarios"
                   value={form.encuestaSatisfaccion.comentarios}
                   onChange={handleChange}
+                  placeholder="Comentarios del cliente…"
                 />
-              </Grid>
-            </Grid>
+              </div>
+            </div>
+          </div>
+        </div>
 
-            {/* SECCIÓN: Renovación */}
-            <Typography variant="h6" fontWeight={700} mt={4} mb={2}>
-              Renovación
-            </Typography>
-
-            <FormControlLabel
-              control={
-                <Switch
-                  checked={form.renovacion.requiereRenovacion}
+        {/* RENOVACIÓN */}
+        <div className="sl-card">
+          <div className="sl-card-header">🔄 Renovación</div>
+          <div className="sl-card-body">
+            <label className="inv-toggle-wrap" style={{ marginBottom: 16 }}>
+              <span className="inv-toggle">
+                <input
+                  type="checkbox"
                   name="requiereRenovacion"
+                  checked={form.renovacion.requiereRenovacion}
                   onChange={handleChange}
                 />
-              }
-              label={
-                form.renovacion.requiereRenovacion
-                  ? "Requiere renovación"
-                  : "No requiere renovación"
-              }
-            />
+                <span className="inv-toggle-slider" />
+              </span>
+              <span className="inv-toggle-label">
+                {form.renovacion.requiereRenovacion ? "Requiere renovación" : "No requiere renovación"}
+              </span>
+            </label>
 
             {form.renovacion.requiereRenovacion && (
-              <Grid container spacing={3} mt={1}>
-                <Grid item xs={12} md={6}>
-                  <DatePicker
-                    label="Fecha posible de renovación"
-                    value={isoToDayjs(form.renovacion?.fechaPosibleRenovacion)}
-                    onChange={(newValue) => {
-                      setForm((prev) => ({
-                        ...prev,
-                        renovacion: {
-                          ...prev.renovacion,
-                          fechaPosibleRenovacion: dayjsToISO(newValue),
-                        },
-                      }));
-                    }}
-                    format="DD/MM/YYYY"
-                    slotProps={{
-                      textField: {
-                        fullWidth: true,
-                        InputLabelProps: { shrink: true },
-                      },
-                    }}
-                  />
-                </Grid>
-              </Grid>
+              <div className="sl-form-group" style={{ maxWidth: 280 }}>
+                <label className="sl-label">Fecha posible de renovación</label>
+                <input
+                  className="sl-input"
+                  type="date"
+                  name="fechaPosibleRenovacion"
+                  value={form.renovacion.fechaPosibleRenovacion}
+                  onChange={handleChange}
+                />
+              </div>
             )}
+          </div>
+        </div>
 
-            {/* SECCIÓN: Notas */}
-            <Typography variant="h6" fontWeight={700} mt={4} mb={2}>
-              Notas
-            </Typography>
+        {/* NOTAS */}
+        <div className="sl-card">
+          <div className="sl-card-header">📝 Notas</div>
+          <div className="sl-card-body">
+            <div className="sl-form-group">
+              <textarea
+                className="sl-textarea"
+                rows={3}
+                name="notas"
+                value={form.notas}
+                onChange={handleChange}
+                placeholder="Notas adicionales del ejecutivo…"
+              />
+            </div>
+          </div>
+        </div>
 
-            <TextField
-              fullWidth
-              multiline
-              rows={3}
-              name="notas"
-              value={form.notas}
-              onChange={handleChange}
-              placeholder="Notas adicionales del ejecutivo…"
-            />
+        {/* ACCIONES */}
+        <div className="inv-form-actions">
+          <button type="button" className="sl-btn-secondary" onClick={() => navigate("/postsale")}>
+            Cancelar
+          </button>
+          <button type="submit" className="sl-btn-save">
+            Guardar Post-Venta
+          </button>
+        </div>
 
-            {/* BOTONES */}
-            <Box mt={4} display="flex" justifyContent="flex-end" gap={2}>
-              <Button variant="contained" size="large" type="submit">
-                Guardar Post-Venta
-              </Button>
-
-              <Button variant="outlined" size="large" onClick={() => navigate("/postsale")}>
-                Cancelar
-              </Button>
-            </Box>
-          </form>
-        </CardContent>
-      </Card>
-    </Box>
+      </form>
+    </div>
   );
 }

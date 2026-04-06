@@ -211,142 +211,137 @@ router.get("/executive", auth, async (req, res) => {
 });
 
 // ============================================
-// REPORTE 3: Comparativo ventas (VERSIÓN CORREGIDA)
+// REPORTE 3: Comparativo ventas
 // ============================================
 router.get("/comparative", auth, async (req, res) => {
   try {
-    const { 
-      periodoBase,      // "mensual" o "anual"
-      periodoComparativo, // "mensual" o "anual"
+    const {
+      periodoBase,
+      periodoComparativo,
       tipoCliente,
-      ejecutivoId 
+      ejecutivoId,
+      // Nuevos parámetros para modo mes libre
+      mesBase,        // "1" a "12"
+      anioBase,       // ej. "2026"
+      mesComp,        // "1" a "12"
+      anioComp,       // ej. "2026"
     } = req.query;
 
-    // Obtener todas las facturas
     let invoices = await Invoice.find({})
       .populate("client", "nombreComercial tipoCliente")
       .populate({
         path: "sale",
-        populate: {
-          path: "assignedTo",
-          select: "name email",
-        },
+        populate: { path: "assignedTo", select: "name email" },
       })
       .lean();
 
-    // Filtrar por tipo de cliente
-    if (tipoCliente && tipoCliente !== "all") {
+    if (tipoCliente && tipoCliente !== "all")
       invoices = invoices.filter((inv) => inv.client?.tipoCliente === tipoCliente);
-    }
 
-    // Filtrar por ejecutivo
-    if (ejecutivoId && ejecutivoId !== "all") {
+    if (ejecutivoId && ejecutivoId !== "all")
       invoices = invoices.filter((inv) => {
-        const assignedTo = inv.sale?.assignedTo?._id || inv.sale?.assignedTo;
-        return assignedTo && String(assignedTo) === ejecutivoId;
+        const at = inv.sale?.assignedTo?._id || inv.sale?.assignedTo;
+        return at && String(at) === ejecutivoId;
       });
+
+    // ── Determinar rango de cada período ──────────────────────────
+    let labelBase, labelComp;
+    let isBase, isComp; // funciones (invoice) => boolean
+
+    if (periodoBase === "mes-libre" || periodoComparativo === "mes-libre") {
+      // Modo: comparar un mes específico vs otro mes específico
+      const yB = parseInt(anioBase);
+      const mB = parseInt(mesBase);
+      const yC = parseInt(anioComp);
+      const mC = parseInt(mesComp);
+
+      const MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+      labelBase = `${MESES[mB - 1]} ${yB}`;
+      labelComp = `${MESES[mC - 1]} ${yC}`;
+
+      isBase = (inv) => {
+        const d = new Date(inv.fechaFactura);
+        return d.getFullYear() === yB && d.getMonth() + 1 === mB;
+      };
+      isComp = (inv) => {
+        const d = new Date(inv.fechaFactura);
+        return d.getFullYear() === yC && d.getMonth() + 1 === mC;
+      };
+    } else if (periodoBase === "mensual" && periodoComparativo === "mensual") {
+      // Modo original: mismo mes, año anterior vs año actual
+      const now = new Date();
+      const yC = now.getFullYear();
+      const yB = yC - 1;
+      const m  = now.getMonth() + 1;
+      const MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
+      labelBase = `${MESES[m - 1]} ${yB}`;
+      labelComp = `${MESES[m - 1]} ${yC}`;
+
+      isBase = (inv) => {
+        const d = new Date(inv.fechaFactura);
+        return d.getFullYear() === yB && d.getMonth() + 1 === m;
+      };
+      isComp = (inv) => {
+        const d = new Date(inv.fechaFactura);
+        return d.getFullYear() === yC && d.getMonth() + 1 === m;
+      };
+    } else {
+      // Modo original: anual (dos últimos años con datos)
+      const years = [...new Set(invoices.map(inv => new Date(inv.fechaFactura).getFullYear()))].sort();
+      const yC = years.length >= 1 ? years[years.length - 1] : new Date().getFullYear();
+      const yB = years.length >= 2 ? years[years.length - 2] : yC - 1;
+      labelBase = String(yB);
+      labelComp = String(yC);
+
+      isBase = (inv) => new Date(inv.fechaFactura).getFullYear() === yB;
+      isComp = (inv) => new Date(inv.fechaFactura).getFullYear() === yC;
     }
 
-    // Obtener años únicos de las facturas
-    const years = new Set();
-    invoices.forEach(inv => {
-      const year = new Date(inv.fechaFactura).getFullYear();
-      years.add(year);
-    });
-    const sortedYears = Array.from(years).sort();
-    
-    // Determinar años a comparar
-    let yearBase, yearComparativo;
-    let yearBaseLabel, yearComparativoLabel;
-    
-    if (periodoBase === "anual" && periodoComparativo === "anual") {
-      if (sortedYears.length >= 2) {
-        // Usar los dos últimos años con datos
-        yearComparativo = sortedYears[sortedYears.length - 1];
-        yearBase = sortedYears[sortedYears.length - 2];
-        yearBaseLabel = yearBase;
-        yearComparativoLabel = yearComparativo;
-      } else if (sortedYears.length === 1) {
-        // Solo hay un año con datos, comparar con el año anterior (sin datos)
-        yearComparativo = sortedYears[0];
-        yearBase = sortedYears[0] - 1;
-        yearBaseLabel = yearBase;
-        yearComparativoLabel = yearComparativo;
-      } else {
-        // No hay datos, usar años actuales
-        yearComparativo = new Date().getFullYear();
-        yearBase = yearComparativo - 1;
-        yearBaseLabel = yearBase;
-        yearComparativoLabel = yearComparativo;
-      }
-    }
-
-    // Agrupar ventas por cliente y año
+    // ── Agrupar por cliente ────────────────────────────────────────
     const salesByClient = new Map();
 
     invoices.forEach((invoice) => {
-      const fecha = new Date(invoice.fechaFactura);
-      const year = fecha.getFullYear();
-      const cliente = invoice.client?.nombreComercial || "N/A";
-      const ejecutivo = invoice.sale?.assignedTo?.name || "No asignado";
-      const monto = invoice.importeConIVA || 0;
-      
-      const clientKey = `${cliente}|${ejecutivo}`;
-      
-      if (!salesByClient.has(clientKey)) {
-        salesByClient.set(clientKey, {
-          cliente,
-          ejecutivo,
-          ventasPorAnio: {},
-        });
-      }
-      
-      const client = salesByClient.get(clientKey);
-      client.ventasPorAnio[year] = (client.ventasPorAnio[year] || 0) + monto;
+      const cliente   = invoice.client?.nombreComercial || "N/A";
+      const ejecutivo = invoice.sale?.assignedTo?.name  || "No asignado";
+      const monto     = invoice.importeConIVA || 0;
+      const key       = `${cliente}|${ejecutivo}`;
+
+      if (!salesByClient.has(key))
+        salesByClient.set(key, { cliente, ejecutivo, base: 0, comp: 0 });
+
+      const row = salesByClient.get(key);
+      if (isBase(invoice)) row.base += monto;
+      if (isComp(invoice)) row.comp += monto;
     });
 
-    // Construir resultado
+    // ── Construir resultado ────────────────────────────────────────
     const result = [];
+    for (const [, c] of salesByClient) {
+      if (c.base === 0 && c.comp === 0) continue;
 
-    for (const [_, client] of salesByClient) {
-      const ventasBase = client.ventasPorAnio[yearBase] || 0;
-      const ventasComparativo = client.ventasPorAnio[yearComparativo] || 0;
-      
-      // Solo mostrar si hay datos en al menos un período
-      if (ventasBase > 0 || ventasComparativo > 0) {
-        const variacionMonto = ventasComparativo - ventasBase;
-        let variacionPorcentaje = 0;
-        
-        if (ventasBase === 0 && ventasComparativo > 0) {
-          variacionPorcentaje = 1; // 100% crecimiento (desde cero)
-        } else if (ventasBase > 0) {
-          variacionPorcentaje = variacionMonto / ventasBase;
-        }
-        
-        result.push({
-          fecha: `${yearBaseLabel} vs ${yearComparativoLabel}`,
-          cliente: client.cliente,
-          periodoBase: ventasBase,
-          periodoComparativo: ventasComparativo,
-          variacionMonto,
-          variacionPorcentaje: Math.round(variacionPorcentaje * 100) / 100,
-          ejecutivo: client.ejecutivo,
-        });
-      }
-    }
+      const variacionMonto = c.comp - c.base;
+      const variacionPorcentaje =
+        c.base === 0 && c.comp > 0 ? 1
+        : c.base > 0 ? Math.round((variacionMonto / c.base) * 100) / 100
+        : 0;
 
-    // Si no hay resultados, agregar un mensaje informativo
-    if (result.length === 0) {
-      return res.json({ 
-        data: [],
-        message: "No hay datos para los filtros seleccionados"
+      result.push({
+        fecha: `${labelBase} vs ${labelComp}`,
+        cliente: c.cliente,
+        periodoBase: c.base,
+        periodoComparativo: c.comp,
+        variacionMonto,
+        variacionPorcentaje,
+        ejecutivo: c.ejecutivo,
       });
     }
 
-    // Ordenar por variación porcentual descendente
-    result.sort((a, b) => b.variacionPorcentaje - a.variacionPorcentaje);
+    if (result.length === 0)
+      return res.json({ data: [], message: "No hay datos para los filtros seleccionados" });
 
+    result.sort((a, b) => b.variacionPorcentaje - a.variacionPorcentaje);
     res.json({ data: result });
+
   } catch (error) {
     console.error("Error en reporte comparativo:", error);
     res.status(500).json({ message: "Error interno del servidor" });

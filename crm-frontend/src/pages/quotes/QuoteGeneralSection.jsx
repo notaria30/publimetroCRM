@@ -1,123 +1,103 @@
-import { Card, CardContent, Typography, Grid, TextField, MenuItem } from "@mui/material";
+import "./quotes.css";
+
+const METODOS_PAGO  = ["PPD", "PUE"];
+const FORMAS_PAGO   = ["Transferencia", "Efectivo", "Tarjeta", "Cheque", "Otro"];
+const USOS_CFDI     = [
+  { value: "G01", label: "G01 - Adquisición de mercancías" },
+  { value: "G03", label: "G03 - Gastos en general" },
+  { value: "P01", label: "P01 - Por definir" },
+];
 
 export default function QuoteGeneralSection({ clients, form, setForm }) {
+  const set = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
+
   return (
-    <Card elevation={2} sx={{ mb: 3 }}>
-      <CardContent>
-        <Typography variant="h6" fontWeight={700} mb={2}>
-          Datos generales
-        </Typography>
+    <div className="qt-card">
+      <div className="qt-card-header">Datos generales</div>
+      <div className="qt-card-body">
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 14 }}>
 
-        <Grid container spacing={3}>
-
-          {/* CLIENTE */}
-          <Grid size={{ xs: 12, md: 3.5 }}>
-            <TextField
-              select
-              fullWidth
-              label="Cliente"
+          {/* Cliente */}
+          <div style={{ gridColumn: "span 2" }}>
+            <label className="qt-input-label">Cliente *</label>
+            <select
+              className="qt-input"
               value={form.client}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, client: e.target.value }))
-              }
+              onChange={(e) => set("client", e.target.value)}
               required
             >
-              <MenuItem value="">Seleccione cliente...</MenuItem>
+              <option value="">Seleccione cliente...</option>
               {clients.map((c) => (
-                <MenuItem key={c._id} value={c._id}>
-                  {c.nombreComercial}
-                </MenuItem>
+                <option key={c._id} value={c._id}>{c.nombreComercial}</option>
               ))}
-            </TextField>
-          </Grid>
+            </select>
+          </div>
 
-          {/* DURACIÓN */}
-          <Grid size={{ xs: 12, md: 1.5 }}>
-            <TextField
-              fullWidth
-              label="Duración"
+          {/* Duración */}
+          <div>
+            <label className="qt-input-label">Duración</label>
+            <input
+              className="qt-input"
               placeholder="Ej: 3 meses"
               value={form.duracion}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, duracion: e.target.value }))
-              }
+              onChange={(e) => set("duracion", e.target.value)}
             />
-          </Grid>
+          </div>
 
-          {/* MÉTODO DE PAGO */}
-          <Grid size={{ xs: 12, md: 2 }}>
-            <TextField
-              select
-              fullWidth
-              label="Método de pago"
+          {/* Método de pago */}
+          <div>
+            <label className="qt-input-label">Método de pago</label>
+            <select
+              className="qt-input"
               value={form.metodoPago}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, metodoPago: e.target.value }))
-              }
+              onChange={(e) => set("metodoPago", e.target.value)}
             >
-              <MenuItem value="">Seleccione...</MenuItem>
-              <MenuItem value="PPD">PPD</MenuItem>
-              <MenuItem value="PUE">PUE</MenuItem>
-            </TextField>
-          </Grid>
+              <option value="">Seleccione...</option>
+              {METODOS_PAGO.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </div>
 
-          {/* FORMA DE PAGO */}
-          <Grid size={{ xs: 12, md: 2.5 }}>
-            <TextField
-              select
-              fullWidth
-              label="Forma de pago"
+          {/* Forma de pago */}
+          <div>
+            <label className="qt-input-label">Forma de pago</label>
+            <select
+              className="qt-input"
               value={form.formaPago}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, formaPago: e.target.value }))
-              }
+              onChange={(e) => set("formaPago", e.target.value)}
             >
-              <MenuItem value="Transferencia">Transferencia</MenuItem>
-              <MenuItem value="Efectivo">Efectivo</MenuItem>
-              <MenuItem value="Tarjeta">Tarjeta</MenuItem>
-              <MenuItem value="Cheque">Cheque</MenuItem>
-              <MenuItem value="Otro">Otro</MenuItem>
-            </TextField>
-          </Grid>
+              <option value="">Seleccione...</option>
+              {FORMAS_PAGO.map((f) => <option key={f} value={f}>{f}</option>)}
+            </select>
+          </div>
 
-          {/* USO DE CFDI */}
-          <Grid size={{ xs: 12, md: 3.5 }}>
-            <TextField
-              select
-              fullWidth
-              label="Uso de CFDI"
+          {/* Uso de CFDI */}
+          <div style={{ gridColumn: "span 2" }}>
+            <label className="qt-input-label">Uso de CFDI</label>
+            <select
+              className="qt-input"
               value={form.usoCFDI}
-              onChange={(e) =>
-                setForm((prev) => ({ ...prev, usoCFDI: e.target.value }))
-              }
+              onChange={(e) => set("usoCFDI", e.target.value)}
             >
-              <MenuItem value="G01">G01 - Adquisición de mercancías</MenuItem>
-              <MenuItem value="G03">G03 - Gastos en general</MenuItem>
-              <MenuItem value="P01">P01 - Por definir</MenuItem>
-            </TextField>
-          </Grid>
+              <option value="">Seleccione...</option>
+              {USOS_CFDI.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+            </select>
+          </div>
 
-          {/* ESTADO DE FACTURACIÓN */}
-          <Grid size={{ xs: 12, md: 3 }}>
-            <TextField
-              select
-              fullWidth
-              label="Estado de facturación"
+          {/* Estado de facturación */}
+          <div>
+            <label className="qt-input-label">Estado de facturación</label>
+            <select
+              className="qt-input"
               value={form.facturacionEstado}
-              onChange={(e) =>
-                setForm((prev) => ({
-                  ...prev,
-                  facturacionEstado: e.target.value,
-                }))
-              }
+              onChange={(e) => set("facturacionEstado", e.target.value)}
             >
-              <MenuItem value="por_facturar">Por facturar</MenuItem>
-              <MenuItem value="facturado">Facturado</MenuItem>
-            </TextField>
-          </Grid>
+              <option value="por_facturar">Por facturar</option>
+              <option value="facturado">Facturado</option>
+            </select>
+          </div>
 
-        </Grid>
-      </CardContent>
-    </Card>
+        </div>
+      </div>
+    </div>
   );
 }

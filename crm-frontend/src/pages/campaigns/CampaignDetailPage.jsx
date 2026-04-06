@@ -1,186 +1,113 @@
-// src/pages/campaigns/CampaignDetailPage.jsx
 import { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Button,
-  Grid,
-  Divider,
-} from "@mui/material";
+import { useParams, useNavigate } from "react-router-dom";
 import { getCampaignById } from "../../services/campaignService";
+import { ArrowLeft, Pencil } from "lucide-react";
+import "../clients/clients.css";
+import { LoadingPage } from "../../components/LoadingPage";
+
+const STATUS_CAMP = {
+  planificada: { bg: "#eff6ff", text: "#1d4ed8", border: "#bfdbfe", label: "Planificada" },
+  en_curso:    { bg: "#fff7ed", text: "#c2410c", border: "#fed7aa", label: "En curso"    },
+  finalizada:  { bg: "#f0fdf4", text: "#15803d", border: "#bbf7d0", label: "Finalizada"  },
+  cancelada:   { bg: "#fef2f2", text: "#991b1b", border: "#fca5a5", label: "Cancelada"   },
+};
 
 export default function CampaignDetailPage() {
   const { clientId, campId } = useParams();
   const navigate = useNavigate();
-
   const [campaign, setCampaign] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
+  const [loading, setLoading]   = useState(true);
+  const [error, setError]       = useState("");
 
   useEffect(() => {
-    async function load() {
-      try {
-        const res = await getCampaignById(campId);
-        setCampaign(res.data);
-      } catch (err) {
+    getCampaignById(campId)
+      .then((res) => setCampaign(res.data))
+      .catch((err) => {
         const status = err?.response?.status;
-        const msg = err?.response?.data?.message;
-
-        console.error("Error cargando campaña:", status, msg, err);
-
-        if (status === 403) {
-          setError("No tienes permiso para ver esta campaña.");
-          return;
-        }
-
-        if (status === 404) {
-          setError("Campaña no encontrada.");
-          return;
-        }
-
-        setError("Error cargando campaña.");
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    load();
+        setError(status === 403 ? "No tienes permiso para ver esta campaña."
+          : status === 404 ? "Campaña no encontrada." : "Error cargando campaña.");
+      })
+      .finally(() => setLoading(false));
   }, [campId]);
 
-  if (loading)
+  if (loading) return <LoadingPage />;
+  if (error || !campaign)
     return (
-      <Box sx={{ p: 4 }}>
-        <Typography variant="h6">Cargando campaña…</Typography>
-      </Box>
+      <div className="cl-page">
+        <div className="cl-alert cl-alert--error">{error || "Campaña no encontrada."}</div>
+      </div>
     );
 
-  if (!campaign)
-    return (
-      <Box sx={{ p: 4 }}>
-        <Typography variant="h6" color="error">
-          Campaña no encontrada.
-        </Typography>
-      </Box>
-    );
+  const s = STATUS_CAMP[campaign.status] || { bg: "#f3f4f6", text: "#374151", border: "#e5e7eb", label: campaign.status };
 
   return (
-    <Box sx={{ p: 4 }}>
-      <Button
-        variant="outlined"
-        sx={{ mb: 3 }}
-        onClick={() => navigate(`/clients/${clientId}/campaigns`)}
-      >
-        Volver a campañas
-      </Button>
-      {/* Título */}
-      <Box
-        sx={{
-          display: "flex",
-          justifyContent: "space-between",
-          mb: 3,
-          alignItems: "center",
-        }}
-      >
-        <Typography variant="h4" fontWeight={700}>
-          {campaign.nombre}
-        </Typography>
+    <div className="cl-page">
 
-        <Button
-          variant="contained"
-          color="primary"
-          onClick={() =>
-            navigate(`/clients/${clientId}/campaigns/${campId}/edit`)
-          }
-        >
-          Editar campaña
-        </Button>
-      </Box>
+      {/* Header */}
+      <div className="cl-header-row">
+        <h1 className="cl-title">{campaign.nombre}</h1>
+        <div className="cl-header-row-right">
+          <button className="cl-btn-secondary"
+            onClick={() => navigate(`/clients/${clientId}/campaigns`)}>
+            <ArrowLeft size={14} /> Volver
+          </button>
+          <button className="cl-btn-primary"
+            onClick={() => navigate(`/clients/${clientId}/campaigns/${campId}/edit`)}>
+            <Pencil size={14} /> Editar campaña
+          </button>
+        </div>
+      </div>
 
-      {/* Card principal */}
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Cliente
-              </Typography>
-              <Typography variant="h6">
-                {campaign.client?.nombreComercial}
-              </Typography>
-            </Grid>
+      {/* Info principal */}
+      <div className="cl-card">
+        <p className="cl-section-title">Información general</p>
+        <div className="cl-form-grid">
+          {[
+            { label: "Cliente",      value: campaign.client?.nombreComercial || "—" },
+            { label: "Fecha inicio", value: campaign.fechaInicio?.substring(0, 10) || "—" },
+            { label: "Fecha fin",    value: campaign.fechaFin?.substring(0, 10) || "—" },
+          ].map(({ label, value }) => (
+            <div key={label} className="cl-form-group">
+              <label className="cl-label">{label}</label>
+              <input className="cl-input" readOnly value={value} />
+            </div>
+          ))}
 
-            <Grid item xs={12} md={6}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Status
-              </Typography>
-              <Typography variant="h6">
-                {campaign.status === "planificada" && "Planificada"}
-                {campaign.status === "en_curso" && "En curso"}
-                {campaign.status === "finalizada" && "Finalizada"}
-                {campaign.status === "cancelada" && "Cancelada"}
-              </Typography>
-            </Grid>
+          <div className="cl-form-group">
+            <label className="cl-label">Status</label>
+            <div style={{ paddingTop: 6 }}>
+              <span className="cl-badge"
+                style={{ backgroundColor: s.bg, color: s.text, borderColor: s.border }}>
+                {s.label}
+              </span>
+            </div>
+          </div>
 
-            <Grid item xs={12} md={6}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Fecha de inicio
-              </Typography>
-              <Typography variant="body1">
-                {campaign.fechaInicio?.substring(0, 10) || "—"}
-              </Typography>
-            </Grid>
+          <div className="cl-form-group" style={{ gridColumn: "1 / -1" }}>
+            <label className="cl-label">Descripción</label>
+            <textarea className="cl-input" readOnly rows={3} style={{ resize: "none" }}
+              value={campaign.descripcion || "Sin descripción"} />
+          </div>
+        </div>
+      </div>
 
-            <Grid item xs={12} md={6}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Fecha de fin
-              </Typography>
-              <Typography variant="body1">
-                {campaign.fechaFin?.substring(0, 10) || "—"}
-              </Typography>
-            </Grid>
-          </Grid>
+      {/* Detalles adicionales */}
+      <div className="cl-card">
+        <p className="cl-section-title">Detalles adicionales</p>
+        <div className="cl-form-grid">
+          {[
+            { label: "Formatos",     value: campaign.formatos?.length ? campaign.formatos.join(", ") : "—" },
+            { label: "Periodicidad", value: campaign.periodicidad || "—" },
+            { label: "Cortesías",    value: campaign.cortesias || "—" },
+          ].map(({ label, value }) => (
+            <div key={label} className="cl-form-group">
+              <label className="cl-label">{label}</label>
+              <input className="cl-input" readOnly value={value} />
+            </div>
+          ))}
+        </div>
+      </div>
 
-          <Divider sx={{ my: 3 }} />
-
-          <Typography variant="subtitle2" color="text.secondary">
-            Descripción
-          </Typography>
-          <Typography variant="body1">
-            {campaign.descripcion || "Sin descripción"}
-          </Typography>
-          <Divider sx={{ my: 3 }} />
-
-          <Typography variant="subtitle2" color="text.secondary">
-            Formatós
-          </Typography>
-          <Typography variant="body1">
-            {campaign.formatos?.length ? campaign.formatos.join(", ") : "—"}
-          </Typography>
-
-          <Divider sx={{ my: 2 }} />
-
-          <Typography variant="subtitle2" color="text.secondary">
-            Periodicidad
-          </Typography>
-          <Typography variant="body1">
-            {campaign.periodicidad || "—"}
-          </Typography>
-
-          <Divider sx={{ my: 2 }} />
-
-          <Typography variant="subtitle2" color="text.secondary">
-            Cortesías
-          </Typography>
-          <Typography variant="body1">
-            {campaign.cortesias || "—"}
-          </Typography>
-
-        </CardContent>
-      </Card>
-    </Box>
+    </div>
   );
 }

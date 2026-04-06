@@ -1,132 +1,92 @@
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Grid,
-  TextField,
-  FormControlLabel,
-  Checkbox,
-} from "@mui/material";
-import { Switch } from "@mui/material";
+import "./quotes.css";
 
 export default function QuoteIntercambioSection({ form, setForm }) {
+  const isActivo = !!form.intercambio.activo;
+
+  const update = (patch) =>
+    setForm((prev) => ({
+      ...prev,
+      intercambio: { ...prev.intercambio, ...patch },
+    }));
+
   return (
-    <Card elevation={2} sx={{ mb: 3 }}>
-      <CardContent>
-        <Typography variant="h6" fontWeight={700} mb={2}>
-          Intercambio
-        </Typography>
+    <div className="qt-card">
+      <div
+        className="qt-card-header"
+        style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+      >
+        <span>Intercambio</span>
+        <label className="cl-toggle-wrap" style={{ margin: 0 }}>
+          <span className="cl-toggle">
+            <input
+              type="checkbox"
+              checked={isActivo}
+              onChange={(e) => update({ activo: e.target.checked })}
+            />
+            <span className="cl-toggle-slider" />
+          </span>
+        </label>
+      </div>
 
-        <Box
-          display="flex"
-          alignItems="center"
-          justifyContent="flex-end"
-          width="100%"
-          mb={2}
-        >
-          <Switch
-            checked={form.intercambio.activo}
-            onChange={(e) =>
-              setForm((prev) => ({
-                ...prev,
-                intercambio: {
-                  ...prev.intercambio,
-                  activo: e.target.checked,
-                },
-              }))
-            }
-          />
-        </Box>
+      {isActivo && (
+        <div className="qt-card-body">
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(160px, 1fr))", gap: 14, marginBottom: 14 }}>
+            {/* % Efectivo */}
+            <div>
+              <label className="qt-input-label">% Efectivo</label>
+              <input
+                className="qt-input"
+                type="number"
+                min={0}
+                max={100}
+                value={form.intercambio.porcentajeEfectivo}
+                onChange={(e) =>
+                  update({ porcentajeEfectivo: e.target.value === "" ? "" : Number(e.target.value) })
+                }
+              />
+            </div>
 
-        {form.intercambio.activo && (
-          <Box mt={2}>
-            <Grid container spacing={3}>
+            {/* % Especie */}
+            <div>
+              <label className="qt-input-label">% Especie</label>
+              <input
+                className="qt-input"
+                type="number"
+                min={0}
+                max={100}
+                value={form.intercambio.porcentajeEspecie}
+                onChange={(e) =>
+                  update({ porcentajeEspecie: e.target.value === "" ? "" : Number(e.target.value) })
+                }
+              />
+            </div>
+          </div>
 
-              {/* Porcentaje efectivo */}
-              <Grid size={{ xs: 12, md: 2 }}>
-                <TextField
-                  fullWidth
-                  label="% Efectivo"
-                  type="number"
-                  inputProps={{ min: 0, max: 100 }}
-                  value={form.intercambio.porcentajeEfectivo}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      intercambio: {
-                        ...prev.intercambio,
-                        porcentajeEfectivo: e.target.value === "" ? "" : Number(e.target.value)
-                      },
-                    }))
-                  }
-                />
-              </Grid>
+          {/* Ofrecemos */}
+          <div style={{ marginBottom: 14 }}>
+            <label className="qt-input-label">Ofrecemos</label>
+            <textarea
+              className="qt-input"
+              rows={2}
+              value={form.intercambio.ofrecemos}
+              onChange={(e) => update({ ofrecemos: e.target.value })}
+              style={{ resize: "vertical" }}
+            />
+          </div>
 
-              {/* Porcentaje especie */}
-              <Grid size={{ xs: 12, md: 2 }}>
-                <TextField
-                  fullWidth
-                  label="% Especie"
-                  type="number"
-                  inputProps={{ min: 0, max: 100 }}
-                  value={form.intercambio.porcentajeEspecie}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      intercambio: {
-                        ...prev.intercambio,
-                        porcentajeEspecie:e.target.value === "" ? "" : Number(e.target.value)
-                      },
-                    }))
-                  }
-                />
-              </Grid>
-
-              {/* Ofrecemos */}
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Ofrecemos"
-                  multiline
-                  rows={2}
-                  value={form.intercambio.ofrecemos}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      intercambio: {
-                        ...prev.intercambio,
-                        ofrecemos: e.target.value,
-                      },
-                    }))
-                  }
-                />
-              </Grid>
-
-              {/* Nos ofrecen */}
-              <Grid item xs={12}>
-                <TextField
-                  fullWidth
-                  label="Nos ofrecen"
-                  multiline
-                  rows={2}
-                  value={form.intercambio.nosOfrecen}
-                  onChange={(e) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      intercambio: {
-                        ...prev.intercambio,
-                        nosOfrecen: e.target.value,
-                      },
-                    }))
-                  }
-                />
-              </Grid>
-
-            </Grid>
-          </Box>
-        )}
-      </CardContent>
-    </Card>
+          {/* Nos ofrecen */}
+          <div>
+            <label className="qt-input-label">Nos ofrecen</label>
+            <textarea
+              className="qt-input"
+              rows={2}
+              value={form.intercambio.nosOfrecen}
+              onChange={(e) => update({ nosOfrecen: e.target.value })}
+              style={{ resize: "vertical" }}
+            />
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

@@ -1,253 +1,128 @@
-// src/pages/clients/ClientsPage.jsx
-
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { getClients } from "../../services/clientService";
 import { useAuth } from "../../context/AuthContext";
+import { Search, UserPlus } from "lucide-react";
+import "./ClientsPage.css";
+import { LoadingPage } from "../../components/LoadingPage";
 
-import {
-  Box,
-  Typography,
-  Button,
-  Paper,
-  Table,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableHead,
-  TableRow,
-  Chip,
-  TextField,
-  InputAdornment,
-} from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
+const STATUS_COLORS = {
+  prospeccion: { bg: "#fff7ed", text: "#c2410c", border: "#fed7aa" },
+  presentacion: { bg: "#eff6ff", text: "#1d4ed8", border: "#bfdbfe" },
+  negociacion:  { bg: "#f5f3ff", text: "#6d28d9", border: "#ddd6fe" },
+  propuesta:    { bg: "#f5f3ff", text: "#6d28d9", border: "#ddd6fe" },
+  cerrado:      { bg: "#f0fdf4", text: "#15803d", border: "#bbf7d0" },
+  cierre:       { bg: "#f0fdf4", text: "#15803d", border: "#bbf7d0" },
+};
+
+function StatusBadge({ status }) {
+  const key = (status || "prospeccion").toLowerCase();
+  const style = STATUS_COLORS[key] || { bg: "#f3f4f6", text: "#374151", border: "#e5e7eb" };
+  const label = key.charAt(0).toUpperCase() + key.slice(1);
+
+  return (
+    <span
+      className="cl-badge"
+      style={{ backgroundColor: style.bg, color: style.text, borderColor: style.border }}
+    >
+      {label}
+    </span>
+  );
+}
+
+const normalize = (str = "") =>
+  String(str).toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
 export default function ClientsPage() {
   const { isOwner, isWorker } = useAuth();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
-
-  // ✅ Buscador
   const [search, setSearch] = useState("");
 
-  const loadClients = async () => {
-    try {
-      const res = await getClients();
-      setClients(res.data);
-    } catch (error) {
-      console.error("Error cargando clientes:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    loadClients();
+    getClients()
+      .then((res) => setClients(res.data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
-  // Normaliza texto para buscar (minúsculas + sin acentos)
-  const normalize = (str = "") =>
-    String(str)
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-
-  // MISMA PALETA QUE COTIZACIONES (chips)
-  const getStatusChip = (status) => {
-    const value = status || "prospeccion";
-    const label = value.charAt(0).toUpperCase() + value.slice(1);
-
-    const colors = {
-      prospeccion: "#F28C0F",
-      presentacion: "#007BFF",
-      negociacion: "#6C63FF",
-      cerrado: "#2E7D32",
-    };
-
-    return (
-      <Chip
-        label={label}
-        sx={{
-          backgroundColor: colors[value] || "#9e9e9e",
-          color: "white",
-          fontWeight: 600,
-        }}
-      />
-    );
-  };
-
-  // ✅ Importante: hooks SIEMPRE arriba, antes de returns condicionales
-  const filteredClients = useMemo(() => {
+  const filtered = useMemo(() => {
     const q = normalize(search.trim());
     if (!q) return clients;
-
-    return clients.filter((client) => {
-      const haystack = [
-        client.nombreComercial,
-        client.razonSocial,
-        client.rfc,
-        client.status,
-        client.assignedTo?.name,
-      ]
-        .filter(Boolean)
-        .map(normalize)
-        .join(" ");
-
-      return haystack.includes(q);
-    });
+    return clients.filter((c) =>
+      [c.nombreComercial, c.razonSocial, c.rfc, c.status, c.assignedTo?.name]
+        .filter(Boolean).map(normalize).join(" ").includes(q)
+    );
   }, [clients, search]);
 
-  // ✅ Ahora sí, return condicional al final
-  if (loading)
-    return (
-      <Typography variant="body1" sx={{ p: 4 }}>
-        Cargando clientes...
-      </Typography>
-    );
+if (loading) return <LoadingPage />;
 
   return (
-    <Box sx={{ p: 3 }}>
+    <div className="cl-page">
+
       {/* HEADER */}
-      <Box
-        display="flex"
-        alignItems="center"
-        justifyContent="space-between"
-        mb={2}
-        gap={2}
-        flexWrap="wrap"
-      >
-        <Typography variant="h4" fontWeight={700}>
-          Clientes
-        </Typography>
-
-        <Box display="flex" alignItems="center" gap={2} flexWrap="wrap">
-          {/* ✅ BUSCADOR */}
-          <TextField
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar cliente (nombre, razón social, RFC, estatus, ejecutivo)…"
-            size="small"
-            sx={{
-              width: { xs: "100%", sm: 420 },
-              backgroundColor: "white",
-              borderRadius: "10px",
-            }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" />
-                </InputAdornment>
-              ),
-            }}
-          />
-
+      <div className="cl-header">
+        <h1 className="cl-title">Clientes</h1>
+        <div className="cl-header-actions">
+          <div className="cl-search-wrap">
+            <Search size={15} className="cl-search-icon" />
+            <input
+              className="cl-search"
+              placeholder="Buscar cliente (nombre, razón social, RFC, estatus, ejecutivo)…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
           {(isOwner || isWorker) && (
-            <Button
-              variant="contained"
-              sx={{
-                backgroundColor: "#007BFF",
-                textTransform: "none",
-                fontSize: 15,
-                px: 3,
-                py: 1,
-                borderRadius: "8px",
-              }}
-              component={Link}
-              to="/clients/new"
-            >
+            <Link to="/clients/new" className="cl-btn-primary">
+              <UserPlus size={15} />
               Nuevo Cliente
-            </Button>
+            </Link>
           )}
-        </Box>
-      </Box>
+        </div>
+      </div>
 
-      {/* contador */}
-      <Typography variant="body2" sx={{ mb: 2, opacity: 0.75 }}>
-        Mostrando {filteredClients.length} de {clients.length}
-      </Typography>
+      <p className="cl-count">Mostrando {filtered.length} de {clients.length}</p>
 
       {/* TABLA */}
-      <TableContainer
-        component={Paper}
-        elevation={2}
-        sx={{ borderRadius: "12px", overflow: "hidden" }}
-      >
-        <Table>
-          <TableHead>
-            <TableRow sx={{ backgroundColor: "#0C8F44" }}>
-              <TableCell sx={{ color: "white", fontWeight: 600 }}>
-                Nombre Comercial
-              </TableCell>
-              <TableCell sx={{ color: "white", fontWeight: 600 }}>
-                Razón Social
-              </TableCell>
-              <TableCell sx={{ color: "white", fontWeight: 600 }}>
-                RFC
-              </TableCell>
-              <TableCell sx={{ color: "white", fontWeight: 600 }}>
-                Estatus
-              </TableCell>
-              <TableCell sx={{ color: "white", fontWeight: 600 }}>
-                Ejecutivo Asignado
-              </TableCell>
-              <TableCell sx={{ color: "white", fontWeight: 600 }}>
-                Acciones
-              </TableCell>
-            </TableRow>
-          </TableHead>
-
-          <TableBody>
-            {filteredClients.map((client) => (
-              <TableRow
-                key={client._id}
-                hover
-                sx={{ "&:hover": { backgroundColor: "#f5f5f5" } }}
-              >
-                <TableCell>{client.nombreComercial}</TableCell>
-                <TableCell>{client.razonSocial}</TableCell>
-                <TableCell>{client.rfc}</TableCell>
-
-                <TableCell>{getStatusChip(client.status)}</TableCell>
-                <TableCell>{client.assignedTo?.name || "N/A"}</TableCell>
-
-                <TableCell>
-                  <Box sx={{ display: "flex", gap: 1, flexWrap: "wrap" }}>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      sx={{ textTransform: "none", borderRadius: "8px", px: 2 }}
-                      component={Link}
-                      to={`/clients/${client._id}`}
-                    >
-                      Ver
-                    </Button>
-
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      sx={{ textTransform: "none", borderRadius: "8px", px: 2 }}
-                      component={Link}
-                      to={`/clients/${client._id}/campaigns`}
-                    >
-                      Campañas
-                    </Button>
-                  </Box>
-                </TableCell>
-              </TableRow>
+      <div className="cl-table-wrap">
+        <table className="cl-table">
+          <thead>
+            <tr>
+              <th>Nombre Comercial</th>
+              <th>Razón Social</th>
+              <th>RFC</th>
+              <th>Estatus</th>
+              <th>Ejecutivo Asignado</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.map((client) => (
+              <tr key={client._id}>
+                <td>{client.nombreComercial}</td>
+                <td>{client.razonSocial}</td>
+                <td className="cl-rfc">{client.rfc}</td>
+                <td><StatusBadge status={client.status} /></td>
+                <td>{client.assignedTo?.name || "N/A"}</td>
+                <td>
+                  <div className="cl-actions">
+                    <Link to={`/clients/${client._id}`} className="cl-btn-outline">Ver</Link>
+                    <Link to={`/clients/${client._id}/campaigns`} className="cl-btn-outline">Campañas</Link>
+                  </div>
+                </td>
+              </tr>
             ))}
-
-            {filteredClients.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={6} sx={{ py: 4 }}>
-                  <Typography align="center" sx={{ opacity: 0.7 }}>
-                    No se encontraron clientes con ese criterio.
-                  </Typography>
-                </TableCell>
-              </TableRow>
+            {filtered.length === 0 && (
+              <tr>
+                <td colSpan={6} className="cl-empty">
+                  No se encontraron clientes con ese criterio.
+                </td>
+              </tr>
             )}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Box>
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }

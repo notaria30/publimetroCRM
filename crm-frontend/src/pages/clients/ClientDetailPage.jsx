@@ -1,25 +1,35 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import {
-  Box,
-  Grid,
-  Card,
-  Typography,
-  TextField,
-  Button,
-  FormControlLabel,
-  Switch,
-} from "@mui/material";
 import { getClientById, updateClient, deleteClient } from "../../services/clientService";
 import { getUsers } from "../../services/userService";
 import { useAuth } from "../../context/AuthContext";
-import Snackbar from "@mui/material/Snackbar";
-import Alert from "@mui/material/Alert";
-import Dialog from "@mui/material/Dialog";
-import DialogTitle from "@mui/material/DialogTitle";
-import DialogContent from "@mui/material/DialogContent";
-import DialogActions from "@mui/material/DialogActions";
-import MenuItem from "@mui/material/MenuItem";
+import { ArrowLeft, Pencil, Trash2, X, Check } from "lucide-react";
+import "./clients.css";
+
+const REGIMENES = [
+  "REGIMEN GENERAL DE LEY PERSONAS MORALES",
+  "RÉGIMEN SIMPLIFICADO DE LEY PERSONAS MORALES",
+  "PERSONAS MORALES CON FINES NO LUCRATIVOS",
+  "RÉGIMEN DE PEQUEÑOS CONTRIBUYENTES",
+  "RÉGIMEN DE SUELDOS Y SALARIOS E INGRESOS ASIMILADOS A SALARIOS",
+  "RÉGIMEN DE ARRENDAMIENTO",
+  "RÉGIMEN SIMPLIFICADO DE LEY PERSONAS FÍSICAS",
+  "RÉGIMEN DE INCORPORACIÓN FISCAL",
+];
+
+function Toast({ msg, type, onClose }) {
+  useEffect(() => { const t = setTimeout(onClose, 3000); return () => clearTimeout(t); }, [onClose]);
+  return <div className={`cl-toast cl-toast--${type}`}>{msg}</div>;
+}
+
+function Field({ label, value, editing, children }) {
+  return (
+    <div className="cl-form-group">
+      <label className="cl-label">{label}</label>
+      {editing ? children : <input className="cl-input" value={value || "—"} readOnly />}
+    </div>
+  );
+}
 
 export default function ClientDetailPage() {
   const { id } = useParams();
@@ -28,620 +38,220 @@ export default function ClientDetailPage() {
 
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [isEditing, setIsEditing] = useState(false);
+  const [editing, setEditing] = useState(false);
   const [users, setUsers] = useState([]);
   const [assignedToId, setAssignedToId] = useState("");
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: "",
-    severity: "success",
-  });
-  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [toast, setToast] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
-  const readOnlyStyle = !isEditing
-    ? {
-        cursor: "default",
-        "& .MuiInputBase-input": { cursor: "default" },
-      }
-    : {};
-
-  const loadClient = async () => {
+  const load = async () => {
     try {
       const res = await getClientById(id);
       setClient(res.data);
       setAssignedToId(res.data.assignedTo?._id || "");
-    } catch (err) {
-      console.error("Error cargando cliente", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const loadUsers = async () => {
-    if (!isOwner) return;
-    try {
-      const res = await getUsers();
-      setUsers(res.data);
-    } catch (err) {
-      console.error("Error cargando usuarios", err);
-    }
+    } catch (err) { console.error(err); }
+    finally { setLoading(false); }
   };
 
   useEffect(() => {
-    loadClient();
-    loadUsers();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    load();
+    if (isOwner) getUsers().then((r) => setUsers(r.data)).catch(console.error);
   }, []);
 
-  const handleChange = (e) => {
-    setClient((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }));
-  };
-
-  const handleDireccionChange = (field, value) => {
-    setClient((prev) => ({
-      ...prev,
-      direccion: {
-        ...(prev.direccion || {}),
-        [field]: value,
-      },
-    }));
-  };
-
-  const handleContactoChange = (area, field, value) => {
-    setClient((prev) => ({
-      ...prev,
-      contactos: {
-        ...(prev.contactos || {}),
-        [area]: {
-          ...(prev.contactos?.[area] || {}),
-          [field]: value,
-        },
-      },
-    }));
-  };
+  const set = (field, val) => setClient((c) => ({ ...c, [field]: val }));
+  const setDir = (field, val) => setClient((c) => ({ ...c, direccion: { ...c.direccion, [field]: val } }));
+  const setCont = (area, field, val) =>
+    setClient((c) => ({ ...c, contactos: { ...c.contactos, [area]: { ...c.contactos[area], [field]: val } } }));
 
   const handleSave = async () => {
-    const payload = { ...client };
-
-    if (isOwner && assignedToId) {
-      payload.assignedTo = assignedToId;
-    }
-
     try {
+      const payload = { ...client };
+      if (isOwner && assignedToId) payload.assignedTo = assignedToId;
       await updateClient(id, payload);
-      setSnackbar({
-        open: true,
-        message: "Cliente actualizado correctamente",
-        severity: "success",
-      });
-      setIsEditing(false);
-      await loadClient();
-    } catch (err) {
-      console.error("Error actualizando cliente", err);
-      setSnackbar({
-        open: true,
-        message: "Error al actualizar el cliente",
-        severity: "error",
-      });
-    }
+      setToast({ msg: "Cliente actualizado correctamente", type: "success" });
+      setEditing(false);
+      await load();
+    } catch { setToast({ msg: "Error al actualizar el cliente", type: "error" }); }
   };
 
   const handleDelete = async () => {
     try {
       await deleteClient(id);
-      setDeleteDialogOpen(false);
-      setSnackbar({
-        open: true,
-        message: "Cliente eliminado correctamente",
-        severity: "success",
-      });
+      setToast({ msg: "Cliente eliminado", type: "success" });
       setTimeout(() => navigate("/clients"), 1000);
-    } catch (err) {
-      console.error("Error eliminando cliente", err);
-      setSnackbar({
-        open: true,
-        message: "Error al eliminar el cliente",
-        severity: "error",
-      });
-    }
+    } catch { setToast({ msg: "Error al eliminar el cliente", type: "error" }); }
   };
 
-  const handleSnackbarClose = () => {
-    setSnackbar((prev) => ({ ...prev, open: false }));
-  };
-
-  if (loading || !client) {
-    return (
-      <Typography sx={{ p: 4 }} variant="body1">
-        Cargando...
-      </Typography>
-    );
-  }
-
-  const canEditOwnerOnly = isOwner && isEditing;
+  if (loading || !client) return <div className="cl-status">Cargando...</div>;
 
   return (
-    <Box sx={{ p: 3 }}>
-      {/* TITLE */}
-      <Typography variant="h4" fontWeight={700} mb={3}>
-        Detalles del Cliente
-      </Typography>
+    <div className="cl-page">
+      {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* HEADER BUTTONS */}
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={3}
-      >
-        <Button variant="outlined" onClick={() => navigate("/clients")}>
-          Volver
-        </Button>
-
-        <Box display="flex" gap={2}>
-          {!isEditing ? (
+      {/* HEADER */}
+      <div className="cl-header-row">
+        <h1 className="cl-title">Detalles del Cliente</h1>
+        <div className="cl-header-row-right">
+          <button className="cl-btn-secondary" onClick={() => navigate("/clients")}>
+            <ArrowLeft size={14} /> Volver
+          </button>
+          {!editing ? (
             <>
-              <Button variant="contained" onClick={() => setIsEditing(true)}>
-                Editar
-              </Button>
+              <button className="cl-btn-primary" onClick={() => setEditing(true)}>
+                <Pencil size={14} /> Editar
+              </button>
               {isOwner && (
-                <Button
-                  variant="outlined"
-                  color="error"
-                  onClick={() => setDeleteDialogOpen(true)}
-                >
-                  Eliminar
-                </Button>
+                <button className="cl-btn-danger" onClick={() => setConfirmDelete(true)}>
+                  <Trash2 size={14} /> Eliminar
+                </button>
               )}
             </>
           ) : (
             <>
-              <Button
-                variant="outlined"
-                color="secondary"
-                onClick={async () => {
-                  await loadClient();
-                  setIsEditing(false);
-                }}
-              >
-                Cancelar
-              </Button>
-              <Button variant="contained" color="success" onClick={handleSave}>
-                Guardar cambios
-              </Button>
+              <button className="cl-btn-secondary" onClick={async () => { await load(); setEditing(false); }}>
+                <X size={14} /> Cancelar
+              </button>
+              <button className="cl-btn-success" onClick={handleSave}>
+                <Check size={14} /> Guardar cambios
+              </button>
             </>
           )}
-        </Box>
-      </Box>
+        </div>
+      </div>
 
-      {/* ===== DATOS GENERALES ===== */}
-      <Card sx={{ p: 3, mb: 4 }}>
-        <Typography variant="h6" fontWeight={700} mb={2}>
-          Datos Generales
-        </Typography>
-
-        <Grid container spacing={3}>
-          {/* Campos texto editables por cualquiera en modo edición */}
-          {[
-            ["nombreComercial", "Nombre Comercial"],
-            ["razonSocial", "Razón Social"],
-            ["rfc", "RFC"],
-            ["curp", "CURP"],
-          ].map(([field, label]) => (
-            <Grid size={{ xs: 12, md: 2.5 }} key={field}>
-              <TextField
-                fullWidth
-                label={label}
-                name={field}
-                value={client[field] || ""}
-                onChange={handleChange}
-                InputProps={{
-                  readOnly: !isEditing,
-                  sx: readOnlyStyle,
-                }}
-              />
-            </Grid>
+      {/* DATOS GENERALES */}
+      <div className="cl-card">
+        <p className="cl-section-title">Datos Generales</p>
+        <div className="cl-form-grid">
+          {[["nombreComercial","Nombre Comercial"],["razonSocial","Razón Social"],["rfc","RFC"],["curp","CURP"]].map(([f,l]) => (
+            <Field key={f} label={l} value={client[f]} editing={editing}>
+              <input className="cl-input" value={client[f] || ""} onChange={(e) => set(f, e.target.value)} />
+            </Field>
           ))}
 
-          {/* STATUS - Select cuando edita */}
-          <Grid item xs={12} md={3}>
-            {isEditing ? (
-              <TextField
-                select
-                fullWidth
-                label="Status"
-                name="status"
-                value={client.status || ""}
-                onChange={handleChange}
-              >
-                {["prospeccion", "presentacion", "propuesta", "cierre"].map(
-                  (status) => (
-                    <MenuItem key={status} value={status}>
-                      {status.charAt(0).toUpperCase() + status.slice(1)}
-                    </MenuItem>
-                  )
-                )}
-              </TextField>
-            ) : (
-              <TextField
-                fullWidth
-                label="Status"
-                value={client.status || ""}
-                InputProps={{
-                  readOnly: true,
-                  sx: readOnlyStyle,
-                }}
-              />
-            )}
-          </Grid>
-
-          {/* Clasificación: selects en edición, texto en vista */}
-          <Grid item xs={12} md={3}>
-            {isEditing ? (
-              <TextField
-                select
-                fullWidth
-                label="Tipo de Cliente"
-                name="tipoCliente"
-                value={client.tipoCliente || ""}
-                onChange={handleChange}
-              >
-                <MenuItem value="iniciativa privada">
-                  Iniciativa Privada
-                </MenuItem>
-                <MenuItem value="gobierno">Gobierno</MenuItem>
-                <MenuItem value="corporativo">Corporativo</MenuItem>
-              </TextField>
-            ) : (
-              <TextField
-                fullWidth
-                label="Tipo de Cliente"
-                value={client.tipoCliente || ""}
-                InputProps={{
-                  readOnly: true,
-                  sx: readOnlyStyle,
-                }}
-              />
-            )}
-          </Grid>
-
-          <Grid item xs={12} md={3}>
-            {isEditing ? (
-              <TextField
-                select
-                fullWidth
-                label="Industria"
-                name="tipoIndustria"
-                value={client.tipoIndustria || ""}
-                onChange={handleChange}
-              >
-                <MenuItem value="alimentaria">Alimentaria</MenuItem>
-                <MenuItem value="hotelera">Hotelera</MenuItem>
-                <MenuItem value="automotriz">Automotriz</MenuItem>
-                <MenuItem value="construccion">Construcción</MenuItem>
-                <MenuItem value="servicios financieros">
-                  Servicios Financieros
-                </MenuItem>
-              </TextField>
-            ) : (
-              <TextField
-                fullWidth
-                label="Industria"
-                value={client.tipoIndustria || ""}
-                InputProps={{
-                  readOnly: true,
-                  sx: readOnlyStyle,
-                }}
-              />
-            )}
-          </Grid>
-
-          <Grid size={{ xs: 12, md: 4.5 }}>
-            {isEditing ? (
-              <TextField
-                select
-                fullWidth
-                label="Régimen"
-                name="regimen"
-                value={client.regimen || ""}
-                onChange={handleChange}
-              >
-                {[
-                  "REGIMEN GENERAL DE LEY PERSONAS MORALES",
-                  "RÉGIMEN SIMPLIFICADO DE LEY PERSONAS MORALES",
-                  "PERSONAS MORALES CON FINES NO LUCRATIVOS",
-                  "RÉGIMEN DE PEQUEÑOS CONTRIBUYENTES",
-                  "RÉGIMEN DE SUELDOS Y SALARIOS E INGRESOS ASIMILADOS A SALARIOS",
-                  "RÉGIMEN DE ARRENDAMIENTO",
-                  "RÉGIMEN SIMPLIFICADO DE LEY PERSONAS FÍSICAS",
-                  "RÉGIMEN DE INCORPORACIÓN FISCAL",
-                ].map((reg) => (
-                  <MenuItem key={reg} value={reg}>
-                    {reg}
-                  </MenuItem>
-                ))}
-              </TextField>
-            ) : (
-              <TextField
-                fullWidth
-                label="Régimen"
-                value={client.regimen || ""}
-                InputProps={{
-                  readOnly: true,
-                  sx: readOnlyStyle,
-                }}
-              />
-            )}
-          </Grid>
-
-          <Grid item xs={12} md={3}>
-            {isEditing ? (
-              <TextField
-                select
-                fullWidth
-                label="Agencia / Directo"
-                name="agenciaODirecto"
-                value={client.agenciaODirecto || ""}
-                onChange={handleChange}
-              >
-                <MenuItem value="AGENCIA">AGENCIA</MenuItem>
-                <MenuItem value="DIRECTO">DIRECTO</MenuItem>
-              </TextField>
-            ) : (
-              <TextField
-                fullWidth
-                label="Agencia / Directo"
-                value={client.agenciaODirecto || ""}
-                InputProps={{
-                  readOnly: true,
-                  sx: readOnlyStyle,
-                }}
-              />
-            )}
-          </Grid>
-        </Grid>
-      </Card>
-
-      {/* ===== DIRECCIÓN ===== */}
-      <Card sx={{ p: 3, mb: 4 }}>
-        <Typography variant="h6" fontWeight={700} mb={2}>
-          Dirección
-        </Typography>
-
-        <Grid container spacing={3}>
-          {[
-            ["calleNumero", "Calle y número"],
-            ["colonia", "Colonia"],
-            ["ciudad", "Ciudad"],
-            ["estado", "Estado"],
-            ["pais", "País"],
-            ["cp", "C.P."],
-            ["telefono", "Teléfono"],
-          ].map(([field, label]) => (
-            <Grid item xs={12} md={4} key={field}>
-              <TextField
-                fullWidth
-                label={label}
-                value={client.direccion?.[field] || ""}
-                onChange={(e) => handleDireccionChange(field, e.target.value)}
-                InputProps={{
-                  readOnly: !isEditing,
-                  sx: readOnlyStyle,
-                }}
-              />
-            </Grid>
-          ))}
-        </Grid>
-      </Card>
-
-      {/* ===== CONTACTOS ===== */}
-      <Card sx={{ p: 3, mb: 4 }}>
-        <Typography variant="h6" fontWeight={700} mb={2}>
-          Contactos
-        </Typography>
-
-        <Grid container spacing={3}>
-          {["mercadotecnia", "diseno", "facturacion"].map((area) => (
-            <Grid item xs={12} md={4} key={area}>
-              <Typography fontWeight={600} mb={1}>
-                {area.charAt(0).toUpperCase() + area.slice(1)}
-              </Typography>
-
-              {["nombre", "email", "celular"].map((field) => (
-                <TextField
-                  key={field}
-                  fullWidth
-                  label={field.charAt(0).toUpperCase() + field.slice(1)}
-                  value={client.contactos?.[area]?.[field] || ""}
-                  onChange={(e) =>
-                    handleContactoChange(area, field, e.target.value)
-                  }
-                  InputProps={{
-                    readOnly: !isEditing,
-                    sx: readOnlyStyle,
-                  }}
-                  sx={{ mb: 2 }}
-                />
+          <Field label="Status" value={client.status} editing={editing}>
+            <select className="cl-select" value={client.status || ""} onChange={(e) => set("status", e.target.value)}>
+              {["prospeccion","presentacion","propuesta","cierre"].map((s) => (
+                <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
               ))}
-            </Grid>
+            </select>
+          </Field>
+
+          <Field label="Tipo de Cliente" value={client.tipoCliente} editing={editing}>
+            <select className="cl-select" value={client.tipoCliente || ""} onChange={(e) => set("tipoCliente", e.target.value)}>
+              <option value="iniciativa privada">Iniciativa Privada</option>
+              <option value="gobierno">Gobierno</option>
+              <option value="corporativo">Corporativo</option>
+            </select>
+          </Field>
+
+          <Field label="Industria" value={client.tipoIndustria} editing={editing}>
+            <select className="cl-select" value={client.tipoIndustria || ""} onChange={(e) => set("tipoIndustria", e.target.value)}>
+              {["alimentaria","hotelera","automotriz","construccion","servicios financieros"].map((v) => (
+                <option key={v} value={v}>{v}</option>
+              ))}
+            </select>
+          </Field>
+
+          <Field label="Régimen Fiscal" value={client.regimen} editing={editing}>
+            <select className="cl-select" value={client.regimen || ""} onChange={(e) => set("regimen", e.target.value)}>
+              {REGIMENES.map((r) => <option key={r} value={r}>{r}</option>)}
+            </select>
+          </Field>
+
+          <Field label="Agencia / Directo" value={client.agenciaODirecto} editing={editing}>
+            <select className="cl-select" value={client.agenciaODirecto || ""} onChange={(e) => set("agenciaODirecto", e.target.value)}>
+              <option value="AGENCIA">AGENCIA</option>
+              <option value="DIRECTO">DIRECTO</option>
+            </select>
+          </Field>
+        </div>
+      </div>
+
+      {/* DIRECCIÓN */}
+      <div className="cl-card">
+        <p className="cl-section-title">Dirección</p>
+        <div className="cl-form-grid">
+          {[["calleNumero","Calle y Número"],["colonia","Colonia"],["ciudad","Ciudad"],
+            ["estado","Estado"],["pais","País"],["cp","CP"],["telefono","Teléfono"]].map(([f,l]) => (
+            <Field key={f} label={l} value={client.direccion?.[f]} editing={editing}>
+              <input className="cl-input" value={client.direccion?.[f] || ""} onChange={(e) => setDir(f, e.target.value)} />
+            </Field>
           ))}
-        </Grid>
-      </Card>
+        </div>
+      </div>
 
-      {/* ===== ASIGNACIÓN ===== */}
-      <Card sx={{ p: 3, mb: 4 }}>
-        <Typography variant="h6" fontWeight={700} mb={2}>
-          Asignación
-        </Typography>
+      {/* CONTACTOS */}
+      <div className="cl-card">
+        <p className="cl-section-title">Contactos</p>
+        {["mercadotecnia","diseno","facturacion"].map((area) => (
+          <div key={area} style={{ marginBottom: 20 }}>
+            <p style={{ fontSize: 13, fontWeight: 600, color: "#6b7280", marginBottom: 10, textTransform: "capitalize" }}>{area}</p>
+            <div className="cl-form-grid">
+              {["nombre","email","celular"].map((f) => (
+                <Field key={f} label={f.charAt(0).toUpperCase() + f.slice(1)} value={client.contactos?.[area]?.[f]} editing={editing}>
+                  <input className="cl-input" value={client.contactos?.[area]?.[f] || ""} onChange={(e) => setCont(area, f, e.target.value)} />
+                </Field>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
 
-        <Grid container spacing={3}>
-          {/* Asignado a usuario (solo admin puede cambiar) */}
-          <Grid item xs={12} md={4}>
-            {canEditOwnerOnly ? (
-              <TextField
-                select
-                fullWidth
-                label="Ejecutivo Asignado"
-                name="assignedTo"
-                value={assignedToId || ""}
-                onChange={(e) => setAssignedToId(e.target.value)}
-              >
-                {users.map((u) => (
-                  <MenuItem key={u._id} value={u._id}>
-                    {u.name} ({u.email})
-                  </MenuItem>
-                ))}
-              </TextField>
+      {/* ASIGNACIÓN */}
+      <div className="cl-card">
+        <p className="cl-section-title">Asignación</p>
+        <div className="cl-form-grid">
+          <Field label="Ejecutivo Asignado" value={client.assignedTo?.name || "N/A"} editing={editing && isOwner}>
+            <select className="cl-select" value={assignedToId} onChange={(e) => setAssignedToId(e.target.value)}>
+              {users.map((u) => <option key={u._id} value={u._id}>{u.name} ({u.email})</option>)}
+            </select>
+          </Field>
+
+          <div className="cl-form-group">
+            <label className="cl-label">Cliente Activo</label>
+            {editing ? (
+              <label className="cl-toggle-wrap">
+                <span className="cl-toggle">
+                  <input type="checkbox" checked={client.clienteActivo}
+                    onChange={(e) => set("clienteActivo", e.target.checked)} />
+                  <span className="cl-toggle-slider" />
+                </span>
+                <span className="cl-toggle-label">{client.clienteActivo ? "Activo" : "Inactivo"}</span>
+              </label>
             ) : (
-              <TextField
-                fullWidth
-                label="Ejecutivo Asignado"
-                value={client.assignedTo?.name || "N/A"}
-                InputProps={{
-                  readOnly: true,
-                  sx: readOnlyStyle,
-                }}
-              />
+              <input className="cl-input" value={client.clienteActivo ? "Sí" : "No"} readOnly />
             )}
-          </Grid>
+          </div>
+        </div>
+      </div>
 
-          {/* Cliente activo (worker + admin pueden cambiar en edición) */}
-          <Grid item xs={12} md={4}>
-            {isEditing ? (
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={client.clienteActivo}
-                    onChange={(e) =>
-                      setClient((prev) => ({
-                        ...prev,
-                        clienteActivo: e.target.checked,
-                      }))
-                    }
-                  />
-                }
-                label={client.clienteActivo ? "Activo" : "Inactivo"}
-              />
-            ) : (
-              <TextField
-                fullWidth
-                label="Cliente activo"
-                value={client.clienteActivo ? "Sí" : "No"}
-                InputProps={{
-                  readOnly: true,
-                  sx: readOnlyStyle,
-                }}
-              />
-            )}
-          </Grid>
-        </Grid>
-      </Card>
+      {/* HISTORIAL */}
+      <div className="cl-card">
+        <p className="cl-section-title">Historial</p>
+        <div className="cl-form-grid">
+          <Field label="Creado el" value={client.createdAt ? new Date(client.createdAt).toLocaleString() : "—"} editing={false}>
+          </Field>
+          <Field label="Actualizado el" value={client.updatedAt ? new Date(client.updatedAt).toLocaleString() : "—"} editing={false}>
+          </Field>
+        </div>
+      </div>
 
-      {/* ===== HISTORIAL ===== */}
-      <Card sx={{ p: 3 }}>
-        <Typography variant="h6" fontWeight={700} mb={2}>
-          Historial
-        </Typography>
-
-        <Grid container spacing={3}>
-          <Grid item xs={12} md={3}>
-            <TextField
-              fullWidth
-              label="Creado el"
-              value={
-                client.createdAt
-                  ? new Date(client.createdAt).toLocaleString()
-                  : ""
-              }
-              InputProps={{
-                readOnly: true,
-                sx: readOnlyStyle,
-              }}
-            />
-          </Grid>
-
-          <Grid item xs={12} md={3}>
-            <TextField
-              fullWidth
-              label="Actualizado el"
-              value={
-                client.updatedAt
-                  ? new Date(client.updatedAt).toLocaleString()
-                  : ""
-              }
-              InputProps={{
-                readOnly: true,
-                sx: readOnlyStyle,
-              }}
-            />
-          </Grid>
-        </Grid>
-      </Card>
-
-      {/* DIALOG ELIMINAR */}
-      <Dialog
-        open={deleteDialogOpen}
-        onClose={() => setDeleteDialogOpen(false)}
-        maxWidth="xs"
-        fullWidth
-        PaperProps={{
-          sx: {
-            borderRadius: 3,
-            p: 2,
-            boxShadow: "0 8px 24px rgba(0,0,0,0.2)",
-          },
-        }}
-      >
-        <DialogTitle sx={{ fontSize: "1.4rem", fontWeight: 700, pb: 1 }}>
-          Eliminar cliente
-        </DialogTitle>
-
-        <DialogContent sx={{ pb: 2 }}>
-          <Typography sx={{ fontSize: "1rem", color: "grey.700" }}>
-            ¿Seguro que quieres eliminar este cliente?
-          </Typography>
-        </DialogContent>
-
-        <DialogActions sx={{ px: 2, pb: 1.5 }}>
-          <Button
-            onClick={() => setDeleteDialogOpen(false)}
-            sx={{ fontWeight: 600 }}
-          >
-            Cancelar
-          </Button>
-          <Button
-            color="error"
-            variant="contained"
-            onClick={handleDelete}
-            sx={{
-              fontWeight: 600,
-              borderRadius: 2,
-              px: 3,
-            }}
-          >
-            Eliminar
-          </Button>
-        </DialogActions>
-      </Dialog>
-
-      {/* SNACKBAR ÚNICO */}
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={3000}
-        onClose={handleSnackbarClose}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-      >
-        <Alert
-          onClose={handleSnackbarClose}
-          severity={snackbar.severity}
-          sx={{ width: "100%" }}
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Box>
+      {/* CONFIRM DELETE */}
+      {confirmDelete && (
+        <div className="cl-dialog-overlay">
+          <div className="cl-dialog">
+            <p className="cl-dialog-title">Eliminar cliente</p>
+            <p className="cl-dialog-body">¿Seguro que quieres eliminar este cliente? Esta acción no se puede deshacer.</p>
+            <div className="cl-dialog-actions">
+              <button className="cl-btn-secondary" onClick={() => setConfirmDelete(false)}>Cancelar</button>
+              <button className="cl-btn-danger" style={{ background: "#dc2626", color: "white", borderColor: "#dc2626" }} onClick={handleDelete}>
+                Eliminar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }

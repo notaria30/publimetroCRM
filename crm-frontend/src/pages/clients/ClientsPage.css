@@ -1,0 +1,224 @@
+/* ClientsPage.css */
+
+.cl-page {
+  padding: 28px 32px;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.cl-status {
+  padding: 32px;
+  font-size: 15px;
+  color: #374151;
+}
+
+/* HEADER */
+.cl-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 8px;
+}
+
+.cl-title {
+  font-size: 28px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.cl-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+/* SEARCH */
+.cl-search-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.cl-search-icon {
+  position: absolute;
+  left: 10px;
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+.cl-search {
+  padding: 8px 12px 8px 32px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: inherit;
+  width: 380px;
+  background: white;
+  color: #111827;
+  outline: none;
+  transition: border 0.15s;
+}
+
+.cl-search:focus {
+  border-color: #16a34a;
+}
+
+/* PRIMARY BUTTON */
+.cl-btn-primary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 18px;
+  background: #16a34a;
+  color: white;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  text-decoration: none;
+  font-family: inherit;
+  transition: background 0.15s;
+  white-space: nowrap;
+}
+
+.cl-btn-primary:hover { background: #15803d; }
+
+/* COUNT */
+.cl-count {
+  font-size: 13px;
+  color: #6b7280;
+  margin: 0 0 16px;
+}
+
+/* TABLE */
+.cl-table-wrap {
+  border-radius: 12px;
+  border: 1px solid #d1d5db;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.cl-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.cl-table thead tr {
+  background: #16a34a;
+}
+
+.cl-table thead th {
+  padding: 13px 16px;
+  text-align: left;
+  color: white;
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.cl-table tbody tr {
+  border-bottom: 1px solid #e5e7eb;
+  transition: background 0.12s;
+}
+
+.cl-table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.cl-table tbody tr:hover {
+  background: #f9fafb;
+}
+
+.cl-table tbody td {
+  padding: 12px 16px;
+  color: #374151;
+}
+
+.cl-rfc {
+  font-family: monospace;
+  font-size: 12px;
+  color: #6b7280 !important;
+}
+
+/* STATUS BADGE */
+.cl-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid;
+}
+
+/* ACTION BUTTONS */
+.cl-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.cl-btn-outline {
+  padding: 5px 14px;
+  border: 1px solid #d1d5db;
+  border-radius: 7px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+  text-decoration: none;
+  background: white;
+  transition: background 0.12s, border-color 0.12s;
+}
+
+.cl-btn-outline:hover {
+  background: #f3f4f6;
+  border-color: #9ca3af;
+}
+
+/* EMPTY */
+.cl-empty {
+  text-align: center;
+  padding: 32px !important;
+  color: #9ca3af;
+}
+
+/* ===== DARK MODE ===== */
+
+body.dark .cl-title { color: #f1f5f9; }
+body.dark .cl-status { color: #94a3b8; }
+body.dark .cl-count  { color: #64748b; }
+
+body.dark .cl-search {
+  background: #1e293b;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+body.dark .cl-search::placeholder { color: #64748b; }
+body.dark .cl-search:focus { border-color: #16a34a; }
+body.dark .cl-search-icon { color: #64748b; }
+
+body.dark .cl-table-wrap {
+  border-color: #334155;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+body.dark .cl-table tbody tr {
+  border-bottom-color: #334155;
+  background: #1e293b;
+}
+body.dark .cl-table tbody tr:hover { background: #253347; }
+body.dark .cl-table tbody td { color: #cbd5e1; }
+body.dark .cl-rfc { color: #64748b !important; }
+
+body.dark .cl-btn-outline {
+  background: #1e293b;
+  border-color: #334155;
+  color: #cbd5e1;
+}
+body.dark .cl-btn-outline:hover {
+  background: #253347;
+  border-color: #475569;
+}
+
+body.dark .cl-empty { color: #64748b; }
+

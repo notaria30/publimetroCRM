@@ -1,351 +1,153 @@
-// src/pages/postsale/PostSaleListPage.jsx
 import { useEffect, useMemo, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { getPostSales } from "../../services/postSaleService";
-import {
-  Box,
-  Typography,
-  Grid,
-  Card,
-  CardContent,
-  Button,
-  Chip,
-  Stack,
-  Divider,
-  TextField,
-  InputAdornment
-} from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
+import { Search, Plus } from "lucide-react";
+import "./postsale.css";
+import "../sales/sales.css";
+import { LoadingPage } from "../../components/LoadingPage";
+
+const STAGE_META = {
+  servicio_post_venta:   { label: "Servicio Post-Venta",       cls: "ps-badge--info" },
+  medicion_resultados:   { label: "Medición de resultados",    cls: "ps-badge--primary" },
+  encuesta_satisfaccion: { label: "Encuesta de satisfacción",  cls: "ps-badge--secondary" },
+  renovacion:            { label: "Renovación",                cls: "ps-badge--warning" },
+  reportes:              { label: "Reportes",                  cls: "sl-badge--success" },
+  cerrado:               { label: "Cerrado",                   cls: "ps-badge--default" },
+};
+
+const fmtDate = (d) =>
+  d ? new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 
 export default function PostSaleListPage() {
-  const [list, setList] = useState([]);
+  const navigate = useNavigate();
+  const [list, setList]       = useState([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [search, setSearch]   = useState("");
 
   useEffect(() => {
-    async function load() {
-      const res = await getPostSales();
-      setList(res.data);
-      setLoading(false);
-    }
-    load();
+    getPostSales()
+      .then((res) => setList(res.data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
-  // Etiquetas y colores por etapa (ajusta a tus stages reales si tienes otros)
-  const stageMeta = {
-    servicio_post_venta: { label: "Servicio Post-Venta", color: "info" },
-    medicion_resultados: { label: "Medición de resultados", color: "primary" },
-    encuesta_satisfaccion: { label: "Encuesta de satisfacción", color: "secondary" },
-    renovacion: { label: "Renovación", color: "warning" },
-    reportes: { label: "Reportes", color: "success" },
-    cerrado: { label: "Cerrado", color: "default" },
-  };
-
-  const filteredList = useMemo(() => {
+  const filtered = useMemo(() => {
     const q = search.toLowerCase().trim();
     if (!q) return list;
-
-    return list.filter((item) => {
-      const cliente = String(item.client?.nombreComercial || "").toLowerCase();
-      const ejecutivo = String(item.assignedTo?.name || "").toLowerCase();
-
-      const saleFolio = String(
-        item?.sale?.folio ||
-        item?.sale?.folioVenta ||
-        item?.sale?._id ||
-        ""
-      ).toLowerCase();
-
-      const stage = String(item.postSaleStage || "").toLowerCase().replace(/_/g, " ");
-
-      const rating = String(
-        item?.encuestaSatisfaccion?.calificacion ??
-        item?.encuestaSatisfaccion?.rating ??
-        ""
-      ).toLowerCase();
-
-      const renovacion = (item?.renovacion?.requiereRenovacion ?? item?.renovacion?.requiere ?? false)
-        ? "si"
-        : "no";
-
-      const notas = String(item?.notas || "").toLowerCase();
-
-      // También puedes agregar fechas si quieres:
-      const updated = String(item.updatedAt ? new Date(item.updatedAt).toISOString().slice(0, 10) : "");
-
-      return (
-        cliente.includes(q) ||
-        ejecutivo.includes(q) ||
-        saleFolio.includes(q) ||
-        stage.includes(q) ||
-        rating.includes(q) ||
-        renovacion.includes(q) ||
-        notas.includes(q) ||
-        updated.includes(q)
-      );
-    });
+    return list.filter((item) =>
+      [
+        item.client?.nombreComercial,
+        item.assignedTo?.name,
+        item.sale?.folio || item.sale?._id,
+        (item.postSaleStage || "").replace(/_/g, " "),
+        String(item.encuestaSatisfaccion?.calificacion ?? ""),
+        item.renovacion?.requiereRenovacion ? "si" : "no",
+        item.notas,
+        item.updatedAt?.slice(0, 10),
+      ].filter(Boolean).join(" ").toLowerCase().includes(q)
+    );
   }, [list, search]);
 
-  const formatDate = (d) =>
-    d
-      ? new Date(d).toLocaleDateString("es-MX", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
-      : "—";
-
-  const getStageChip = (stage) => {
-    const key = stage || "";
-    const meta = stageMeta[key];
-    return {
-      label: meta?.label || (key ? key.replace(/_/g, " ") : "Sin etapa"),
-      color: meta?.color || "default",
-    };
-  };
-
-
-  if (loading)
-    return (
-      <Typography variant="h6" textAlign="center" mt={4}>
-        Cargando post-venta...
-      </Typography>
-    );
+if (loading) return <LoadingPage />;
 
   return (
-    <Box maxWidth="1300px" mx="auto" mt={4} px={3}>
-      <Box
-        display="flex"
-        alignItems="center"
-        justifyContent="space-between"
-        mb={3}
-        flexWrap="wrap"
-        gap={2}
-      >
-        <Typography variant="h4" fontWeight={700}>
-          Post-Venta
-        </Typography>
+    <div className="sl-page">
+      {/* HEADER */}
+      <div className="sl-header">
+        <h1 className="sl-title">Post-Venta</h1>
+        <div className="sl-header-actions">
+          <div className="sl-search-wrap">
+            <Search size={15} className="sl-search-icon" />
+            <input
+              className="sl-search"
+              placeholder="Buscar (cliente, ejecutivo, venta, etapa, notas)…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <button className="sl-btn-primary" onClick={() => navigate("/postsale/create")}>
+            <Plus size={14} /> Nueva Post-Venta
+          </button>
+        </div>
+      </div>
 
-        <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
-          {/* ✅ BUSCADOR */}
-          <TextField
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar (cliente, ejecutivo, venta, etapa, notas)…"
-            size="small"
-            sx={{
-              width: { xs: "100%", sm: 420 },
-              backgroundColor: "white",
-              borderRadius: "10px",
-            }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" />
-                </InputAdornment>
-              ),
-            }}
-          />
-
-          <Button
-            variant="contained"
-            component={Link}
-            to="/postsale/create"
-            sx={{ fontWeight: 600, textTransform: "none" }}
-          >
-            Nueva Post-Venta
-          </Button>
-        </Box>
-      </Box>
-
-      {filteredList.length === 0 ? (
-        <Typography variant="h6" textAlign="center" mt={5} opacity={0.6}>
-          No hay registros post-venta
-        </Typography>
+      {/* GRID DE CARDS */}
+      {filtered.length === 0 ? (
+        <div className="ps-empty">No hay registros post-venta.</div>
       ) : (
-        <Grid container spacing={3}>
-          {filteredList.map((item) => {
-            const stageChip = getStageChip(item.postSaleStage);
-
-            // Si tu encuesta tiene estructura: { calificacion, comentarios }
-            const rating =
-              item?.encuestaSatisfaccion?.calificacion ??
-              item?.encuestaSatisfaccion?.rating ??
-              null;
-
-            // Renovación: { requiereRenovacion, fechaPosibleRenovacion }
-            const requiresRenewal =
-              item?.renovacion?.requiereRenovacion ??
-              item?.renovacion?.requiere ??
-              false;
-
-            const renewalDate =
-              item?.renovacion?.fechaPosibleRenovacion ??
-              item?.renovacion?.fecha ??
-              null;
-
-            // Venta/folio si viene poblada
-            const saleFolio =
-              item?.sale?.folio ||
-              item?.sale?.folioVenta ||
-              item?.sale?._id ||
-              null;
+        <div className="ps-grid">
+          {filtered.map((item) => {
+            const stage    = item.postSaleStage || "";
+            const meta     = STAGE_META[stage] || { label: stage.replace(/_/g, " ") || "Sin etapa", cls: "ps-badge--default" };
+            const rating   = item.encuestaSatisfaccion?.calificacion ?? null;
+            const renewal  = item.renovacion?.requiereRenovacion ?? false;
+            const renewDate = item.renovacion?.fechaPosibleRenovacion ?? null;
+            const saleFolio = item.sale?.folio || item.sale?._id || "—";
 
             return (
-              <Grid item xs={12} md={6} lg={4} key={item._id}>
-                <Card
-                  elevation={4}
-                  sx={{
-                    borderRadius: 3,
-                    p: 2,
-                    height: "100%",
-                    display: "flex",
-                    flexDirection: "column",
-                  }}
-                >
-                  <CardContent sx={{ p: 0, flexGrow: 1 }}>
-                    {/* HEADER */}
-                    <Stack
-                      direction="row"
-                      justifyContent="space-between"
-                      alignItems="flex-start"
-                      gap={2}
-                    >
-                      <Box sx={{ minWidth: 0 }}>
-                        <Typography
-                          variant="h6"
-                          fontWeight={800}
-                          noWrap
-                          title={item.client?.nombreComercial || "—"}
-                        >
-                          {item.client?.nombreComercial || "—"}
-                        </Typography>
+              <div key={item._id} className="ps-card">
+                <div className="ps-card-body">
+                  {/* HEADER ROW */}
+                  <div className="ps-card-header-row">
+                    <div style={{ minWidth: 0 }}>
+                      <div className="ps-card-client" title={item.client?.nombreComercial || "—"}>
+                        {item.client?.nombreComercial || "—"}
+                      </div>
+                      <div className="ps-card-exec">
+                        Ejecutivo: <strong>{item.assignedTo?.name || "—"}</strong>
+                      </div>
+                    </div>
+                    <span className={`sl-badge ${meta.cls}`}>{meta.label}</span>
+                  </div>
 
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          mt={0.5}
-                        >
-                          Ejecutivo:{" "}
-                          <strong>{item.assignedTo?.name || "—"}</strong>
-                        </Typography>
-                      </Box>
+                  <hr className="ps-card-divider" />
 
-                      <Chip
-                        label={stageChip.label}
-                        color={stageChip.color}
-                        size="small"
-                        sx={{
-                          fontWeight: 700,
-                          textTransform: "capitalize",
-                          mt: 0.5,
-                        }}
-                      />
-                    </Stack>
+                  {/* INFO GRID */}
+                  <div className="ps-card-info">
+                    <div className="ps-card-info-item">
+                      <div className="ps-info-caption">Actualizado</div>
+                      <div className="ps-info-value">{fmtDate(item.updatedAt)}</div>
+                    </div>
+                    <div className="ps-card-info-item">
+                      <div className="ps-info-caption">Venta</div>
+                      <div className="ps-info-value">{String(saleFolio)}</div>
+                    </div>
+                    <div className="ps-card-info-item">
+                      <div className="ps-info-caption">Calificación</div>
+                      <div className="ps-info-value">{rating !== null ? rating : "—"}</div>
+                    </div>
+                    <div className="ps-card-info-item">
+                      <div className="ps-info-caption">Renovación</div>
+                      <div className="ps-info-value">{renewal ? "Sí" : "No"}</div>
+                    </div>
+                    {renewal && (
+                      <div className="ps-card-info-item" style={{ gridColumn: "span 2" }}>
+                        <div className="ps-info-caption">Fecha posible de renovación</div>
+                        <div className="ps-info-value">{fmtDate(renewDate)}</div>
+                      </div>
+                    )}
+                  </div>
 
-                    <Divider sx={{ my: 2 }} />
+                  {/* NOTAS PREVIEW */}
+                  {item.notas?.trim() && (
+                    <>
+                      <hr className="ps-card-divider" />
+                      <p className="ps-notes-preview">{item.notas}</p>
+                    </>
+                  )}
+                </div>
 
-                    {/* INFO EN DOS COLUMNAS */}
-                    <Grid container spacing={1.5}>
-                      <Grid item xs={6}>
-                        <Typography variant="caption" color="text.secondary">
-                          Actualizado
-                        </Typography>
-                        <Typography fontWeight={700}>
-                          {formatDate(item.updatedAt)}
-                        </Typography>
-                      </Grid>
-
-                      <Grid item xs={6}>
-                        <Typography variant="caption" color="text.secondary">
-                          Venta
-                        </Typography>
-                        <Typography fontWeight={700}>
-                          {saleFolio ? String(saleFolio) : "—"}
-                        </Typography>
-                      </Grid>
-
-                      <Grid item xs={6}>
-                        <Typography variant="caption" color="text.secondary">
-                          Calificación
-                        </Typography>
-                        <Typography fontWeight={700}>
-                          {rating !== null && rating !== undefined ? rating : "—"}
-                        </Typography>
-                      </Grid>
-
-                      <Grid item xs={6}>
-                        <Typography variant="caption" color="text.secondary">
-                          Renovación
-                        </Typography>
-                        <Typography fontWeight={700}>
-                          {requiresRenewal ? "Sí" : "No"}
-                        </Typography>
-                      </Grid>
-
-                      {requiresRenewal && (
-                        <Grid item xs={12}>
-                          <Typography variant="caption" color="text.secondary">
-                            Fecha posible de renovación
-                          </Typography>
-                          <Typography fontWeight={700}>
-                            {formatDate(renewalDate)}
-                          </Typography>
-                        </Grid>
-                      )}
-                    </Grid>
-
-                    {/* (Opcional) preview de notas */}
-                    {item?.notas?.trim?.() ? (
-                      <>
-                        <Divider sx={{ my: 2 }} />
-                        <Typography
-                          variant="body2"
-                          color="text.secondary"
-                          sx={{
-                            display: "-webkit-box",
-                            WebkitLineClamp: 2,
-                            WebkitBoxOrient: "vertical",
-                            overflow: "hidden",
-                          }}
-                        >
-                          {item.notas}
-                        </Typography>
-                      </>
-                    ) : null}
-                  </CardContent>
-
-                  {/* FOOTER BOTONES */}
-                  <Stack direction="row" gap={1.5} mt={2}>
-                    <Button
-                      fullWidth
-                      variant="outlined"
-                      component={Link}
-                      to={`/postsale/${item._id}`}
-                      sx={{ fontWeight: 700 }}
-                    >
-                      Ver detalles
-                    </Button>
-
-                    {/* Si tienes ruta de editar, descomenta */}
-                    {/*
-                    <Button
-                      fullWidth
-                      variant="contained"
-                      component={Link}
-                      to={`/postsale/${item._id}/edit`}
-                      sx={{ fontWeight: 700 }}
-                    >
-                      Editar
-                    </Button>
-                    */}
-                  </Stack>
-                </Card>
-              </Grid>
+                {/* FOOTER */}
+                <div className="ps-card-footer">
+                  <Link to={`/postsale/${item._id}`} className="sl-btn-outline" style={{ flex: 1, justifyContent: "center" }}>
+                    Ver detalles
+                  </Link>
+                </div>
+              </div>
             );
           })}
-        </Grid>
+        </div>
       )}
-    </Box>
+    </div>
   );
 }

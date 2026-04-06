@@ -1,29 +1,28 @@
-// src/pages/invoices/InvoiceListPage.jsx
-
 import { useEffect, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { getInvoices } from "../../services/invoiceService";
-import {
-  Box,
-  Typography,
-  Button,
-  Paper,
-  Table,
-  TableHead,
-  TableBody,
-  TableCell,
-  TableContainer,
-  TableRow,
-  Chip,
-  TextField,
-  InputAdornment,
-} from "@mui/material";
-import SearchIcon from "@mui/icons-material/Search";
+import { Search, Plus } from "lucide-react";
+import "./invoices.css";
+import "../sales/sales.css";
+import { LoadingPage } from "../../components/LoadingPage";
+
+const fmtMoney = (n) =>
+  n != null ? `$${Number(n).toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : "—";
+
+function getPagoInfo(inv) {
+  const pagos = inv.pagos || [];
+  const totalPagado = pagos.reduce((acc, p) => acc + (Number(p.importe) || 0), 0);
+  const saldo = Math.max(0, (inv.importeConIVA || 0) - totalPagado);
+  const completo = saldo === 0 && pagos.length > 0;
+  const parcial  = pagos.length > 0 && saldo > 0;
+  return { totalPagado, saldo, completo, parcial };
+}
 
 export default function InvoiceListPage() {
+  const navigate = useNavigate();
   const [invoices, setInvoices] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState("");
+  const [loading, setLoading]   = useState(true);
+  const [search, setSearch]     = useState("");
 
   useEffect(() => {
     async function loadData() {
@@ -36,161 +35,93 @@ export default function InvoiceListPage() {
         setLoading(false);
       }
     }
-
     loadData();
   }, []);
 
-  if (loading)
-    return (
-      <Typography sx={{ p: 4 }} variant="body1">
-        Cargando facturas...
-      </Typography>
-    );
+  if (loading) return <LoadingPage />;
 
-  const filteredInvoices = invoices.filter((inv) => {
+  const filtered = invoices.filter((inv) => {
     const q = search.toLowerCase().trim();
     if (!q) return true;
-
-    const cliente = String(inv.client?.nombreComercial || "").toLowerCase();
-    const folio = String(inv.quote?.folio || "").toLowerCase();
-    const numFactura = String(inv.numeroFactura || "").toLowerCase();
-    const fecha = String(inv.fechaFactura?.slice(0, 10) || "").toLowerCase();
-    const importe = String(inv.importeConIVA ?? "").toLowerCase();
-
-    // si quieres que también busque "si/no" por pagado:
-    const pagado = inv.pagado ? "si" : "no";
-
-    return (
-      cliente.includes(q) ||
-      folio.includes(q) ||
-      numFactura.includes(q) ||
-      fecha.includes(q) ||
-      importe.includes(q) ||
-      pagado.includes(q)
-    );
+    return [
+      inv.client?.nombreComercial,
+      String(inv.quote?.folio || ""),
+      String(inv.numeroFactura || ""),
+      inv.fechaFactura?.slice(0, 10),
+      String(inv.importeConIVA ?? ""),
+      inv.pagado ? "si" : "no",
+    ].filter(Boolean).join(" ").toLowerCase().includes(q);
   });
 
   return (
-    <Box sx={{ p: 3 }}>
+    <div className="sl-page">
       {/* HEADER */}
-      <Box
-        display="flex"
-        justifyContent="space-between"
-        alignItems="center"
-        mb={3}
-        flexWrap="wrap"
-        gap={2}
-      >
-        <Typography variant="h4" fontWeight={700}>
-          Facturación
-        </Typography>
-        <Box display="flex" gap={2} alignItems="center" flexWrap="wrap">
-          {/* ✅ BUSCADOR */}
-          <TextField
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar (cliente, folio, factura, fecha, importe)…"
-            size="small"
-            sx={{
-              width: { xs: "100%", sm: 420 },
-              backgroundColor: "white",
-              borderRadius: "10px",
-            }}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon fontSize="small" />
-                </InputAdornment>
-              ),
-            }}
-          />
-          <Button
-            variant="contained"
-            color="primary"
-            component={Link}
-            to="/invoices/new"
-            sx={{ textTransform: "none" }}
-          >
-            Crear nueva factura
-          </Button>
-        </Box>
-      </Box>
+      <div className="sl-header">
+        <h1 className="sl-title">Facturación</h1>
+        <div className="sl-header-actions">
+          <div className="sl-search-wrap">
+            <Search size={15} className="sl-search-icon" />
+            <input
+              className="sl-search"
+              placeholder="Buscar (cliente, folio, factura, fecha, importe)…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+            />
+          </div>
+          <button className="sl-btn-primary" onClick={() => navigate("/invoices/new")}>
+            <Plus size={14} /> Crear factura
+          </button>
+        </div>
+      </div>
 
       {/* TABLA */}
-      <TableContainer component={Paper} elevation={2}>
-        <Table>
-          <TableHead>
-            <TableRow sx={{ backgroundColor: "#0B8A42" }}>
-              <TableCell sx={{ color: "white", fontWeight: 600 }}>
-                Cliente
-              </TableCell>
-              <TableCell sx={{ color: "white", fontWeight: 600 }}>
-                Folio Cotización
-              </TableCell>
-              <TableCell sx={{ color: "white", fontWeight: 600 }}>
-                Número Factura
-              </TableCell>
-              <TableCell sx={{ color: "white", fontWeight: 600 }}>
-                Fecha
-              </TableCell>
-              <TableCell sx={{ color: "white", fontWeight: 600 }}>
-                Importe
-              </TableCell>
-              <TableCell sx={{ color: "white", fontWeight: 600 }}>
-                Pagado
-              </TableCell>
-              <TableCell sx={{ color: "white", fontWeight: 600 }}>
-                Acciones
-              </TableCell>
-            </TableRow>
-          </TableHead>
-
-          <TableBody>
-            {filteredInvoices.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={7} align="center">
-                  <Typography color="text.secondary">
-                    No hay facturas registradas
-                  </Typography>
-                </TableCell>
-              </TableRow>
+      <div className="sl-table-wrap">
+        <table className="sl-table">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Folio Cotización</th>
+              <th>Número Factura</th>
+              <th>Fecha</th>
+              <th>Importe (c/IVA)</th>
+              <th>Pagado</th>
+              <th>Saldo pendiente</th>
+              <th>Acciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filtered.length === 0 ? (
+              <tr><td colSpan={8} className="sl-empty">No hay facturas registradas.</td></tr>
             ) : (
-              filteredInvoices.map((inv) => (
-                <TableRow key={inv._id} hover>
-                  <TableCell>{inv.client?.nombreComercial}</TableCell>
-                  <TableCell>{inv.quote?.folio}</TableCell>
-                  <TableCell>{inv.numeroFactura}</TableCell>
-                  <TableCell>
-                    {inv.fechaFactura?.slice(0, 10) || "—"}
-                  </TableCell>
-                  <TableCell>
-                    ${inv.importeConIVA?.toLocaleString("es-MX")}
-                  </TableCell>
-
-                  <TableCell>
-                    {inv.pagado ? (
-                      <Chip label="Sí" color="success" size="small" />
-                    ) : (
-                      <Chip label="No" color="error" size="small" />
-                    )}
-                  </TableCell>
-
-                  <TableCell>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      component={Link}
-                      to={`/invoices/${inv._id}`}
-                    >
-                      Ver
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))
+              filtered.map((inv) => {
+                const { totalPagado, saldo, completo, parcial } = getPagoInfo(inv);
+                return (
+                  <tr key={inv._id}>
+                    <td>{inv.client?.nombreComercial || "—"}</td>
+                    <td>{inv.quote?.folio || "—"}</td>
+                    <td>{inv.numeroFactura || "—"}</td>
+                    <td>{inv.fechaFactura?.slice(0, 10) || "—"}</td>
+                    <td>{fmtMoney(inv.importeConIVA)}</td>
+                    <td>
+                      <span className={`sl-badge ${completo ? "sl-badge--success" : parcial ? "sl-badge--warning" : "sl-badge--error"}`}>
+                        {completo ? "Pagado" : parcial ? "Parcial" : "Pendiente"}
+                      </span>
+                    </td>
+                    <td style={{ color: saldo > 0 ? "#dc2626" : "#16a34a", fontWeight: 600 }}>
+                      {fmtMoney(saldo)}
+                    </td>
+                    <td>
+                      <div className="sl-actions">
+                        <Link to={`/invoices/${inv._id}`} className="sl-btn-outline">Ver</Link>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })
             )}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    </Box>
+          </tbody>
+        </table>
+      </div>
+    </div>
   );
 }

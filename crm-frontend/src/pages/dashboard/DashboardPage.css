@@ -1,0 +1,386 @@
+/* DashboardPage.css */
+
+.db-page {
+  padding: 28px 32px;
+  background: #f4f5f7;
+  min-height: 100vh;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.db-status {
+  padding: 32px;
+  font-size: 15px;
+  color: #374151;
+}
+.db-error { color: #dc2626; }
+
+/* HEADER */
+.db-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+.db-greeting-sub {
+  font-size: 12px;
+  color: #9ca3af;
+  margin-bottom: 2px;
+}
+.db-greeting {
+  font-size: 24px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+/* TABS */
+.db-tabs {
+  display: flex;
+  gap: 6px;
+  margin-bottom: 24px;
+}
+.db-tab {
+  padding: 7px 18px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: white;
+  font-size: 13px;
+  cursor: pointer;
+  color: #374151;
+  font-family: inherit;
+  transition: background 0.15s;
+}
+.db-tab.active {
+  background: #111827;
+  color: white;
+  border-color: #111827;
+}
+
+/* KPI CARDS */
+.db-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: 14px;
+  margin-bottom: 20px;
+}
+@media (max-width: 1100px) {
+  .db-metrics-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 700px) {
+  .db-metrics-grid { grid-template-columns: repeat(2, 1fr); }
+}
+
+.db-metric-card {
+  background: white;
+  border-radius: 12px;
+  padding: 18px 16px;
+  border: 1px solid #d1d5db;  /* era #e5e7eb, más oscuro */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10);  /* era 0.06, más visible */
+}
+
+.db-metric-label {
+  font-size: 11px;
+  color: #9ca3af;
+  margin: 0 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.db-metric-value {
+  font-size: 22px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+.db-metric-sub {
+  font-size: 11px;
+  color: #6b7280;
+  margin: 4px 0 0;
+}
+
+/* SHARED CARD */
+.db-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  border: 1px solid #d1d5db;  /* era #e5e7eb */
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.10);  /* era 0.06 */
+}
+
+.db-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0 0 16px;
+}
+.db-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+/* CHARTS GRID */
+.db-charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+@media (max-width: 800px) {
+  .db-charts-grid { grid-template-columns: 1fr; }
+}
+
+/* BILLING */
+.db-billing-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin-top: 8px;
+}
+.db-billing-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.db-billing-dot {
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.db-billing-dot.green { background: #16a34a; }
+.db-billing-dot.red   { background: #dc2626; }
+.db-billing-dot.blue  { background: #2563eb; }
+
+.db-billing-label {
+  font-size: 13px;
+  color: #6b7280;
+  flex: 1;
+}
+.db-billing-val {
+  font-size: 15px;
+  font-weight: 700;
+}
+.green-txt { color: #16a34a; }
+.red-txt   { color: #dc2626; }
+.blue-txt  { color: #2563eb; }
+
+.db-billing-divider {
+  border-top: 1px solid #f0f0f0;
+  margin: 2px 0;
+}
+
+/* BOTTOM STATS */
+.db-bottom-card {
+  margin-top: 0;
+}
+.db-stats-row {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+/* STAT BOXES (dentro de Clientes y Cotizaciones) */
+.db-stat-box {
+  background: #f9fafb;
+  border-radius: 10px;
+  padding: 16px;
+  border: 1px solid #d1d5db;  /* era #f0f0f0 */
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);  /* era 0.04 */
+}
+
+.db-stat-label {
+  font-size: 12px;
+  color: #9ca3af;
+  margin: 0 0 8px;
+}
+.db-stat-val {
+  font-size: 28px;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+/* CLIENTES ACTIVOS E INACTIVOS */
+.db-clients-card {
+  margin-top: 16px;
+}
+
+.db-clients-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+}
+
+@media (max-width: 700px) {
+  .db-clients-grid { grid-template-columns: 1fr; }
+}
+
+.db-clients-section-label {
+  font-size: 12px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.db-clients-label-active  { color: #16a34a; }
+.db-clients-label-inactive { color: #d97706; }
+
+.db-clients-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.db-client-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: #f9fafb;
+  border: 1px solid #d1d5db;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+}
+
+.db-client-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #16a34a;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.db-client-avatar--inactive {
+  background: #d1d5db;
+  color: #6b7280;
+}
+
+.db-client-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.db-client-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.db-client-sub {
+  font-size: 11px;
+  color: #9ca3af;
+  margin: 2px 0 0;
+}
+
+.db-client-amount {
+  font-size: 12px;
+  font-weight: 700;
+  color: #16a34a;
+  white-space: nowrap;
+}
+
+.db-client-amount--inactive {
+  color: #d97706;
+  font-weight: 500;
+}
+
+/* ===== DARK MODE ===== */
+
+body.dark .db-page {
+  background: #0f172a;
+}
+
+body.dark .db-metric-card,
+body.dark .db-card {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+body.dark .db-metric-label,
+body.dark .db-greeting-sub,
+body.dark .db-billing-label,
+body.dark .db-stat-label,
+body.dark .db-client-sub {
+  color: #94a3b8;
+}
+
+body.dark .db-metric-value,
+body.dark .db-greeting,
+body.dark .db-card-title,
+body.dark .db-stat-val,
+body.dark .db-client-name {
+  color: #f1f5f9;
+}
+
+body.dark .db-tab {
+  background: #1e293b;
+  border-color: #334155;
+  color: #94a3b8;
+}
+
+body.dark .db-tab.active {
+  background: #f1f5f9;
+  color: #0f172a;
+  border-color: #f1f5f9;
+}
+
+body.dark .db-stat-box,
+body.dark .db-client-row {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+body.dark .db-billing-divider {
+  border-color: #334155;
+}
+
+body.dark .db-status {
+  color: #94a3b8;
+}
+/* ── Loading skeleton ── */
+.db-skel {
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  animation: db-shimmer 1.4s infinite;
+  border-radius: 6px;
+}
+@keyframes db-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.db-skel--pulse {
+  animation: db-shimmer 1.4s infinite, db-pulse 1.8s ease-in-out infinite;
+}
+@keyframes db-pulse {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.4; }
+}
+.db-loading-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #16a34a;
+  display: inline-block;
+  animation: db-bounce 1s infinite;
+}
+@keyframes db-bounce {
+  0%, 80%, 100% { transform: translateY(0); }
+  40%            { transform: translateY(-6px); }
+}
+
+/* dark mode */
+body.dark .db-skel {
+  background: linear-gradient(90deg, #1e293b 25%, #263348 50%, #1e293b 75%);
+  background-size: 200% 100%;
+  animation: db-shimmer 1.4s infinite;
+}

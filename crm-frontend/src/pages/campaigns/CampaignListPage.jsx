@@ -1,108 +1,86 @@
-// src/pages/campaigns/CampaignListPage.jsx
 import { useEffect, useState } from "react";
-import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  Button,
-  Grid,
-  Chip,
-  Stack,
-} from "@mui/material";
-import { Link as RouterLink } from "react-router-dom";
-
+import { useNavigate } from "react-router-dom";
 import { getCampaigns } from "../../services/campaignService";
+import { Plus } from "lucide-react";
+import "../clients/clients.css";
+import { LoadingPage } from "../../components/LoadingPage";
+
+const STATUS_CAMP = {
+  planificada: { bg: "#eff6ff", text: "#1d4ed8", border: "#bfdbfe", label: "Planificada" },
+  en_curso:    { bg: "#fff7ed", text: "#c2410c", border: "#fed7aa", label: "En curso"    },
+  finalizada:  { bg: "#f0fdf4", text: "#15803d", border: "#bbf7d0", label: "Finalizada"  },
+  cancelada:   { bg: "#fef2f2", text: "#991b1b", border: "#fca5a5", label: "Cancelada"   },
+};
 
 export default function CampaignListPage() {
+  const navigate = useNavigate();
   const [campaigns, setCampaigns] = useState([]);
+  const [loading, setLoading]     = useState(true);
 
   useEffect(() => {
-    async function load() {
-      try {
-        const res = await getCampaigns();
-        setCampaigns(res.data);
-      } catch (err) {
-        console.error(err);
-      }
-    }
-    load();
+    getCampaigns()
+      .then((res) => setCampaigns(res.data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, []);
 
-  return (
-    <Box sx={{ p: 3 }}>
-      <Stack direction="row" justifyContent="space-between" mb={4}>
-        <Typography variant="h4" fontWeight={700}>
-          Campañas
-        </Typography>
+  if (loading) return <LoadingPage />;
 
-        <Button
-          variant="contained"
-          component={RouterLink}
-          to="/campaigns/new"
-        >
-          Crear campaña
-        </Button>
-      </Stack>
+  return (
+    <div className="cl-page">
+
+      <div className="cl-header">
+        <h1 className="cl-title">Campañas</h1>
+        <button className="cl-btn-primary" onClick={() => navigate("/campaigns/new")}>
+          <Plus size={14} /> Crear campaña
+        </button>
+      </div>
 
       {campaigns.length === 0 ? (
-        <Typography color="text.secondary">
-          No hay campañas registradas todavía.
-        </Typography>
+        <div className="cl-card">
+          <p className="cl-empty" style={{ margin: 0 }}>No hay campañas registradas.</p>
+        </div>
       ) : (
-        <Grid container spacing={3}>
-          {campaigns.map((c) => (
-            <Grid item xs={12} md={6} key={c._id}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" fontWeight={700} mb={1}>
-                    {c.nombre}
-                  </Typography>
-
-                  <Typography variant="body2" color="text.secondary">
-                    Cliente: {c.client?.nombreComercial || "—"}
-                  </Typography>
-
-                  <Typography variant="body2" color="text.secondary">
-                    Rango:{" "}
-                    {c.fechaInicio
-                      ? new Date(c.fechaInicio).toLocaleDateString("es-MX")
-                      : "—"}{" "}
-                    -{" "}
-                    {c.fechaFin
-                      ? new Date(c.fechaFin).toLocaleDateString("es-MX")
-                      : "—"}
-                  </Typography>
-
-                  <Chip
-                    label={c.status}
-                    sx={{ mt: 2, textTransform: "capitalize" }}
-                    color={
-                      c.status === "en_curso"
-                        ? "info"
-                        : c.status === "finalizada"
-                        ? "success"
-                        : c.status === "cancelada"
-                        ? "error"
-                        : "default"
-                    }
-                  />
-
-                  <Box mt={2}>
-                    <Button
-                      size="small"
-                      component={RouterLink}
-                      to={`/campaigns/${c._id}`}
-                    >
-                      Ver detalles
-                    </Button>
-                  </Box>
-                </CardContent>
-              </Card>
-            </Grid>
-          ))}
-        </Grid>
+        <div className="cl-table-wrap">
+          <table className="cl-table">
+            <thead>
+              <tr>
+                <th>Nombre</th>
+                <th>Cliente</th>
+                <th>Status</th>
+                <th>Inicio</th>
+                <th>Fin</th>
+                <th style={{ textAlign: "center" }}>Acciones</th>
+              </tr>
+            </thead>
+            <tbody>
+              {campaigns.map((c) => {
+                const s = STATUS_CAMP[c.status] || { bg: "#f3f4f6", text: "#374151", border: "#e5e7eb", label: c.status };
+                return (
+                  <tr key={c._id}>
+                    <td style={{ fontWeight: 600 }}>{c.nombre}</td>
+                    <td>{c.client?.nombreComercial || "—"}</td>
+                    <td>
+                      <span className="cl-badge"
+                        style={{ backgroundColor: s.bg, color: s.text, borderColor: s.border }}>
+                        {s.label}
+                      </span>
+                    </td>
+                    <td>{c.fechaInicio ? new Date(c.fechaInicio).toLocaleDateString("es-MX") : "—"}</td>
+                    <td>{c.fechaFin    ? new Date(c.fechaFin).toLocaleDateString("es-MX")    : "—"}</td>
+                    <td style={{ textAlign: "center" }}>
+                      <button className="cl-btn-outline"
+                        onClick={() => navigate(`/clients/${c.client?._id}/campaigns/${c._id}`)}>
+                        Ver
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
       )}
-    </Box>
+    </div>
   );
 }

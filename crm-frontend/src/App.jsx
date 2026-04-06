@@ -1,6 +1,7 @@
 // src/App.jsx
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "./context/AuthContext";
+import { ThemeProvider } from "./context/ThemeContext";
 
 import LoginPage from "./pages/LoginPage";
 import ProtectedLayout from "./components/ProtectedLayout";
@@ -42,7 +43,7 @@ import CampaignDetailPage from "./pages/campaigns/CampaignDetailPage.jsx";
 import CampaignFormPage from "./pages/campaigns/CampaignFormPage.jsx";
 import ClientCampaignsPage from "./pages/clients/ClientCampaignsPage";
 
-
+import UsersPage from "./pages/users/UsersPage";
 
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
@@ -67,256 +68,268 @@ function OwnerRoute({ children }) {
 
 function App() {
   return (
-    <AuthProvider>
-      <BrowserRouter>
-        <Routes>
+    <ThemeProvider>
+      <AuthProvider>
+        <BrowserRouter>
+          <Routes>
 
-          {/* PUBLIC */}
-          <Route path="/login" element={<LoginPage />} />
+            {/* PUBLIC */}
+            <Route path="/login" element={<LoginPage />} />
 
-          {/* PROTECTED */}
-          <Route
-            path="/dashboard"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout>
-                  <DashboardPage />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
+            {/* PROTECTED */}
+            <Route
+              path="/dashboard"
+              element={
+                <PrivateRoute>
+                  <ProtectedLayout>
+                    <DashboardPage />
+                  </ProtectedLayout>
+                </PrivateRoute>
+              }
+            />
 
-          {/* CLIENTS */}
-          <Route
-            path="/clients"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout>
-                  <ClientsPage />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/clients/new"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout>
-                  <ClientCreatePage />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/clients/:id"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout>
-                  <ClientDetailPage />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/clients/:id/edit"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout>
-                  <ClientEditPage />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
+            {/* CLIENTS */}
+            <Route
+              path="/clients"
+              element={
+                <PrivateRoute>
+                  <ProtectedLayout>
+                    <ClientsPage />
+                  </ProtectedLayout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/clients/new"
+              element={
+                <PrivateRoute>
+                  <ProtectedLayout>
+                    <ClientCreatePage />
+                  </ProtectedLayout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/clients/:id"
+              element={
+                <PrivateRoute>
+                  <ProtectedLayout>
+                    <ClientDetailPage />
+                  </ProtectedLayout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/clients/:id/edit"
+              element={
+                <PrivateRoute>
+                  <ProtectedLayout>
+                    <ClientEditPage />
+                  </ProtectedLayout>
+                </PrivateRoute>
+              }
+            />
 
-          <Route
-            path="/clients/:id/campaigns"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout>
-                  <ClientCampaignsPage />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
+            <Route
+              path="/clients/:id/campaigns"
+              element={
+                <PrivateRoute>
+                  <ProtectedLayout>
+                    <ClientCampaignsPage />
+                  </ProtectedLayout>
+                </PrivateRoute>
+              }
+            />
 
-          <Route
-            path="/clients/:clientId/campaigns/new"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout>
-                  <CampaignFormPage />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
+            <Route
+              path="/clients/:clientId/campaigns/new"
+              element={
+                <PrivateRoute>
+                  <ProtectedLayout>
+                    <CampaignFormPage />
+                  </ProtectedLayout>
+                </PrivateRoute>
+              }
+            />
 
-          <Route
-            path="/clients/:clientId/campaigns/:campId"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout>
-                  <CampaignDetailPage />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
+            <Route
+              path="/clients/:clientId/campaigns/:campId"
+              element={
+                <PrivateRoute>
+                  <ProtectedLayout>
+                    <CampaignDetailPage />
+                  </ProtectedLayout>
+                </PrivateRoute>
+              }
+            />
 
-          <Route
-            path="/clients/:clientId/campaigns/:campId/edit"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout>
-                  <CampaignFormPage />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
+            <Route
+              path="/clients/:clientId/campaigns/:campId/edit"
+              element={
+                <PrivateRoute>
+                  <ProtectedLayout>
+                    <CampaignFormPage />
+                  </ProtectedLayout>
+                </PrivateRoute>
+              }
+            />
 
-          {/* QUOTES */}
-          <Route
-            path="/quotes"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout>
-                  <QuotesPage />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/quotes/new"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout>
-                  <QuoteCreatePage />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/quotes/:id"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout>
-                  <QuoteDetailPage />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/quotes/:id/edit"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout>
-                  <QuoteEditPage />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
+            {/* QUOTES */}
+            <Route
+              path="/quotes"
+              element={
+                <PrivateRoute>
+                  <ProtectedLayout>
+                    <QuotesPage />
+                  </ProtectedLayout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/quotes/new"
+              element={
+                <PrivateRoute>
+                  <ProtectedLayout>
+                    <QuoteCreatePage />
+                  </ProtectedLayout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/quotes/:id"
+              element={
+                <PrivateRoute>
+                  <ProtectedLayout>
+                    <QuoteDetailPage />
+                  </ProtectedLayout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/quotes/:id/edit"
+              element={
+                <PrivateRoute>
+                  <ProtectedLayout>
+                    <QuoteEditPage />
+                  </ProtectedLayout>
+                </PrivateRoute>
+              }
+            />
 
-          {/* SALES */}
-          <Route
-            path="/sales"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout>
-                  <SalesListPage />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/sales/:id"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout>
-                  <SaleDetailPage />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
+            {/* SALES */}
+            <Route
+              path="/sales"
+              element={
+                <PrivateRoute>
+                  <ProtectedLayout>
+                    <SalesListPage />
+                  </ProtectedLayout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/sales/:id"
+              element={
+                <PrivateRoute>
+                  <ProtectedLayout>
+                    <SaleDetailPage />
+                  </ProtectedLayout>
+                </PrivateRoute>
+              }
+            />
 
-          {/* POST SALE */}
-          <Route
-            path="/postsale"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout>
-                  <PostSaleListPage />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/postsale/:id"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout>
-                  <PostSaleDetailPage />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/postsale/create"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout>
-                  <PostSaleCreatePage />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
+            {/* POST SALE */}
+            <Route
+              path="/postsale"
+              element={
+                <PrivateRoute>
+                  <ProtectedLayout>
+                    <PostSaleListPage />
+                  </ProtectedLayout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/postsale/:id"
+              element={
+                <PrivateRoute>
+                  <ProtectedLayout>
+                    <PostSaleDetailPage />
+                  </ProtectedLayout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/postsale/create"
+              element={
+                <PrivateRoute>
+                  <ProtectedLayout>
+                    <PostSaleCreatePage />
+                  </ProtectedLayout>
+                </PrivateRoute>
+              }
+            />
 
-          {/* INVOICES */}
-          <Route
-            path="/invoices"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout>
-                  <InvoiceListPage />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/invoices/new"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout>
-                  <InvoiceCreatePage />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
-          <Route
-            path="/invoices/:id"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout>
-                  <InvoiceDetailPage />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
+            {/* INVOICES */}
+            <Route
+              path="/invoices"
+              element={
+                <PrivateRoute>
+                  <ProtectedLayout>
+                    <InvoiceListPage />
+                  </ProtectedLayout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/invoices/new"
+              element={
+                <PrivateRoute>
+                  <ProtectedLayout>
+                    <InvoiceCreatePage />
+                  </ProtectedLayout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/invoices/:id"
+              element={
+                <PrivateRoute>
+                  <ProtectedLayout>
+                    <InvoiceDetailPage />
+                  </ProtectedLayout>
+                </PrivateRoute>
+              }
+            />
 
-          {/* REPORTS */}
-          <Route
-            path="/reports"
-            element={
-              <PrivateRoute>
-                <ProtectedLayout>
-                  <ReportsHomePage />
-                </ProtectedLayout>
-              </PrivateRoute>
-            }
-          />
-          {/* 404 */}
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+            {/* REPORTS */}
+            <Route
+              path="/reports"
+              element={
+                <PrivateRoute>
+                  <ProtectedLayout>
+                    <ReportsHomePage />
+                  </ProtectedLayout>
+                </PrivateRoute>
+              }
+            />
+            {/* 404 */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
 
-        </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+            <Route
+              path="/users"
+              element={
+                <OwnerRoute>
+                  <ProtectedLayout>
+                    <UsersPage />
+                  </ProtectedLayout>
+                </OwnerRoute>
+              }
+            />
+          </Routes>
+        </BrowserRouter>
+      </AuthProvider>
+    </ThemeProvider>
   );
 }
 export default App;

@@ -1,746 +1,298 @@
-// src/pages/sales/SalesDetailPage.jsx
-
 import { useEffect, useState } from "react";
-import {
-  Box,
-  Typography,
-  Card,
-  CardContent,
-  Grid,
-  Stack,
-  Button,
-  Chip,
-  FormControl,
-  Select,
-  MenuItem,
-  InputLabel,
-  Paper,
-  TextField,
-} from "@mui/material";
-import Table from "@mui/material/Table";
-import TableBody from "@mui/material/TableBody";
-import TableCell from "@mui/material/TableCell";
-import TableHead from "@mui/material/TableHead";
-import TableRow from "@mui/material/TableRow";
-import TableContainer from "@mui/material/TableContainer";
-import { useParams, Link as RouterLink, useNavigate } from "react-router-dom";
-import { getSaleById, updateSale, addSaleNote } from "../../services/salesService";
-import { addSaleTask, completeSaleTask } from "../../services/salesService";
-import Checkbox from "@mui/material/Checkbox";
+import { Link, useParams, useNavigate } from "react-router-dom";
+import { getSaleById, updateSale, addSaleNote, addSaleTask, completeSaleTask } from "../../services/salesService";
+import { ArrowLeft } from "lucide-react";
+import "./sales.css";
 
+const STAGES = ["prospeccion", "presentacion", "propuesta", "cierre"];
 
-export default function SalesDetailPage() {
+const STAGE_BADGE = {
+  prospeccion: "sl-badge--warning",
+  presentacion: "sl-badge--info",
+  propuesta: "sl-badge--purple",
+  cierre: "sl-badge--success",
+};
+
+const STAGE_PROB = {
+  prospeccion: 20, presentacion: 40, propuesta: 70, cierre: 100,
+};
+
+const fmtDate = (d) =>
+  d ? new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+
+const daysBetween = (from) => {
+  if (!from) return "—";
+  const diff = Math.floor((new Date() - new Date(from)) / 86400000);
+  return diff < 0 ? 0 : diff;
+};
+
+function InfoItem({ label, value }) {
+  return (
+    <div>
+      <p className="sl-info-label">{label}</p>
+      <p className="sl-info-value">{value ?? "—"}</p>
+    </div>
+  );
+}
+
+export default function SaleDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-
-  const [sale, setSale] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [sale, setSale]         = useState(null);
+  const [loading, setLoading]   = useState(true);
   const [noteText, setNoteText] = useState("");
   const [taskTitle, setTaskTitle] = useState("");
-  const [taskDue, setTaskDue] = useState("");
-
-  // Etapas oficiales del pipeline
-  const STAGES = ["prospeccion", "presentacion", "propuesta", "cierre"];
+  const [taskDue, setTaskDue]   = useState("");
 
   useEffect(() => {
-    async function load() {
-      try {
-        const res = await getSaleById(id);
-        setSale(res.data);
-      } catch (err) {
-        console.error("Error cargando venta:", err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    load();
+    getSaleById(id)
+      .then((res) => setSale(res.data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, [id]);
 
-  if (loading)
-    return (
-      <Box sx={{ p: 4 }}>
-        <Typography>Cargando venta...</Typography>
-      </Box>
-    );
-
-  if (!sale)
-    return (
-      <Box sx={{ p: 4 }}>
-        <Typography color="error">No se encontró la venta.</Typography>
-      </Box>
-    );
-
-  const formatDate = (d) =>
-    d
-      ? new Date(d).toLocaleDateString("es-MX", {
-        day: "2-digit",
-        month: "short",
-        year: "numeric",
-      })
-      : "—";
-
-  const formatStageLabel = (s) => (s ? s.replace(/_/g, " ") : "");
-
-  // Colores para chip y pipeline
-  const stageColor = {
-    prospeccion: "warning",
-    presentacion: "info",
-    propuesta: "secondary",
-    cierre: "success",
-  };
-
-  // Probabilidades de cierre por etapa (solo visual)
-  const stageProbability = {
-    prospeccion: 20,
-    presentacion: 40,
-    propuesta: 70,
-    cierre: 100,
-  };
-
-  // Helpers de fechas para KPIs
-  const daysBetween = (from) => {
-    if (!from) return "—";
-    const start = new Date(from);
-    const now = new Date();
-    const diffMs = now - start;
-    const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
-    return diffDays < 0 ? 0 : diffDays;
-  };
-
-  const daysSinceCreation = daysBetween(sale.createdAt);
-  // Usamos updatedAt como “último cambio de etapa”
-  const daysInCurrentStage = daysBetween(sale.updatedAt);
-  const probability =
-    stageProbability[sale.pipelineStage] ?? stageProbability["prospeccion"];
-
-  // Cambiar etapa del pipeline
-  const handleChangeStage = async (newStage) => {
+  const handleChangeStage = async (stage) => {
     try {
-      const res = await updateSale(id, newStage);
-      alert("Etapa actualizada");
+      const res = await updateSale(id, stage);
       setSale(res.data.updatedSale);
-    } catch (err) {
-      console.error("Error actualizando etapa:", err);
-      alert("Error al actualizar la etapa del pipeline");
-    }
+    } catch { alert("Error al actualizar la etapa"); }
   };
 
-  const currentStageIndex = STAGES.indexOf(sale.pipelineStage);
+  const handleAddNote = async () => {
+    if (!noteText.trim()) return alert("La nota no puede estar vacía");
+    try {
+      const res = await addSaleNote(id, noteText.trim());
+      setNoteText("");
+      setSale((p) => ({ ...p, followUpNotes: res.data.notes }));
+    } catch { alert("Error al agregar nota"); }
+  };
+
+  const handleAddTask = async () => {
+    if (!taskTitle.trim()) return alert("El título es obligatorio");
+    try {
+      const res = await addSaleTask(id, taskTitle, taskDue || null);
+      setTaskTitle(""); setTaskDue("");
+      setSale((p) => ({ ...p, tasks: res.data.tasks }));
+    } catch { alert("Error al agregar tarea"); }
+  };
+
+  const handleCompleteTask = async (taskId) => {
+    try {
+      const res = await completeSaleTask(id, taskId);
+      setSale((p) => ({ ...p, tasks: res.data.tasks }));
+    } catch { alert("Error al completar tarea"); }
+  };
+
+  if (loading) return <div className="sl-status">Cargando venta...</div>;
+  if (!sale)   return <div className="sl-status">No se encontró la venta.</div>;
+
+  const currentIdx = STAGES.indexOf(sale.pipelineStage);
+  const probability = STAGE_PROB[sale.pipelineStage] ?? 20;
+
+  const tasks = sale.tasks || [];
+  const overdue  = tasks.filter((t) => t.dueDate && !t.completed && new Date(t.dueDate) < new Date()).length;
+  const upcoming = tasks.filter((t) => { if (!t.dueDate || t.completed) return false; const d = (new Date(t.dueDate) - new Date()) / 86400000; return d >= 0 && d <= 7; }).length;
+  const done     = tasks.filter((t) => t.completed).length;
+  const nextTask = tasks.filter((t) => t.dueDate && !t.completed && new Date(t.dueDate) >= new Date()).sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate))[0];
 
   return (
-    <Box sx={{ p: 3 }}>
-      {/* ENCABEZADO */}
-      <Stack
-        direction="row"
-        alignItems="center"
-        justifyContent="space-between"
-        mb={4}
-        gap={2}
-      >
-        <Typography variant="h4" fontWeight={700}>
-          Venta #{sale.folio || sale._id}
-        </Typography>
+    <div className="sl-page">
 
-        <Button variant="outlined" component={RouterLink} to="/sales">
-          Volver
-        </Button>
-      </Stack>
+      {/* HEADER */}
+      <div className="sl-header">
+        <h1 className="sl-title">Venta #{sale.folio || sale._id}</h1>
+        <div className="sl-header-actions">
+          <Link to="/sales" className="sl-btn-secondary"><ArrowLeft size={14} /> Volver</Link>
+          <button className="sl-btn-secondary" onClick={() => navigate(`/clients/${sale.client._id}/campaigns`)}>
+            Ver campañas
+          </button>
+        </div>
+      </div>
 
-      {/* CARD PRINCIPAL / RESUMEN DE LA VENTA */}
-      <Card sx={{ mb: 4 }}>
-        <CardContent>
-          <Grid container spacing={3}>
-            {/* Cliente */}
-            <Grid item xs={12} md={4}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Cliente
-              </Typography>
-              <Typography variant="h6" mt={0.5}>
-                {sale.client?.nombreComercial || "—"}
-              </Typography>
-            </Grid>
+      {/* RESUMEN */}
+      <div className="sl-card">
+        <div className="sl-card-header">Resumen de la Venta</div>
+        <div className="sl-card-body">
+          <div className="sl-info-grid">
+            <InfoItem label="Cliente"            value={sale.client?.nombreComercial} />
+            <InfoItem label="Total cotización"   value={sale.quote ? `$${sale.quote.total?.toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : "Sin cotización"} />
+            <InfoItem label="Vendedor asignado"  value={sale.assignedTo?.name} />
+            <InfoItem label="Etapa actual"       value={
+              <span className={`sl-badge ${STAGE_BADGE[sale.pipelineStage] || "sl-badge--gray"}`}>
+                {sale.pipelineStage?.replace(/_/g, " ")}
+              </span>
+            } />
+            <InfoItem label="Probabilidad cierre" value={`${probability}%`} />
+            <InfoItem label="Días desde creación" value={daysBetween(sale.createdAt)} />
+            <InfoItem label="Creada"              value={fmtDate(sale.createdAt)} />
+            <InfoItem label="Actualizada"         value={fmtDate(sale.updatedAt)} />
+          </div>
+        </div>
+      </div>
 
-            {/* Total cotización */}
-            <Grid item xs={12} md={4}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Total cotización
-              </Typography>
-              <Typography variant="h6" mt={0.5}>
-                {sale.quote
-                  ? `$${sale.quote.total?.toLocaleString("es-MX", {
-                    minimumFractionDigits: 2,
-                  })}`
-                  : "Sin cotización"}
-              </Typography>
-            </Grid>
-
-            {/* Vendedor asignado */}
-            <Grid item xs={12} md={4}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Vendedor asignado
-              </Typography>
-              <Typography variant="h6" mt={0.5}>
-                {sale.assignedTo?.name || "—"}
-              </Typography>
-            </Grid>
-
-            {/* Pipeline actual */}
-            <Grid item xs={12} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Pipeline actual
-              </Typography>
-              <Chip
-                label={formatStageLabel(sale.pipelineStage)}
-                color={stageColor[sale.pipelineStage] || "default"}
-                sx={{
-                  mt: 1,
-                  fontWeight: 600,
-                  textTransform: "capitalize",
-                }}
-              />
-            </Grid>
-
-            {/* Fecha creación */}
-            <Grid item xs={12} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Fecha de creación
-              </Typography>
-              <Typography mt={0.5}>{formatDate(sale.createdAt)}</Typography>
-            </Grid>
-
-            {/* Última actualización */}
-            <Grid item xs={12} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Última actualización
-              </Typography>
-              <Typography mt={0.5}>{formatDate(sale.updatedAt)}</Typography>
-            </Grid>
-
-            {/* KPIs rápidos */}
-            <Grid item xs={12} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Probabilidad de cierre
-              </Typography>
-              <Typography mt={0.5} fontWeight={700}>
-                {probability}%
-              </Typography>
-            </Grid>
-
-            <Grid item xs={12} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Días desde creación
-              </Typography>
-              <Typography mt={0.5}>{daysSinceCreation}</Typography>
-            </Grid>
-
-            <Grid item xs={12} md={3}>
-              <Typography variant="subtitle2" color="text.secondary">
-                Días en etapa actual
-              </Typography>
-              <Typography mt={0.5}>{daysInCurrentStage}</Typography>
-            </Grid>
-            <Button
-              variant="outlined"
-              onClick={() => navigate(`/clients/${sale.client._id}/campaigns`)}
-            >
-              Ver campañas del cliente
-            </Button>
-          </Grid>
-        </CardContent>
-      </Card>
-
-      {/* PIPELINE VISUAL + SELECTOR */}
-      <Box sx={{ mb: 4 }}>
-        <Card>
-          <CardContent>
-            <Typography variant="h6" fontWeight={700} mb={2}>
-              Pipeline de venta
-            </Typography>
-
-            {/* PIPELINE HORIZONTAL */}
-            <Box
-              sx={{
-                display: "flex",
-                alignItems: "center",
-                flexWrap: "wrap",
-                gap: 2,
-              }}
-            >
-              {STAGES.map((stage, index) => {
-                const isCompleted = index < currentStageIndex;
-                const isActive = index === currentStageIndex;
-                const isFuture = index > currentStageIndex;
-
-                const circleBg = isCompleted
-                  ? "success.main"
-                  : isActive
-                    ? "primary.main"
-                    : "grey.300";
-
-                const circleColor =
-                  isCompleted || isActive ? "common.white" : "text.primary";
-
-                return (
-                  <Box
-                    key={stage}
-                    sx={{
-                      display: "flex",
-                      alignItems: "center",
-                      minWidth: 120,
-                      flexShrink: 0,
-                    }}
+      {/* PIPELINE VISUAL */}
+      <div className="sl-card">
+        <div className="sl-card-header">Pipeline de Venta</div>
+        <div className="sl-card-body">
+          <div className="sl-pipeline">
+            {STAGES.map((stage, idx) => {
+              const done   = idx < currentIdx;
+              const active = idx === currentIdx;
+              return (
+                <div key={stage} className="sl-pipeline-step" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <div
+                    className={`sl-pipeline-circle ${done ? "sl-pipeline-circle--done" : active ? "sl-pipeline-circle--active" : "sl-pipeline-circle--future"}`}
+                    onClick={() => handleChangeStage(stage)}
                   >
-                    {/* Círculo */}
-                    <Box
-                      sx={{
-                        width: 28,
-                        height: 28,
-                        borderRadius: "50%",
-                        bgcolor: circleBg,
-                        color: circleColor,
-                        display: "flex",
-                        alignItems: "center",
-                        justifyContent: "center",
-                        fontSize: 12,
-                        fontWeight: 700,
-                        cursor: "pointer",
-                        boxShadow: isActive ? 3 : 0,
-                        border: isFuture ? "2px solid #ccc" : "none",
-                        transition: "all 0.2s ease",
-                        "&:hover": {
-                          transform: "scale(1.05)",
-                          boxShadow: 3,
-                        },
-                      }}
-                      onClick={() => handleChangeStage(stage)}
-                    >
-                      {index + 1}
-                    </Box>
+                    {idx + 1}
+                  </div>
+                  <span className={`sl-pipeline-label${active ? " sl-pipeline-label--active" : ""}`}>
+                    {stage.replace(/_/g, " ")}
+                  </span>
+                  {idx < STAGES.length - 1 && (
+                    <div className={`sl-pipeline-connector${done ? " sl-pipeline-connector--done" : ""}`} />
+                  )}
+                </div>
+              );
+            })}
+          </div>
 
-                    {/* Texto de la etapa */}
-                    <Box sx={{ ml: 1 }}>
-                      <Typography
-                        sx={{
-                          fontSize: 12,
-                          fontWeight: isActive ? 700 : 500,
-                          textTransform: "capitalize",
-                        }}
-                      >
-                        {formatStageLabel(stage)}
-                      </Typography>
-                    </Box>
+          <div>
+            <label className="sl-label">Cambiar etapa manualmente</label>
+            <select className="sl-select-full" value={sale.pipelineStage} onChange={(e) => handleChangeStage(e.target.value)}>
+              {STAGES.map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
+            </select>
+          </div>
+        </div>
+      </div>
 
-                    {/* Conector hacia la siguiente etapa */}
-                    {index < STAGES.length - 1 && (
-                      <Box
-                        sx={{
-                          flexGrow: 1,
-                          height: 2,
-                          mx: 1.5,
-                          bgcolor: isCompleted ? "success.main" : "grey.300",
-                        }}
-                      />
-                    )}
-                  </Box>
-                );
-              })}
-            </Box>
-
-            {/* SELECTOR MANUAL */}
-            <Box mt={3}>
-              <Typography
-                variant="subtitle2"
-                color="text.secondary"
-                mb={1}
-              >
-                Cambiar etapa manualmente
-              </Typography>
-              <FormControl fullWidth>
-                <InputLabel>Etapa</InputLabel>
-
-                <Select
-                  value={sale.pipelineStage}
-                  label="Etapa"
-                  onChange={(e) => handleChangeStage(e.target.value)}
-                >
-                  {STAGES.map((s) => (
-                    <MenuItem
-                      key={s}
-                      value={s}
-                      sx={{ textTransform: "capitalize" }}
-                    >
-                      {formatStageLabel(s)}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Box>
-          </CardContent>
-        </Card>
-      </Box>
-      {/* HISTORIAL DEL PIPELINE */}
-      <Box sx={{ mt: 4 }}>
-        <Typography variant="h5" fontWeight={700} mb={2}>
-          Historial del Pipeline
-        </Typography>
-
-        {(!sale.history || sale.history.length === 0) ? (
-          <Typography color="text.secondary">
-            No hay movimientos registrados en el pipeline todavía.
-          </Typography>
-        ) : (
-          <TableContainer component={Paper} sx={{ p: 2 }}>
-            <Table>
-              <TableHead>
-                <TableRow sx={{ backgroundColor: "#e0e0e0" }}>
-                  <TableCell sx={{ fontWeight: 700 }}>De</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>A</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Fecha</TableCell>
-                  <TableCell sx={{ fontWeight: 700 }}>Usuario</TableCell>
-                </TableRow>
-              </TableHead>
-
-              <TableBody>
+      {/* HISTORIAL PIPELINE */}
+      <div className="sl-card">
+        <div className="sl-card-header">Historial del Pipeline</div>
+        <div className="sl-card-body">
+          {!sale.history?.length ? (
+            <p style={{ color: "#9ca3af", margin: 0 }}>No hay movimientos registrados.</p>
+          ) : (
+            <table className="sl-inner-table">
+              <thead><tr><th>De</th><th>A</th><th>Fecha</th></tr></thead>
+              <tbody>
                 {sale.history.map((h, i) => (
-                  <TableRow key={i}>
-                    <TableCell sx={{ textTransform: "capitalize" }}>
-                      {h.fromStage?.replace(/_/g, " ") || "—"}
-                    </TableCell>
-
-                    <TableCell sx={{ textTransform: "capitalize" }}>
-                      {h.toStage?.replace(/_/g, " ") || "—"}
-                    </TableCell>
-
-                    <TableCell>
-                      {h.changedAt
-                        ? new Date(h.changedAt).toLocaleDateString("es-MX", {
-                          day: "2-digit",
-                          month: "short",
-                          year: "numeric",
-                        })
-                        : "—"}
-                    </TableCell>
-
-                    <TableCell>
-                      {h.changedBy?.name
-                        ? h.changedBy.name
-                        : "Usuario desconocido"}
-                    </TableCell>
-                  </TableRow>
+                  <tr key={i}>
+                    <td style={{ textTransform: "capitalize" }}>{h.fromStage?.replace(/_/g, " ") || "—"}</td>
+                    <td style={{ textTransform: "capitalize" }}>{h.toStage?.replace(/_/g, " ") || "—"}</td>
+                    <td>{h.changedAt ? new Date(h.changedAt).toLocaleDateString("es-MX") : "—"}</td>
+                  </tr>
                 ))}
-              </TableBody>
-            </Table>
-          </TableContainer>
-        )}
-      </Box>
-      {/* NOTAS DE SEGUIMIENTO */}
-      <Box sx={{ mt: 5 }}>
-        <Typography variant="h5" fontWeight={700} mb={2}>
-          Notas de seguimiento
-        </Typography>
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
 
-        {/* Formulario para agregar nota */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Typography variant="subtitle1" fontWeight={600} mb={1}>
-            Agregar nota
-          </Typography>
+      {/* MINI DASHBOARD */}
+      <h2 className="sl-section-title">Actividad de Seguimiento</h2>
+      <div className="sl-stats-grid">
+        <div className="sl-stat-box sl-stat-box--red">
+          <p className="sl-stat-num sl-stat-num--red">{overdue}</p>
+          <p className="sl-stat-label">Tareas vencidas</p>
+        </div>
+        <div className="sl-stat-box sl-stat-box--yellow">
+          <p className="sl-stat-num sl-stat-num--yellow">{upcoming}</p>
+          <p className="sl-stat-label">Próximos 7 días</p>
+        </div>
+        <div className="sl-stat-box sl-stat-box--green">
+          <p className="sl-stat-num sl-stat-num--green">{done}</p>
+          <p className="sl-stat-label">Tareas completadas</p>
+        </div>
+        <div className="sl-stat-box sl-stat-box--blue">
+          <p className="sl-stat-num sl-stat-num--blue" style={{ fontSize: 16 }}>
+            {nextTask ? new Date(nextTask.dueDate).toLocaleDateString("es-MX") : "Sin actividad"}
+          </p>
+          <p className="sl-stat-label">Próxima actividad</p>
+        </div>
+      </div>
 
-          <Stack direction="row" spacing={2}>
-            <TextField
-              fullWidth
-              label="Escribe una nota…"
-              multiline
-              minRows={2}
-              value={noteText || ""}
-              onChange={(e) => setNoteText(e.target.value)}
-            />
+      {/* NOTAS */}
+      <h2 className="sl-section-title">Notas de seguimiento</h2>
+      <div className="sl-note-form">
+        <p className="sl-form-title">Agregar nota</p>
+        <div className="sl-form-row">
+          <div className="sl-form-group" style={{ flex: 1 }}>
+            <textarea className="sl-textarea" placeholder="Escribe una nota…" value={noteText} onChange={(e) => setNoteText(e.target.value)} />
+          </div>
+          <button className="sl-btn-save" onClick={handleAddNote}>Guardar</button>
+        </div>
+      </div>
+      {!sale.followUpNotes?.length ? (
+        <p style={{ color: "#9ca3af" }}>Aún no hay notas registradas.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
+          {sale.followUpNotes.map((n, i) => (
+            <div key={i} className="sl-note-card">
+              <p className="sl-note-text">{n.text}</p>
+              <div className="sl-note-meta">
+                <span className="sl-note-date">{n.createdAt ? new Date(n.createdAt).toLocaleString("es-MX") : "—"}</span>
+                <span className="sl-note-author">{n.createdBy?.name || "Usuario desconocido"}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-            <Button
-              variant="contained"
-              color="primary"
-              onClick={async () => {
-                if (!noteText?.trim()) return alert("La nota no puede estar vacía");
-
-                try {
-                  const res = await addSaleNote(id, noteText.trim());
-                  setNoteText("");
-                  // recargar notas localmente
-                  setSale((prev) => ({
-                    ...prev,
-                    followUpNotes: res.data.notes,
-                  }));
-                } catch (e) {
-                  console.error(e);
-                  alert("Error al agregar nota");
-                }
-              }}
-            >
-              Guardar
-            </Button>
-          </Stack>
-        </Paper>
-
-        {/* Listado de notas */}
-        {(!sale.followUpNotes || sale.followUpNotes.length === 0) ? (
-          <Typography color="text.secondary">
-            Aún no hay notas registradas.
-          </Typography>
-        ) : (
-          <Stack spacing={2}>
-            {sale.followUpNotes.map((n, idx) => (
-              <Paper key={idx} sx={{ p: 2 }}>
-                <Typography sx={{ whiteSpace: "pre-line" }}>
-                  {n.text}
-                </Typography>
-
-                <Stack
-                  direction="row"
-                  justifyContent="space-between"
-                  alignItems="center"
-                  mt={2}
-                >
-                  <Typography variant="caption" color="text.secondary">
-                    {n.createdAt
-                      ? new Date(n.createdAt).toLocaleString("es-MX")
-                      : "—"}
-                  </Typography>
-
-                  <Chip
-                    size="small"
-                    label={n.createdBy?.name || "Usuario desconocido"}
-                    variant="outlined"
-                  />
-                </Stack>
-              </Paper>
-            ))}
-          </Stack>
-        )}
-      </Box>
-      {/* MINI DASHBOARD DE ACTIVIDAD */}
-      <Box sx={{ mt: 5 }}>
-        <Typography variant="h5" fontWeight={700} mb={2}>
-          Actividad de Seguimiento
-        </Typography>
-
-        <Grid container spacing={3}>
-          {/* TAREAS VENCIDAS */}
-          <Grid item xs={12} md={3}>
-            <Card sx={{ p: 2, textAlign: "center", bgcolor: "#ffebee" }}>
-              <Typography variant="h6" fontWeight={700} color="error">
-                {sale.tasks.filter(t => t.dueDate && !t.completed && new Date(t.dueDate) < new Date()).length}
-              </Typography>
-              <Typography variant="body2">Tareas vencidas</Typography>
-            </Card>
-          </Grid>
-
-          {/* TAREAS POR VENCER (próximos 7 días) */}
-          <Grid item xs={12} md={3}>
-            <Card sx={{ p: 2, textAlign: "center", bgcolor: "#fff8e1" }}>
-              <Typography variant="h6" fontWeight={700} color="warning.main">
-                {
-                  sale.tasks.filter(t => {
-                    if (!t.dueDate || t.completed) return false;
-                    const diff = (new Date(t.dueDate) - new Date()) / (1000 * 60 * 60 * 24);
-                    return diff >= 0 && diff <= 7;
-                  }).length
-                }
-              </Typography>
-              <Typography variant="body2">Próximos 7 días</Typography>
-            </Card>
-          </Grid>
-
-          {/* TAREAS COMPLETADAS */}
-          <Grid item xs={12} md={3}>
-            <Card sx={{ p: 2, textAlign: "center", bgcolor: "#e8f5e9" }}>
-              <Typography variant="h6" fontWeight={700} color="success.main">
-                {sale.tasks.filter(t => t.completed).length}
-              </Typography>
-              <Typography variant="body2">Tareas completadas</Typography>
-            </Card>
-          </Grid>
-
-          {/* PRÓXIMA ACTIVIDAD */}
-          <Grid item xs={12} md={3}>
-            <Card sx={{ p: 2, textAlign: "center", bgcolor: "#e3f2fd" }}>
-              <Typography variant="h6" fontWeight={700} color="primary">
-                {(() => {
-                  const upcoming = sale.tasks
-                    .filter(t => t.dueDate && !t.completed && new Date(t.dueDate) >= new Date())
-                    .sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
-
-                  return upcoming.length > 0
-                    ? new Date(upcoming[0].dueDate).toLocaleDateString("es-MX")
-                    : "Sin actividad";
-                })()}
-              </Typography>
-              <Typography variant="body2">Próxima actividad</Typography>
-            </Card>
-          </Grid>
-        </Grid>
-      </Box>
-
-      {/* TAREAS / TO-DO */}
-      <Box sx={{ mt: 5 }}>
-        <Typography variant="h5" fontWeight={700} mb={2}>
-          Tareas / Próximos pasos
-        </Typography>
-
-        {/* Formulario para agregar tarea */}
-        <Paper sx={{ p: 2, mb: 3 }}>
-          <Typography variant="subtitle1" fontWeight={600} mb={1}>
-            Agregar nueva tarea
-          </Typography>
-
-          <Grid container spacing={2}>
-            <Grid item xs={12} md={6}>
-              <TextField
-                fullWidth
-                label="Título de la tarea"
-                value={taskTitle}
-                onChange={(e) => setTaskTitle(e.target.value)}
+      {/* TAREAS */}
+      <h2 className="sl-section-title">Tareas / Próximos pasos</h2>
+      <div className="sl-task-form">
+        <p className="sl-form-title">Agregar nueva tarea</p>
+        <div className="sl-form-row">
+          <div className="sl-form-group">
+            <label className="sl-label">Título</label>
+            <input className="sl-input" value={taskTitle} onChange={(e) => setTaskTitle(e.target.value)} placeholder="Título de la tarea" />
+          </div>
+          <div className="sl-form-group">
+            <label className="sl-label">Fecha límite</label>
+            <input className="sl-input" type="date" value={taskDue} onChange={(e) => setTaskDue(e.target.value)} />
+          </div>
+          <button className="sl-btn-save" onClick={handleAddTask}>Crear</button>
+        </div>
+      </div>
+      {!tasks.length ? (
+        <p style={{ color: "#9ca3af" }}>No hay tareas aún.</p>
+      ) : (
+        <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 24 }}>
+          {tasks.map((t) => (
+            <div key={t._id} className={`sl-task-card${t.completed ? " sl-task-card--done" : ""}`}>
+              <input
+                type="checkbox" className="sl-checkbox" checked={t.completed}
+                onChange={() => { if (!t.completed) handleCompleteTask(t._id); }}
               />
-            </Grid>
+              <div>
+                <p className="sl-task-title">{t.title}</p>
+                <p className="sl-task-due">Fecha límite: {t.dueDate ? new Date(t.dueDate).toLocaleDateString("es-MX") : "No asignada"}</p>
+                <p className="sl-task-by">Creada por: {t.createdBy?.name || "Usuario desconocido"}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
-            <Grid item xs={12} md={4}>
-              <TextField
-                fullWidth
-                type="date"
-                label="Fecha límite"
-                InputLabelProps={{ shrink: true }}
-                value={taskDue}
-                onChange={(e) => setTaskDue(e.target.value)}
-              />
-            </Grid>
+      {/* INFO COTIZACIÓN */}
+      <div className="sl-card">
+        <div className="sl-card-header">Información de Cotización</div>
+        <div className="sl-card-body">
+          <div className="sl-info-grid">
+            <InfoItem label="Folio"  value={sale.quote?.folio} />
+            <InfoItem label="Total"  value={sale.quote ? `$${sale.quote.total?.toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : "—"} />
+            <InfoItem label="Status" value={
+              sale.quote?.status
+                ? <span className={`sl-badge ${sale.quote.status === "aprobado" ? "sl-badge--success" : sale.quote.status === "pendiente" ? "sl-badge--warning" : "sl-badge--error"}`}>
+                    {sale.quote.status}
+                  </span>
+                : "—"
+            } />
+          </div>
+        </div>
+      </div>
 
-            <Grid item xs={12} md={2} display="flex" alignItems="center">
-              <Button
-                variant="contained"
-                color="primary"
-                fullWidth
-                onClick={async () => {
-                  if (!taskTitle.trim()) {
-                    return alert("El título de la tarea es obligatorio");
-                  }
-                  try {
-                    const res = await addSaleTask(id, taskTitle, taskDue || null);
-                    setTaskTitle("");
-                    setTaskDue("");
-
-
-                    setSale((prev) => ({
-                      ...prev,
-                      tasks: res.data.tasks,
-                    }));
-                  } catch (err) {
-                    console.error(err);
-                    alert("Error al agregar la tarea");
-                  }
-                }}
-              >
-                Crear
-              </Button>
-            </Grid>
-          </Grid>
-        </Paper>
-
-        {/* LISTA DE TAREAS */}
-        {(!sale.tasks || sale.tasks.length === 0) ? (
-          <Typography color="text.secondary">
-            No hay tareas aún. Crea una arriba.
-          </Typography>
-        ) : (
-          <Stack spacing={2}>
-            {sale.tasks.map((t) => (
-              <Paper
-                key={t._id}
-                sx={{
-                  p: 2,
-                  opacity: t.completed ? 0.6 : 1,
-                  borderLeft: `5px solid ${t.completed ? "#4caf50" : "#ff9800"}`,
-                }}
-              >
-                <Grid container spacing={2} alignItems="center">
-                  <Grid item xs={1}>
-                    <Checkbox
-                      checked={t.completed}
-                      onChange={async () => {
-                        if (!t.completed) {
-                          const res = await completeSaleTask(id, t._id);
-                          setSale((prev) => ({
-                            ...prev,
-                            tasks: res.data.tasks,
-                          }));
-                        }
-                      }}
-                    />
-                  </Grid>
-
-                  <Grid item xs={11}>
-                    <Typography fontWeight={600}>{t.title}</Typography>
-
-                    <Typography variant="body2" color="text.secondary">
-                      Fecha límite:{" "}
-                      {t.dueDate
-                        ? new Date(t.dueDate).toLocaleDateString("es-MX")
-                        : "No asignada"}
-                    </Typography>
-
-                    <Typography variant="caption" color="text.secondary">
-                      Creada por: {t.createdBy?.name || "Usuario desconocido"}
-                    </Typography>
-                  </Grid>
-                </Grid>
-              </Paper>
-            ))}
-          </Stack>
-        )}
-      </Box>
-
-      {/* INFO DE COTIZACIÓN */}
-      <Box>
-        <Typography variant="h5" fontWeight={700} mb={2}>
-          Información de Cotización
-        </Typography>
-
-        <Paper sx={{ p: 3 }}>
-          <Grid container spacing={3}>
-            <Grid item xs={12} md={4}>
-              <Typography variant="subtitle2">Folio</Typography>
-              <Typography fontWeight={600} mt={0.5}>
-                {sale.quote?.folio || "—"}
-              </Typography>
-            </Grid>
-
-            <Grid item xs={12} md={4}>
-              <Typography variant="subtitle2">Total</Typography>
-              <Typography fontWeight={600} mt={0.5}>
-                {sale.quote
-                  ? `$${sale.quote.total?.toLocaleString("es-MX", {
-                    minimumFractionDigits: 2,
-                  })}`
-                  : "—"}
-              </Typography>
-            </Grid>
-
-            <Grid item xs={12} md={4}>
-              <Typography variant="subtitle2">Status</Typography>
-              <Chip
-                label={sale.quote?.status || "—"}
-                color={
-                  sale.quote?.status === "aprobado"
-                    ? "success"
-                    : sale.quote?.status === "pendiente"
-                      ? "warning"
-                      : "default"
-                }
-                sx={{ mt: 1, fontWeight: 600, textTransform: "capitalize" }}
-              />
-            </Grid>
-          </Grid>
-        </Paper>
-      </Box>
-
-      <Box mt={5} />
-    </Box>
+    </div>
   );
 }

@@ -1,47 +1,51 @@
 import { useState, useEffect } from "react";
-import { getUsers } from "../../services/userService";
 import { useNavigate } from "react-router-dom";
+import { getUsers } from "../../services/userService";
 import { useAuth } from "../../context/AuthContext";
-import { Grid, TextField, Typography, MenuItem, FormControl, Select, InputLabel, Button, Card, CardContent, Box, FormControlLabel, Switch, Alert, Snackbar, IconButton } from "@mui/material";
 import { createClient, checkRFC, checkClientName } from "../../services/clientService";
-import CloseIcon from "@mui/icons-material/Close";
+import { ArrowLeft } from "lucide-react";
+import "./clients.css";
 
+const REGIMENES = [
+  "REGIMEN GENERAL DE LEY PERSONAS MORALES",
+  "RÉGIMEN SIMPLIFICADO DE LEY PERSONAS MORALES",
+  "PERSONAS MORALES CON FINES NO LUCRATIVOS",
+  "RÉGIMEN DE PEQUEÑOS CONTRIBUYENTES",
+  "RÉGIMEN DE SUELDOS Y SALARIOS E INGRESOS ASIMILADOS A SALARIOS",
+  "RÉGIMEN DE ARRENDAMIENTO",
+  "RÉGIMEN SIMPLIFICADO DE LEY PERSONAS FÍSICAS",
+  "RÉGIMEN DE INCORPORACIÓN FISCAL",
+];
 
-function ClientCreatePage() {
+const INDUSTRIAS = [
+  "autos","inmobiliaria","restaurantes","hoteles","tiendas departamentales",
+  "tiendas de conveniencia","hospitales","opticas","farmacias","gimnasios",
+  "clinicas","escuelas","universidades","clubs deportivos","eventos o espectaculos",
+  "servicios financieros","aseguradoras","notarias","talleres mecanicos",
+  "distribuidoras de autos","cursos o diplomados","laboratorios medicos",
+];
+
+function Toast({ msg, type, onClose }) {
+  useEffect(() => { const t = setTimeout(onClose, 2500); return () => clearTimeout(t); }, [onClose]);
+  return <div className={`cl-toast cl-toast--${type}`}>{msg}</div>;
+}
+
+export default function ClientCreatePage() {
   const navigate = useNavigate();
-  const [users, setUsers] = useState([]);
   const { isOwner, isWorker, user } = useAuth();
+  const [users, setUsers] = useState([]);
   const [rfcInfo, setRfcInfo] = useState(null);
   const [nameInfo, setNameInfo] = useState(null);
-  const [snackbar, setSnackbar] = useState({
-    open: false,
-    message: "",
-    severity: "success",
-  });
-
+  const [toast, setToast] = useState(null);
 
   const [form, setForm] = useState({
-    nombreComercial: "",
-    razonSocial: "",
-    rfc: "",
-    curp: "",
-    direccion: {
-      calleNumero: "",
-      colonia: "",
-      ciudad: "",
-      estado: "",
-      pais: "",
-      cp: "",
-      telefono: "",
-    },
-    regimen: "",
-    agenciaODirecto: "",
-    tipoCliente: "",
-    tipoIndustria: "",
+    nombreComercial: "", razonSocial: "", rfc: "", curp: "",
+    direccion: { calleNumero: "", colonia: "", ciudad: "", estado: "", pais: "", cp: "", telefono: "" },
+    regimen: "", agenciaODirecto: "", tipoCliente: "", tipoIndustria: "",
     contactos: {
       mercadotecnia: { nombre: "", email: "", celular: "" },
-      diseno: { nombre: "", email: "", celular: "" },
-      facturacion: { nombre: "", email: "", celular: "" },
+      diseno:        { nombre: "", email: "", celular: "" },
+      facturacion:   { nombre: "", email: "", celular: "" },
     },
     clienteActivo: true,
     status: "prospeccion",
@@ -49,484 +53,209 @@ function ClientCreatePage() {
   });
 
   useEffect(() => {
-    async function loadUsers() {
-      try {
-        const res = await getUsers();
-        setUsers(res.data);
-      } catch (error) {
-        console.error("Error cargando usuarios:", error);
-      }
-    }
-    loadUsers();
+    if (isOwner) getUsers().then((r) => setUsers(r.data)).catch(console.error);
   }, []);
-  const INDUSTRIAS = [
-    "autos",
-    "inmobiliaria",
-    "restaurantes",
-    "hoteles",
-    "tiendas departamentales",
-    "tiendas de conveniencia",
-    "hospitales",
-    "opticas",
-    "farmacias",
-    "gimnasios",
-    "clinicas",
-    "escuelas",
-    "universidades",
-    "clubs deportivos",
-    "eventos o espectaculos",
-    "servicios financieros",
-    "aseguradoras",
-    "notarias",
-    "talleres mecanicos",
-    "distribuidoras de autos",
-    "cursos o diplomados",
-    "laboratorios medicos",
-  ];
 
-  const handleChange = (e) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
-    if (e.target.name === "rfc") {
-      setRfcInfo(null);
-    }
-    if (e.target.name === "nombreComercial") {
-      setNameInfo(null);
-    }
-  };
-
-  const handleDireccion = (e) => {
-    setForm({
-      ...form,
-      direccion: { ...form.direccion, [e.target.name]: e.target.value },
-    });
-  };
-
-  const handleContacto = (area, e) => {
-    setForm({
-      ...form,
-      contactos: {
-        ...form.contactos,
-        [area]: {
-          ...form.contactos[area],
-          [e.target.name]: e.target.value,
-        },
-      },
-    });
-  };
+  const set = (f, v) => setForm((p) => ({ ...p, [f]: v }));
+  const setDir = (f, v) => setForm((p) => ({ ...p, direccion: { ...p.direccion, [f]: v } }));
+  const setCont = (area, f, v) =>
+    setForm((p) => ({ ...p, contactos: { ...p.contactos, [area]: { ...p.contactos[area], [f]: v } } }));
 
   const handleRFCBlur = async () => {
     if (!form.rfc) return;
-
-    try {
-      const res = await checkRFC(form.rfc);
-      setRfcInfo(res.data); // { exists, workerName }
-    } catch (error) {
-      console.error("Error validando RFC:", error);
-    }
+    try { setRfcInfo((await checkRFC(form.rfc)).data); } catch { }
   };
 
   const handleNameBlur = async () => {
     if (!form.nombreComercial) return;
-
-    try {
-      const res = await checkClientName(form.nombreComercial);
-      setNameInfo(res.data); // { exists, workerName }
-    } catch (error) {
-      console.error("Error validando Nombre Comercial:", error);
-    }
+    try { setNameInfo((await checkClientName(form.nombreComercial)).data); } catch { }
   };
-
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.regimen || !form.agenciaODirecto || !form.tipoCliente || !form.tipoIndustria) {
-      alert("Completa Régimen, Agencia/Directo, Tipo de Cliente e Industria");
+      setToast({ msg: "Completa Régimen, Agencia/Directo, Tipo de Cliente e Industria", type: "error" });
       return;
     }
-    // Si RFC ya existe, bloqueamos el envío
-    if (rfcInfo?.exists) {
-      alert("Este RFC ya existe. No puedes registrar este cliente.");
-      return;
-    }
-    if (nameInfo?.exists) {
-      alert("Este Nombre Comercial ya existe. No puedes registrar este cliente.");
-      return;
-    }
+    if (rfcInfo?.exists) { setToast({ msg: "Este RFC ya existe.", type: "error" }); return; }
+    if (nameInfo?.exists) { setToast({ msg: "Este Nombre Comercial ya existe.", type: "error" }); return; }
+
     const payload = { ...form };
-    if (isWorker) {
-      payload.assignedTo = user._id;
-    }
+    if (isWorker) payload.assignedTo = user._id;
+
     try {
       await createClient(payload);
-
-      setSnackbar({
-        open: true,
-        message: "Cliente creado correctamente",
-        severity: "success",
-      });
-
-      setTimeout(() => {
-        navigate("/clients");
-      }, 1200);
-
-    } catch (error) {
-      console.error("Error creando cliente:", error);
-      alert("Error creando cliente");
-    }
-
+      setToast({ msg: "Cliente creado correctamente", type: "success" });
+      setTimeout(() => navigate("/clients"), 1200);
+    } catch { setToast({ msg: "Error creando cliente", type: "error" }); }
   };
 
   return (
-    <Box maxWidth="1200px" mx="auto" mt={4} px={3}>
-      <Typography variant="h4" fontWeight={700} mb={3}>
-        Nuevo Cliente
-      </Typography>
-      <Box mb={2}>
-        <Button
-          variant="outlined"
-          onClick={() => navigate("/clients")}
-          sx={{ fontWeight: 600 }}
-        >
-          Volver
-        </Button>
-      </Box>
-      <Card elevation={3}>
-        <CardContent>
-          <form onSubmit={handleSubmit}>
+    <div className="cl-page">
+      {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
 
-            {/* DATOS GENERALES */}
-            <Typography variant="h6" fontWeight={700} mt={2} mb={2}>
-              Datos Generales
-            </Typography>
+      <div className="cl-header-row">
+        <h1 className="cl-title">Nuevo Cliente</h1>
+        <button className="cl-btn-secondary" onClick={() => navigate("/clients")}>
+          <ArrowLeft size={14} /> Volver
+        </button>
+      </div>
 
-            <Grid container spacing={3}>
-              <Grid item xs={12} md={4}>
-                <TextField
-                  label="Nombre Comercial"
-                  fullWidth
-                  name="nombreComercial"
-                  value={form.nombreComercial}
-                  onChange={handleChange}
-                  onBlur={handleNameBlur}
-                />
-              </Grid>
-              {/* ALERTA SI EL NOMBRE COMERCIAL YA EXISTE */}
+      <form onSubmit={handleSubmit}>
+
+        {/* DATOS GENERALES */}
+        <div className="cl-card">
+          <p className="cl-section-title">Datos Generales</p>
+          <div className="cl-form-grid">
+            <div className="cl-form-group">
+              <label className="cl-label">Nombre Comercial</label>
+              <input className="cl-input" value={form.nombreComercial}
+                onChange={(e) => { set("nombreComercial", e.target.value); setNameInfo(null); }}
+                onBlur={handleNameBlur} />
               {nameInfo?.exists && (
-                <Grid item xs={12}>
-                  <Alert severity="warning" sx={{ fontWeight: 600 }}>
-                    Este <strong>Nombre Comercial</strong> ya pertenece al Usuario:{" "}
-                    <strong>{nameInfo.workerName}</strong>
-                  </Alert>
-                </Grid>
+                <div className="cl-alert cl-alert--warning">
+                  Nombre ya registrado con: <strong>{nameInfo.workerName}</strong>
+                </div>
               )}
+            </div>
 
-              <Grid item xs={12} md={4}>
-                <TextField
-                  label="Razón Social"
-                  fullWidth
-                  name="razonSocial"
-                  value={form.razonSocial}
-                  onChange={handleChange}
-                />
-              </Grid>
+            <div className="cl-form-group">
+              <label className="cl-label">Razón Social</label>
+              <input className="cl-input" value={form.razonSocial} onChange={(e) => set("razonSocial", e.target.value)} />
+            </div>
 
-              <Grid item xs={12} md={4}>
-                <TextField
-                  label="RFC"
-                  fullWidth
-                  name="rfc"
-                  value={form.rfc}
-                  onChange={handleChange}
-                  onBlur={handleRFCBlur}
-                />
-              </Grid>
-
-              {/* ⚠️ ALERTA SI EL RFC YA EXISTE */}
+            <div className="cl-form-group">
+              <label className="cl-label">RFC</label>
+              <input className="cl-input" value={form.rfc}
+                onChange={(e) => { set("rfc", e.target.value); setRfcInfo(null); }}
+                onBlur={handleRFCBlur} />
               {rfcInfo?.exists && (
-                <Grid item xs={12}>
-                  <Alert severity="error" sx={{ fontWeight: 600 }}>
-                    Este CLIENTE ya esta registrado con el Usuario:
-                    {" "}
-                    <strong>{rfcInfo.workerName}</strong>
-                  </Alert>
-                </Grid>
+                <div className="cl-alert cl-alert--error">
+                  RFC ya registrado con: <strong>{rfcInfo.workerName}</strong>
+                </div>
               )}
+            </div>
 
-              <Grid item xs={12} md={4}>
-                <TextField
-                  label="CURP"
-                  fullWidth
-                  name="curp"
-                  value={form.curp}
-                  onChange={handleChange}
-                />
-              </Grid>
-            </Grid>
+            <div className="cl-form-group">
+              <label className="cl-label">CURP</label>
+              <input className="cl-input" value={form.curp} onChange={(e) => set("curp", e.target.value)} />
+            </div>
+          </div>
+        </div>
 
-            {/* DIRECCIÓN */}
-            <Typography variant="h6" fontWeight={700} mt={4} mb={2}>
-              Dirección
-            </Typography>
-
-            <Grid container spacing={3}>
-              {[
-                ["Calle y Número", "calleNumero"],
-                ["Colonia", "colonia"],
-                ["Ciudad", "ciudad"],
-                ["Estado", "estado"],
-                ["País", "pais"],
-                ["CP", "cp"],
-                ["Teléfono", "telefono"],
-              ].map(([label, key]) => (
-                <Grid item xs={12} md={4} key={key}>
-                  <TextField
-                    label={label}
-                    fullWidth
-                    name={key}
-                    value={form.direccion[key]}
-                    onChange={handleDireccion}
-                  />
-                </Grid>
-              ))}
-            </Grid>
-
-            {/* CLASIFICACIÓN */}
-            <Typography variant="h6" fontWeight={700} mt={4} mb={2}>
-              Clasificación del Cliente
-            </Typography>
-
-            <Grid container spacing={3}>
-              <Grid size={{ xs: 12, md: 4 }}>
-                <FormControl fullWidth>
-                  <InputLabel>Régimen Fiscal</InputLabel>
-                  <Select
-                    name="regimen"
-                    value={form.regimen}
-                    label="Régimen Fiscal"
-                    onChange={handleChange}
-                  >
-                    {[
-                      "REGIMEN GENERAL DE LEY PERSONAS MORALES",
-                      "RÉGIMEN SIMPLIFICADO DE LEY PERSONAS MORALES",
-                      "PERSONAS MORALES CON FINES NO LUCRATIVOS",
-                      "RÉGIMEN DE PEQUEÑOS CONTRIBUYENTES",
-                      "RÉGIMEN DE SUELDOS Y SALARIOS E INGRESOS ASIMILADOS A SALARIOS",
-                      "RÉGIMEN DE ARRENDAMIENTO",
-                      "RÉGIMEN SIMPLIFICADO DE LEY PERSONAS FÍSICAS",
-                      "RÉGIMEN DE INCORPORACIÓN FISCAL",
-                    ].map((reg) => (
-                      <MenuItem key={reg} value={reg}>
-                        {reg}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              <Grid size={{ xs: 12, md: 4 }}>
-                <FormControl fullWidth>
-                  <InputLabel>Agencia o Directo</InputLabel>
-                  <Select
-                    name="agenciaODirecto"
-                    value={form.agenciaODirecto}
-                    label="Agencia o Directo"
-                    onChange={handleChange}
-                  >
-                    <MenuItem value="AGENCIA">AGENCIA</MenuItem>
-                    <MenuItem value="DIRECTO">DIRECTO</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              <Grid size={{ xs: 12, md: 4 }}>
-                <FormControl fullWidth>
-                  <InputLabel>Tipo de Cliente</InputLabel>
-                  <Select
-                    name="tipoCliente"
-                    value={form.tipoCliente}
-                    label="Tipo de Cliente"
-                    onChange={handleChange}
-                  >
-                    <MenuItem value="iniciativa privada">Iniciativa Privada</MenuItem>
-                    <MenuItem value="gobierno">Gobierno</MenuItem>
-                    <MenuItem value="corporativo">Corporativo</MenuItem>
-                  </Select>
-                </FormControl>
-              </Grid>
-
-              <Grid size={{ xs: 12, md: 2 }}>
-                <FormControl fullWidth>
-                  <InputLabel id="tipoIndustria-label">Industria</InputLabel>
-                  <Select
-                    labelId="tipoIndustria-label"
-                    name="tipoIndustria"
-                    value={form.tipoIndustria}
-                    label="Industria"
-                    onChange={handleChange}
-                  >
-                    <MenuItem value="">
-                      <em>Selecciona una opción</em>
-                    </MenuItem>
-
-                    {INDUSTRIAS.map((v) => (
-                      <MenuItem key={v} value={v}>
-                        {v}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </Grid>
-            </Grid>
-            {/* CONTACTOS */}
-            <Typography variant="h6" fontWeight={700} mt={4} mb={2}>
-              Contactos
-            </Typography>
-
-            {["mercadotecnia", "diseno", "facturacion"].map((area) => (
-              <Box key={area} mt={1}>
-                <Typography fontWeight={600} mb={1}>
-                  {area.charAt(0).toUpperCase() + area.slice(1)}
-                </Typography>
-
-                <Grid container spacing={3}>
-                  <Grid item xs={12} md={4}>
-                    <TextField
-                      label="Nombre"
-                      fullWidth
-                      name="nombre"
-                      value={form.contactos[area].nombre}
-                      onChange={(e) => handleContacto(area, e)}
-                    />
-                  </Grid>
-
-                  <Grid item xs={12} md={4}>
-                    <TextField
-                      label="Email"
-                      fullWidth
-                      name="email"
-                      value={form.contactos[area].email}
-                      onChange={(e) => handleContacto(area, e)}
-                    />
-                  </Grid>
-
-                  <Grid item xs={12} md={4}>
-                    <TextField
-                      label="Celular"
-                      fullWidth
-                      name="celular"
-                      value={form.contactos[area].celular}
-                      onChange={(e) => handleContacto(area, e)}
-                    />
-                  </Grid>
-                </Grid>
-              </Box>
+        {/* DIRECCIÓN */}
+        <div className="cl-card">
+          <p className="cl-section-title">Dirección</p>
+          <div className="cl-form-grid">
+            {[["calleNumero","Calle y Número"],["colonia","Colonia"],["ciudad","Ciudad"],
+              ["estado","Estado"],["pais","País"],["cp","CP"],["telefono","Teléfono"]].map(([f,l]) => (
+              <div className="cl-form-group" key={f}>
+                <label className="cl-label">{l}</label>
+                <input className="cl-input" value={form.direccion[f]} onChange={(e) => setDir(f, e.target.value)} />
+              </div>
             ))}
+          </div>
+        </div>
 
-            {/* ASIGNAR A USUARIO (Owner) */}
+        {/* CLASIFICACIÓN */}
+        <div className="cl-card">
+          <p className="cl-section-title">Clasificación del Cliente</p>
+          <div className="cl-form-grid">
+            <div className="cl-form-group">
+              <label className="cl-label">Régimen Fiscal</label>
+              <select className="cl-select" value={form.regimen} onChange={(e) => set("regimen", e.target.value)}>
+                <option value="">Seleccione...</option>
+                {REGIMENES.map((r) => <option key={r} value={r}>{r}</option>)}
+              </select>
+            </div>
+            <div className="cl-form-group">
+              <label className="cl-label">Agencia o Directo</label>
+              <select className="cl-select" value={form.agenciaODirecto} onChange={(e) => set("agenciaODirecto", e.target.value)}>
+                <option value="">Seleccione...</option>
+                <option value="AGENCIA">AGENCIA</option>
+                <option value="DIRECTO">DIRECTO</option>
+              </select>
+            </div>
+            <div className="cl-form-group">
+              <label className="cl-label">Tipo de Cliente</label>
+              <select className="cl-select" value={form.tipoCliente} onChange={(e) => set("tipoCliente", e.target.value)}>
+                <option value="">Seleccione...</option>
+                <option value="iniciativa privada">Iniciativa Privada</option>
+                <option value="gobierno">Gobierno</option>
+                <option value="corporativo">Corporativo</option>
+              </select>
+            </div>
+            <div className="cl-form-group">
+              <label className="cl-label">Industria</label>
+              <select className="cl-select" value={form.tipoIndustria} onChange={(e) => set("tipoIndustria", e.target.value)}>
+                <option value="">Seleccione una opción</option>
+                {INDUSTRIAS.map((v) => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </div>
+            <div className="cl-form-group">
+              <label className="cl-label">Status</label>
+              <select className="cl-select" value={form.status} onChange={(e) => set("status", e.target.value)}>
+                <option value="prospeccion">Prospección</option>
+                <option value="presentacion">Presentación</option>
+                <option value="propuesta">Propuesta</option>
+                <option value="cierre">Cierre</option>
+              </select>
+            </div>
+          </div>
+        </div>
+
+        {/* CONTACTOS */}
+        <div className="cl-card">
+          <p className="cl-section-title">Contactos</p>
+          {["mercadotecnia","diseno","facturacion"].map((area) => (
+            <div key={area} style={{ marginBottom: 20 }}>
+              <p style={{ fontSize: 13, fontWeight: 600, color: "#6b7280", marginBottom: 10, textTransform: "capitalize" }}>{area}</p>
+              <div className="cl-form-grid">
+                {["nombre","email","celular"].map((f) => (
+                  <div className="cl-form-group" key={f}>
+                    <label className="cl-label">{f.charAt(0).toUpperCase() + f.slice(1)}</label>
+                    <input className="cl-input" value={form.contactos[area][f]}
+                      onChange={(e) => setCont(area, f, e.target.value)} />
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* ASIGNACIÓN */}
+        <div className="cl-card">
+          <p className="cl-section-title">Asignación</p>
+          <div className="cl-form-grid">
             {isOwner && (
-              <>
-                <Typography variant="h6" fontWeight={700} mt={4} mb={2}>
-                  Asignar a Usuario
-                </Typography>
-
-                <FormControl fullWidth>
-                  <InputLabel>Usuario</InputLabel>
-                  <Select
-                    name="assignedTo"
-                    value={form.assignedTo}
-                    label="Usuario"
-                    onChange={handleChange}
-                  >
-                    {users.map((u) => (
-                      <MenuItem key={u._id} value={u._id}>
-                        {u.name} ({u.email})
-                      </MenuItem>
-                    ))}
-                  </Select>
-                </FormControl>
-              </>
+              <div className="cl-form-group">
+                <label className="cl-label">Ejecutivo Asignado</label>
+                <select className="cl-select" value={form.assignedTo} onChange={(e) => set("assignedTo", e.target.value)}>
+                  <option value="">Seleccione usuario...</option>
+                  {users.map((u) => <option key={u._id} value={u._id}>{u.name}</option>)}
+                </select>
+              </div>
             )}
+            <div className="cl-form-group">
+              <label className="cl-label">Cliente Activo</label>
+              <label className="cl-toggle-wrap">
+                <span className="cl-toggle">
+                  <input type="checkbox" checked={form.clienteActivo}
+                    onChange={(e) => set("clienteActivo", e.target.checked)} />
+                  <span className="cl-toggle-slider" />
+                </span>
+                <span className="cl-toggle-label">{form.clienteActivo ? "Activo" : "Inactivo"}</span>
+              </label>
+            </div>
+          </div>
+        </div>
 
-            {/* STATUS */}
-            <Typography variant="h6" fontWeight={700} mt={4} mb={1}>
-              Status del Cliente
-            </Typography>
-
-            <FormControl fullWidth>
-              <InputLabel>Status</InputLabel>
-              <Select
-                name="status"
-                value={form.status}
-                label="Status"
-                onChange={handleChange}
-              >
-                <MenuItem value="prospeccion">Prospección</MenuItem>
-                <MenuItem value="presentacion">Presentación</MenuItem>
-                <MenuItem value="propuesta">Propuesta</MenuItem>
-                <MenuItem value="cierre">Cierre</MenuItem>
-              </Select>
-            </FormControl>
-
-            {/* ACTIVO */}
-            {/* CLIENTE ACTIVO */}
-            <Typography variant="h6" fontWeight={700} mt={4} mb={1}>
-              Cliente Activo
-            </Typography>
-
-            <FormControl fullWidth>
-              <FormControlLabel
-                control={
-                  <Switch
-                    checked={form.clienteActivo}
-                    onChange={(e) =>
-                      setForm({ ...form, clienteActivo: e.target.checked })
-                    }
-                  />
-                }
-                label={form.clienteActivo ? "Activo" : "Inactivo"}
-              />
-            </FormControl>
-
-
-
-            <Box mt={4} display="flex" justifyContent="flex-end">
-              <Button variant="contained" size="large" type="submit">
-                Guardar Cliente
-              </Button>
-            </Box>
-          </form>
-        </CardContent>
-      </Card>
-      <Snackbar
-        open={snackbar.open}
-        autoHideDuration={2500}
-        onClose={() => setSnackbar({ ...snackbar, open: false })}
-        anchorOrigin={{ vertical: "top", horizontal: "center" }}
-      >
-        <Alert
-          severity={snackbar.severity}
-          variant="filled"
-          sx={{
-            width: "100%",
-            minWidth: 420,
-            justifyContent: "space-between",
-            alignItems: "center",
-          }}
-          action={
-            <IconButton
-              size="small"
-              color="inherit"
-              onClick={() => setSnackbar({ ...snackbar, open: false })}
-            >
-              <CloseIcon fontSize="small" />
-            </IconButton>
-          }
-        >
-          {snackbar.message}
-        </Alert>
-      </Snackbar>
-    </Box>
+        <div style={{ display: "flex", justifyContent: "flex-end" }}>
+          <button type="submit" className="cl-btn-primary" style={{ padding: "10px 28px", fontSize: 15 }}>
+            Guardar Cliente
+          </button>
+        </div>
+      </form>
+    </div>
   );
 }
-
-export default ClientCreatePage;

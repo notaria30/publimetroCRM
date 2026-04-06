@@ -1,0 +1,129 @@
+/* ===== INVOICES SHARED CSS ===== */
+/* Extiende sales.css — importa ambos o copia las clases sl-* base desde sales.css */
+
+/* SECCIONES DE FORMULARIO */
+.inv-section-title {
+  font-size: 15px; font-weight: 700; color: #111827;
+  margin: 0 0 16px; padding-bottom: 8px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+/* ALERT BANNERS */
+.inv-alert {
+  padding: 12px 16px; border-radius: 8px; font-size: 13px;
+  font-weight: 500; margin-bottom: 14px; border: 1px solid;
+  display: flex; align-items: flex-start; gap: 10px;
+}
+.inv-alert--info    { background: #eff6ff; color: #1d4ed8; border-color: #bfdbfe; }
+.inv-alert--warning { background: #fffbeb; color: #b45309; border-color: #fcd34d; }
+
+/* LOADING OVERLAY */
+.inv-loading {
+  display: flex; align-items: center; justify-content: center;
+  min-height: 60vh; gap: 14px; font-size: 15px; color: #6b7280;
+}
+.inv-spinner {
+  width: 32px; height: 32px; border: 3px solid #e5e7eb;
+  border-top-color: #166534; border-radius: 50%;
+  animation: inv-spin 0.7s linear infinite; flex-shrink: 0;
+}
+@keyframes inv-spin { to { transform: rotate(360deg); } }
+
+/* FORM LAYOUT (reutiliza sl-form-* pero añade grid de 3 cols) */
+.inv-grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.inv-grid-2 {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 16px;
+}
+@media (max-width: 900px) {
+  .inv-grid-3 { grid-template-columns: repeat(2, 1fr); }
+}
+@media (max-width: 600px) {
+  .inv-grid-3, .inv-grid-2 { grid-template-columns: 1fr; }
+}
+
+/* SWITCH / TOGGLE */
+.inv-toggle-wrap {
+  display: flex; align-items: center; gap: 10px;
+  margin: 6px 0 14px;
+}
+.inv-toggle {
+  position: relative; width: 44px; height: 24px; flex-shrink: 0;
+}
+.inv-toggle input { opacity: 0; width: 0; height: 0; }
+.inv-toggle-slider {
+  position: absolute; inset: 0; background: #d1d5db;
+  border-radius: 24px; cursor: pointer; transition: background 0.2s;
+}
+.inv-toggle-slider::before {
+  content: ""; position: absolute;
+  width: 18px; height: 18px; left: 3px; top: 3px;
+  background: white; border-radius: 50%; transition: transform 0.2s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+}
+.inv-toggle input:checked + .inv-toggle-slider { background: #166534; }
+.inv-toggle input:checked + .inv-toggle-slider::before { transform: translateX(20px); }
+.inv-toggle-label { font-size: 13px; font-weight: 600; color: #374151; }
+
+/* DETAIL VIEW */
+.inv-detail-section { margin-bottom: 24px; }
+.inv-detail-divider { border: none; border-top: 1px solid #e5e7eb; margin: 20px 0; }
+
+/* FORM ACTIONS */
+.inv-form-actions {
+  display: flex; justify-content: flex-end; gap: 12px;
+  padding-top: 20px; border-top: 1px solid #e5e7eb; margin-top: 24px;
+}
+
+/* DISABLED INPUT */
+.sl-input:disabled, .sl-select:disabled, .sl-select-full:disabled {
+  background: #f3f4f6; color: #9ca3af; cursor: not-allowed;
+}
+
+/* ===== DARK MODE ===== */
+body.dark .inv-section-title { color: #f1f5f9; border-bottom-color: #334155; }
+body.dark .inv-alert--info    { background: #1a2540; color: #93c5fd; border-color: #1e3a5f; }
+body.dark .inv-alert--warning { background: #2d2000; color: #fcd34d; border-color: #78350f; }
+body.dark .inv-loading        { color: #94a3b8; }
+body.dark .inv-spinner        { border-color: #334155; border-top-color: #166534; }
+body.dark .inv-toggle-label   { color: #cbd5e1; }
+body.dark .inv-toggle-slider  { background: #334155; }
+body.dark .inv-detail-divider { border-top-color: #334155; }
+body.dark .inv-form-actions   { border-top-color: #334155; }
+body.dark .sl-input:disabled, body.dark .sl-select:disabled, body.dark .sl-select-full:disabled {
+  background: #0f172a; color: #475569;
+}
+/* ── Loading skeleton ── */
+.sl-skel {
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  animation: sl-shimmer 1.4s infinite;
+  border-radius: 6px;
+}
+@keyframes sl-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+.sl-loading-dot {
+  width: 8px; height: 8px;
+  border-radius: 50%;
+  background: #166534;
+  display: inline-block;
+  animation: sl-bounce 1s infinite;
+}
+@keyframes sl-bounce {
+  0%, 80%, 100% { transform: translateY(0); }
+  40%            { transform: translateY(-6px); }
+}
+
+/* dark mode */
+body.dark .sl-skel {
+  background: linear-gradient(90deg, #1e293b 25%, #263348 50%, #1e293b 75%);
+  background-size: 200% 100%;
+  animation: sl-shimmer 1.4s infinite;
+}

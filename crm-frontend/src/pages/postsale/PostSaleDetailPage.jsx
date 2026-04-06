@@ -1,134 +1,114 @@
 import { useEffect, useState } from "react";
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { getPostSaleById, updatePostSale } from "../../services/postSaleService";
+import { ArrowLeft } from "lucide-react";
+import "./postsale.css";
+import "../sales/sales.css";
 
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Grid,
-  TextField,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Button,
-} from "@mui/material";
+const STAGES = [
+  "servicio_post_venta",
+  "medicion_resultados",
+  "encuesta_satisfaccion",
+  "renovacion",
+  "reportes",
+  "cerrado",
+];
+
+const STAGE_LABELS = {
+  servicio_post_venta:   "Servicio Post-Venta",
+  medicion_resultados:   "Medición de resultados",
+  encuesta_satisfaccion: "Encuesta de satisfacción",
+  renovacion:            "Renovación",
+  reportes:              "Reportes",
+  cerrado:               "Cerrado",
+};
 
 export default function PostSaleDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-
   const [record, setRecord] = useState(null);
-
-  const STAGES = [
-    "prospeccion",
-    "acercamiento",
-    "presentacion_contacto_indicado",
-    "propuesta_comercial",
-    "negociacion_cierre",
-    "documentacion_contrato",
-    "facturacion",
-    "pago",
-    "servicio_post_venta",
-    "reportes",
-  ];
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    async function load() {
-      const res = await getPostSaleById(id);
-      setRecord(res.data);
-    }
-    load();
+    getPostSaleById(id)
+      .then((res) => setRecord(res.data))
+      .catch(console.error)
+      .finally(() => setLoading(false));
   }, [id]);
 
-  if (!record) return <p style={{ padding: 20 }}>Cargando...</p>;
+  if (loading) return <div className="sl-status">Cargando post-venta...</div>;
+  if (!record)  return <div className="sl-status">No se encontró el registro.</div>;
 
   const updateField = async (field, value) => {
-    const res = await updatePostSale(id, { [field]: value });
-    setRecord(res.data.updated);
+    try {
+      const res = await updatePostSale(id, { [field]: value });
+      setRecord(res.data.updated);
+    } catch { alert("Error al guardar"); }
   };
 
   return (
-    <Box maxWidth="1200px" mx="auto" mt={4} px={3}>
-      {/* BOTÓN REGRESAR */}
-      <Button variant="outlined" sx={{ mb: 3 }} onClick={() => navigate("/postsale")}>
-        ← Volver
-      </Button>
+    <div className="sl-page">
+      {/* HEADER */}
+      <div className="sl-header">
+        <h1 className="sl-title">Seguimiento Post-Venta</h1>
+        <div className="sl-header-actions">
+          <button className="sl-btn-secondary" onClick={() => navigate("/postsale")}>
+            <ArrowLeft size={14} /> Volver
+          </button>
+        </div>
+      </div>
 
-      <Typography variant="h4" fontWeight={700} mb={3}>
-        Seguimiento Post-Venta
-      </Typography>
-
-      {/* CARD PRINCIPAL */}
-      <Card elevation={3} sx={{ mb: 4 }}>
-        <CardContent>
-          <Grid container spacing={3} alignItems="center">
-            <Grid item xs={12} md={6}>
-              <Typography variant="h5" fontWeight={700}>
-                {record.client?.nombreComercial}
-              </Typography>
-
-              <Typography><strong>Venta:</strong> {record.sale?._id}</Typography>
-              <Typography>
-                <strong>Ejecutivo:</strong> {record.assignedTo?.name}
-              </Typography>
-            </Grid>
-
-            {/* ETAPA ACTUAL */}
-            <Grid item xs={12} md={6}>
-              <FormControl fullWidth>
-                <InputLabel>Etapa Actual</InputLabel>
-                <Select
-                  value={record.postSaleStage}
-                  label="Etapa Actual"
-                  onChange={(e) => updateField("postSaleStage", e.target.value)}
-                >
-                  {STAGES.map((s) => (
-                    <MenuItem key={s} value={s}>
-                      {s.replace(/_/g, " ").toUpperCase()}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
+      {/* RESUMEN */}
+      <div className="sl-card">
+        <div className="sl-card-header">Información General</div>
+        <div className="sl-card-body">
+          <div style={{ display: "flex", gap: 32, flexWrap: "wrap", alignItems: "flex-start" }}>
+            <div className="ps-detail-meta" style={{ flex: 1 }}>
+              <p className="ps-detail-client">{record.client?.nombreComercial || "—"}</p>
+              <p className="ps-detail-sub">Venta: <strong>{record.sale?._id || "—"}</strong></p>
+              <p className="ps-detail-sub">Ejecutivo: <strong>{record.assignedTo?.name || "—"}</strong></p>
+            </div>
+            <div className="sl-form-group" style={{ minWidth: 240 }}>
+              <label className="sl-label">Etapa actual</label>
+              <select
+                className="sl-select-full"
+                value={record.postSaleStage || ""}
+                onChange={(e) => updateField("postSaleStage", e.target.value)}
+              >
+                {STAGES.map((s) => (
+                  <option key={s} value={s}>{STAGE_LABELS[s] || s.replace(/_/g, " ")}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* MEDICIÓN DE RESULTADOS */}
-      <Card elevation={2} sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography variant="h6" fontWeight={700} mb={2}>
-            📊 Medición de Resultados
-          </Typography>
-
-          <TextField
-            fullWidth
-            multiline
-            minRows={3}
-            placeholder="Describe KPIs, métricas, desempeño..."
+      <div className="sl-card">
+        <div className="sl-card-header">📊 Medición de Resultados</div>
+        <div className="sl-card-body">
+          <textarea
+            className="sl-textarea"
+            rows={4}
+            placeholder="Describe KPIs, métricas, desempeño…"
             value={record.medicionResultados || ""}
             onChange={(e) => updateField("medicionResultados", e.target.value)}
           />
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* ENCUESTA DE SATISFACCION */}
-      <Card elevation={2} sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography variant="h6" fontWeight={700} mb={2}>
-            😊 Encuesta de satisfacción
-          </Typography>
-
-          <Grid container spacing={3}>
-            <Grid size={{ xs: 12, md: 1.6 }}>
-              <TextField
+      {/* ENCUESTA DE SATISFACCIÓN */}
+      <div className="sl-card">
+        <div className="sl-card-header">😊 Encuesta de Satisfacción</div>
+        <div className="sl-card-body">
+          <div className="ps-form-grid-rating">
+            <div className="sl-form-group">
+              <label className="sl-label">Calificación (1–10)</label>
+              <input
+                className="sl-input"
                 type="number"
-                label="Calificación (1-10)"
-                fullWidth
-                inputProps={{ min: 1, max: 10 }}
+                min={1} max={10}
                 value={record.encuestaSatisfaccion?.calificacion || ""}
                 onChange={(e) =>
                   updateField("encuestaSatisfaccion", {
@@ -137,14 +117,12 @@ export default function PostSaleDetailPage() {
                   })
                 }
               />
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 10. }}>
-              <TextField
-                fullWidth
-                multiline
-                label="Comentarios"
-                minRows={3}
+            </div>
+            <div className="sl-form-group">
+              <label className="sl-label">Comentarios</label>
+              <textarea
+                className="sl-textarea"
+                rows={3}
                 value={record.encuestaSatisfaccion?.comentarios || ""}
                 onChange={(e) =>
                   updateField("encuestaSatisfaccion", {
@@ -153,49 +131,38 @@ export default function PostSaleDetailPage() {
                   })
                 }
               />
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* RENOVACIÓN */}
-      <Card elevation={2} sx={{ mb: 4 }}>
-        <CardContent>
-          <Typography variant="h6" fontWeight={700} mb={2}>
-            🔄 Renovación
-          </Typography>
-
-          <Grid container spacing={3}>
-            <Grid size={{ xs: 12, md: 1.9 }}>
-              <FormControl fullWidth>
-                <InputLabel>¿Requiere renovación?</InputLabel>
-                <Select
-                  value={record.renovacion?.requiereRenovacion ? "yes" : "no"}
-                  label="¿Requiere renovación?"
-                  onChange={(e) =>
-                    updateField("renovacion", {
-                      ...record.renovacion,
-                      requiereRenovacion: e.target.value === "yes",
-                    })
-                  }
-                >
-                  <MenuItem value="no">No</MenuItem>
-                  <MenuItem value="yes">Sí</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-
-            <Grid size={{ xs: 12, md: 2 }}>
-              <TextField
-                fullWidth
-                type="date"
-                label="Fecha posible renovación"
-                InputLabelProps={{ shrink: true }}
-                value={
-                  record.renovacion?.fechaPosibleRenovacion
-                    ? record.renovacion.fechaPosibleRenovacion.slice(0, 10)
-                    : ""
+      <div className="sl-card">
+        <div className="sl-card-header">🔄 Renovación</div>
+        <div className="sl-card-body">
+          <div className="ps-form-grid-2">
+            <div className="sl-form-group">
+              <label className="sl-label">¿Requiere renovación?</label>
+              <select
+                className="sl-select-full"
+                value={record.renovacion?.requiereRenovacion ? "yes" : "no"}
+                onChange={(e) =>
+                  updateField("renovacion", {
+                    ...record.renovacion,
+                    requiereRenovacion: e.target.value === "yes",
+                  })
                 }
+              >
+                <option value="no">No</option>
+                <option value="yes">Sí</option>
+              </select>
+            </div>
+            <div className="sl-form-group">
+              <label className="sl-label">Fecha posible de renovación</label>
+              <input
+                className="sl-input"
+                type="date"
+                value={record.renovacion?.fechaPosibleRenovacion?.slice(0, 10) || ""}
                 onChange={(e) =>
                   updateField("renovacion", {
                     ...record.renovacion,
@@ -203,28 +170,24 @@ export default function PostSaleDetailPage() {
                   })
                 }
               />
-            </Grid>
-          </Grid>
-        </CardContent>
-      </Card>
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* NOTAS */}
-      <Card elevation={2}>
-        <CardContent>
-          <Typography variant="h6" fontWeight={700} mb={2}>
-            📝 Notas
-          </Typography>
-
-          <TextField
-            fullWidth
-            multiline
-            minRows={4}
-            placeholder="Notas adicionales del ejecutivo..."
+      <div className="sl-card">
+        <div className="sl-card-header">📝 Notas</div>
+        <div className="sl-card-body">
+          <textarea
+            className="sl-textarea"
+            rows={4}
+            placeholder="Notas adicionales del ejecutivo…"
             value={record.notas || ""}
             onChange={(e) => updateField("notas", e.target.value)}
           />
-        </CardContent>
-      </Card>
-    </Box>
+        </div>
+      </div>
+    </div>
   );
 }

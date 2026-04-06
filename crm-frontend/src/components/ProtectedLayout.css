@@ -1,10 +1,283 @@
-.layout-container {
-  background: #f3f4f7;
+/* ProtectedLayout.css */
+
+/* Shell: sidebar fija + contenido al lado */
+.app-shell {
+  display: flex;
   min-height: 100vh;
-  padding: 40px 50px;
 }
 
-.layout-content {
+/* SIDEBAR */
+.sidebar {
+  width: 220px;
+  min-width: 220px;
+  background: #ffffff;
+  border-right: 1px solid #e5e7eb;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0; left: 0;
+  height: 100vh;
+  z-index: 100;
+  padding: 20px 12px 24px 12px;
+  overflow-y: auto;      /* ← permite scroll si el contenido es largo */
+  overflow-x: hidden;
+  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.06);
+}
+
+.sidebar-logo {
+  padding: 4px 10px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  margin-bottom: 16px;
+}
+
+/* Nav links */
+.sidebar-nav {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  overflow-y: auto;
+  padding-bottom: 100px;  /* ← espacio para que el footer no tape los links */
+}
+
+/* Botón modo oscuro */
+.sidebar-theme-toggle {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background: #f9fafb;
+  color: #374151;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Segoe UI', sans-serif;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+  margin-bottom: 4px;
+}
+
+.sidebar-theme-toggle:hover {
+  background: #f3f4f6;
+}
+
+
+/* ================================
+   MODO OSCURO — variables globales
+   ================================ */
+body.dark {
+  background: #0f1117;
+  color: #e5e7eb;
+}
+
+body.dark .sidebar {
+  background: #1a1d27;
+  border-right-color: #2d3148;
+}
+
+body.dark .sidebar-link {
+  color: #9ca3af;
+}
+
+body.dark .sidebar-link:hover {
+  background: #252836;
+}
+
+body.dark .sidebar-link--active {
+  background: #1a2e1a;
+  color: #4ade80;
+}
+
+body.dark .sidebar-footer {
+  border-top-color: #2d3148;
+}
+
+body.dark .sidebar-user-name {
+  color: #e5e7eb;
+}
+
+body.dark .sidebar-theme-toggle {
+  background: #252836;
+  border-color: #2d3148;
+  color: #9ca3af;
+}
+
+body.dark .sidebar-theme-toggle:hover {
+  background: #2d3148;
+}
+
+body.dark .app-main {
+  background: #0f1117;
+}
+
+body.dark .db-metric-card,
+body.dark .db-card,
+body.dark .db-stat-box,
+body.dark .db-client-row {
+  background: #1a1d27;
+  border-color: #2d3148;
+  color: #e5e7eb;
+}
+
+body.dark .db-metric-label,
+body.dark .db-metric-sub,
+body.dark .db-client-sub,
+body.dark .db-stat-label {
+  color: #6b7280;
+}
+
+body.dark .db-metric-value,
+body.dark .db-greeting,
+body.dark .db-card-title,
+body.dark .db-stat-val,
+body.dark .db-client-name {
+  color: #f3f4f6;
+}
+
+body.dark .db-tab {
+  background: #1a1d27;
+  border-color: #2d3148;
+  color: #9ca3af;
+}
+
+body.dark .db-tab.active {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+body.dark .db-greeting-sub {
+  color: #6b7280;
+}
+
+.sidebar-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #374151;
+  text-decoration: none;
+  transition: background 0.15s;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.sidebar-link:hover {
+  background: #f3f4f6;
+}
+
+.sidebar-link--active {
+  background: #f0fdf4;
+  color: #16a34a;
+  font-weight: 600;
+}
+
+.sidebar-link-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.5;
+  flex-shrink: 0;
+}
+
+.sidebar-link--active .sidebar-link-dot {
+  opacity: 1;
+}
+
+/* Footer */
+.sidebar-footer {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 220px;
+  background: #ffffff;
+  border-top: 1px solid #f0f0f0;
+  padding: 14px 12px 20px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.sidebar-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 6px;
+}
+
+.sidebar-avatar {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: #16a34a;
+  color: white;
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.sidebar-user-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  margin: 0;
+}
+
+.sidebar-user-role {
+  font-size: 11px;
+  color: #9ca3af;
+  margin: 0;
+}
+
+.sidebar-logout {
+  width: 100%;
+  padding: 8px;
+  border-radius: 8px;
+  border: 1px solid #fecaca;
+  background: #fff5f5;
+  color: #dc2626;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  font-family: 'Segoe UI', sans-serif;
+  transition: background 0.15s;
+}
+
+.sidebar-logout:hover {
+  background: #fee2e2;
+}
+
+/* MAIN CONTENT */
+.app-main {
+  margin-left: 220px;
+  flex: 1;
+  background: #f4f5f7;
+  min-height: 100vh;
+}
+
+.app-content {
   max-width: 1300px;
   margin: 0 auto;
+  padding: 28px 32px;
+}
+body.dark .sidebar-footer {
+  background: #1a1d27;
+  border-top-color: #2d3148;
+}
+
+body.dark .sidebar-logout {
+  background: #2d1a1a;
+  border-color: #7f1d1d;
+  color: #f87171;
+}
+
+body.dark .sidebar-logout:hover {
+  background: #3d1f1f;
 }

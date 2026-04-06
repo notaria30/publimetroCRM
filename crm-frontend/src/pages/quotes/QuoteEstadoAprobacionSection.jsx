@@ -1,52 +1,51 @@
-import {
-  Card,
-  CardContent,
-  Typography,
-  Grid,
-  TextField,
-  Button,
-  Stack,
-} from "@mui/material";
+import "./quotes.css";
 
 export default function QuoteEstadoAprobacionSection({
   form,
-  setForm,
   mode,
   initialQuote,
   approveQuote,
   rejectQuote,
   user,
 }) {
-  const userIsDirector =
-    user?.role === "OWNER" || user?.role === "DIRECTOR";
+  const userIsDirector = user?.role === "OWNER" || user?.role === "DIRECTOR";
+
+  const STATUS_LABEL = {
+    aprobado:  "Aprobada",
+    pendiente: "Pendiente",
+    rechazado: "Rechazada",
+  };
+
+  const STATUS_CLS = {
+    aprobado:  "qt-badge--success",
+    pendiente: "qt-badge--warning",
+    rechazado: "qt-badge--error",
+  };
 
   return (
-    <Card elevation={2} sx={{ mb: 3 }}>
-      <CardContent>
+    <div className="qt-card">
+      <div className="qt-card-header">Estado y aprobación</div>
+      <div className="qt-card-body">
 
-        <Typography variant="h6" fontWeight={700} mb={2}>
-          Estado y aprobación
-        </Typography>
+        {/* Estado actual (solo lectura) */}
+        <div style={{ marginBottom: 8 }}>
+          <label className="qt-input-label">Estado de aprobación</label>
+          <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 6 }}>
+            <span className={`qt-badge ${STATUS_CLS[form.status] || ""}`} style={{ fontSize: 13 }}>
+              {STATUS_LABEL[form.status] || form.status}
+            </span>
+          </div>
+          <p style={{ fontSize: 12, color: "#9ca3af", margin: "6px 0 0" }}>
+            * Solo las cotizaciones aprobadas pueden convertirse en venta.
+          </p>
+        </div>
 
-        <Grid container spacing={3}>
-          {/* Estado de aprobación (solo lectura) */}
-          <Grid item xs={12} md={6}>
-            <TextField
-              fullWidth
-              label="Estado de aprobación"
-              value={form.status}
-              disabled
-              helperText="* Solo las cotizaciones aprobadas pueden convertirse en venta."
-            />
-          </Grid>
-        </Grid>
-
-        {/* BOTONES SOLO PARA OWNER o DIRECTOR Y SOLO EN MODO EDICIÓN */}
+        {/* Botones aprobar / rechazar */}
         {mode === "edit" && userIsDirector && initialQuote && (
-          <Stack direction="row" spacing={2} mt={3}>
-            <Button
-              variant="contained"
-              color="success"
+          <div style={{ display: "flex", gap: 10, marginTop: 16 }}>
+            <button
+              className="qt-btn-approve"
+              type="button"
               onClick={async () => {
                 await approveQuote(initialQuote._id);
                 alert("Cotización aprobada");
@@ -54,11 +53,10 @@ export default function QuoteEstadoAprobacionSection({
               }}
             >
               ✔ Aprobar
-            </Button>
-
-            <Button
-              variant="contained"
-              color="error"
+            </button>
+            <button
+              className="qt-btn-reject"
+              type="button"
               onClick={async () => {
                 await rejectQuote(initialQuote._id);
                 alert("Cotización rechazada");
@@ -66,11 +64,11 @@ export default function QuoteEstadoAprobacionSection({
               }}
             >
               ✖ Rechazar
-            </Button>
-          </Stack>
+            </button>
+          </div>
         )}
 
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }

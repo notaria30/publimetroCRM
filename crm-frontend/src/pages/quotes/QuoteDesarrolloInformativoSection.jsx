@@ -1,107 +1,82 @@
-import {
-  Box,
-  Card,
-  CardContent,
-  Typography,
-  Grid,
-  TextField,
-  FormControlLabel,
-  Checkbox,
-  FormControl,
-  Select,
-  MenuItem,
-  InputLabel,
-} from "@mui/material";
-import { Switch } from "@mui/material";
-import { DatePicker } from "@mui/x-date-pickers/DatePicker";
-import dayjs from "dayjs";
+import "./quotes.css";
+
+const FORMATOS = [
+  "1/4 plana",
+  "1/2 plana",
+  "Plana",
+  "Doble Plana Central",
+  "Contraportada",
+  "Cintillo en portada",
+  "Cintillo interior",
+  "Robaplana",
+];
 
 export default function QuoteDesarrolloInformativoSection({ form, setForm }) {
-  const isoToDayjs = (iso) => (iso ? dayjs(iso, "YYYY-MM-DD", true) : null);
-  const dayjsToISO = (d) => (d && d.isValid() ? d.format("YYYY-MM-DD") : "");
+  const isActivo = !!form.desarrolloInformativo.activo;
+
+  const update = (patch) =>
+    setForm((prev) => ({
+      ...prev,
+      desarrolloInformativo: { ...prev.desarrolloInformativo, ...patch },
+    }));
+
   return (
-    <Card elevation={2} sx={{ mb: 3 }}>
-      <CardContent>
-        <Typography variant="h6" fontWeight={700} mb={2}>
-          Desarrollo Informativo
-        </Typography>
+    <div className="qt-card">
+      <div
+        className="qt-card-header"
+        style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
+      >
+        <span>Desarrollo Informativo</span>
+        <label className="cl-toggle-wrap" style={{ margin: 0 }}>
+          <span className="cl-toggle">
+            <input
+              type="checkbox"
+              checked={isActivo}
+              onChange={(e) => update({ activo: e.target.checked })}
+            />
+            <span className="cl-toggle-slider" />
+          </span>
+        </label>
+      </div>
 
-        <Box display="flex" justifyContent="flex-end" mb={2}>
-          <Switch
-            checked={form.desarrolloInformativo.activo}
-            onChange={(e) =>
-              setForm((prev) => ({
-                ...prev,
-                desarrolloInformativo: {
-                  ...prev.desarrolloInformativo,
-                  activo: e.target.checked,
-                },
-              }))
-            }
-          />
-        </Box>
-        {/* CAMPOS SOLO SI ESTÁ ACTIVO */}
-        {form.desarrolloInformativo.activo && (
-          <Box mt={2}>
-            <Grid container spacing={3}>
-              {/* FECHA */}
-              <Grid item xs={12} md={6}>
-                <DatePicker
-                  label="Fecha"
-                  value={isoToDayjs(form.desarrolloInformativo.fecha)}
-                  onChange={(newValue) =>
-                    setForm((prev) => ({
-                      ...prev,
-                      desarrolloInformativo: {
-                        ...prev.desarrolloInformativo,
-                        fecha: dayjsToISO(newValue),
-                      },
-                    }))
-                  }
-                  format="DD/MM/YYYY"
-                  disablePast
-                  slotProps={{
-                    textField: {
-                      fullWidth: true,
-                      InputLabelProps: { shrink: true },
-                    },
-                  }}
-                />
-              </Grid>
+      {isActivo && (
+        <div className="qt-card-body">
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))",
+              gap: 14,
+            }}
+          >
+            {/* Fecha */}
+            <div>
+              <label className="qt-input-label">Fecha</label>
+              <input
+                className="qt-input"
+                type="date"
+                value={form.desarrolloInformativo.fecha || ""}
+                min={new Date().toISOString().split("T")[0]}
+                onChange={(e) => update({ fecha: e.target.value })}
+              />
+            </div>
 
-              {/* FORMATO */}
-              <Grid size={{ xs: 12, md: 2 }}>
-                <FormControl fullWidth>
-                  <InputLabel>Formato</InputLabel>
-                  <Select
-                    label="Formato"
-                    value={form.desarrolloInformativo.formato}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        desarrolloInformativo: {
-                          ...prev.desarrolloInformativo,
-                          formato: e.target.value,
-                        },
-                      }))
-                    }
-                  >
-                    <MenuItem value="1/4 plana">1/4 plana</MenuItem>
-                    <MenuItem value="1/2 plana">1/2 plana</MenuItem>
-                    <MenuItem value="Plana">Plana</MenuItem>
-                    <MenuItem value="Doble Plana Central">Doble Plana Central</MenuItem>
-                    <MenuItem value="Contraportada">Contraportada</MenuItem>
-                    <MenuItem value="Cintillo en portada">Cintillo en portada</MenuItem>
-                    <MenuItem value="Cintillo interior">Cintillo interior</MenuItem>
-                    <MenuItem value="Robaplana">Robaplana</MenuItem>
-                    {/* Puedes agregar más si los manejas */}
-                  </Select>
-                </FormControl>
-              </Grid>
-            </Grid>
-          </Box>
-        )}
-      </CardContent>
-    </Card>
+            {/* Formato */}
+            <div>
+              <label className="qt-input-label">Formato</label>
+              <select
+                className="qt-input"
+                value={form.desarrolloInformativo.formato || ""}
+                onChange={(e) => update({ formato: e.target.value })}
+              >
+                <option value="">Seleccione...</option>
+                {FORMATOS.map((f) => (
+                  <option key={f} value={f}>{f}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
