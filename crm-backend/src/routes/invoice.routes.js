@@ -179,14 +179,18 @@ router.put("/:id", auth, async (req, res) => {
       return res.status(404).json({ message: "Factura no encontrada" });
     }
 
-    if (req.user.role === "WORKER" && invoice.createdBy.toString() !== req.user._id.toString()) {
+    if (
+      req.user.role === "WORKER" &&
+      invoice.createdBy.toString() !== req.user._id.toString()
+    ) {
       return res.status(403).json({ message: "No tienes permiso para actualizar esta factura" });
     }
 
-    const updated = await Invoice.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
+    // Aplicar cambios manualmente
+    Object.assign(invoice, req.body);
+
+    // ✅ .save() SÍ dispara pre("save") → recalcula pagado y saldoPendiente
+    const updated = await invoice.save();
 
     res.json({
       message: "Factura actualizada correctamente",

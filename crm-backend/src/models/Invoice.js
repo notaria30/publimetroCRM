@@ -89,14 +89,6 @@ const invoiceSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Calcular IVA automático antes de guardar
-invoiceSchema.pre("save", function (next) {
-  if (this.importeSinIVA) {
-    this.importeConIVA = this.importeSinIVA * 1.16;
-  }
-  next();
-});
-
 invoiceSchema.pre("save", function (next) {
   if (this.importeSinIVA) {
     this.importeConIVA = this.importeSinIVA * 1.16;
