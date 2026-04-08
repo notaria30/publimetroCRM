@@ -131,6 +131,22 @@ router.post("/", auth, async (req, res) => {
 
     const quote = await Quote.create(data);
 
+    if (data.opportunityId) {
+      const oppId = data.opportunityId;
+      const Opportunity = require("../models/Opportunity");
+      const opp = await Opportunity.findById(oppId);
+      if (opp) {
+        // If it's the very first quote, switch to 'propuesta'. Else 'negociacion'.
+        const newStage = opp.quotes.length === 0 ? "propuesta" : "negociacion";
+        
+        await Opportunity.findByIdAndUpdate(oppId, {
+          $addToSet: { quotes: quote._id },
+          stage: newStage,
+          estimatedValue: quote.total || 0
+        });
+      }
+    }
+
     res.status(201).json({
       message: "Cotización creada correctamente",
       quote,
@@ -238,6 +254,14 @@ router.put("/:id", auth, async (req, res) => {
       runValidators: true,
     });
 
+    if (updateData.opportunityId) {
+      await require("../models/Opportunity").findByIdAndUpdate(updateData.opportunityId, { 
+        $addToSet: { quotes: updatedQuote._id },
+        stage: "negociacion",
+        estimatedValue: updatedQuote.total || 0
+      });
+    }
+
     res.json({
       message: "Cotización actualizada correctamente",
       updatedQuote,
@@ -269,7 +293,6 @@ router.put("/:id/approve", auth, async (req, res) => {
     )
       .populate("client", "nombreComercial razonSocial")
       .populate("createdBy", "name email")
-      .populate("approvedBy", "name email")
       .populate("approvedBy", "name email role");
 
     if (!quote) {

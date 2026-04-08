@@ -21,6 +21,10 @@ import QuoteCreatePage from "./pages/quotes/QuoteCreatePage";
 import QuoteDetailPage from "./pages/quotes/QuoteDetailPage";
 import QuoteEditPage from "./pages/quotes/QuoteEditPage";
 
+// Opportunities
+import OpportunityList from "./pages/opportunities/OpportunityList";
+import OpportunityDetail from "./pages/opportunities/OpportunityDetail";
+
 // Sales
 import SalesListPage from "./pages/sales/SalesListPage";
 import SaleDetailPage from "./pages/sales/SaleDetailPage";
@@ -125,6 +129,28 @@ function App() {
                 <PrivateRoute>
                   <ProtectedLayout>
                     <ClientEditPage />
+                  </ProtectedLayout>
+                </PrivateRoute>
+              }
+            />
+
+            {/* OPPORTUNITIES */}
+            <Route
+              path="/opportunities"
+              element={
+                <PrivateRoute>
+                  <ProtectedLayout>
+                    <OpportunityList />
+                  </ProtectedLayout>
+                </PrivateRoute>
+              }
+            />
+            <Route
+              path="/opportunities/:id"
+              element={
+                <PrivateRoute>
+                  <ProtectedLayout>
+                    <OpportunityDetail />
                   </ProtectedLayout>
                 </PrivateRoute>
               }

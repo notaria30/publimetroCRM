@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import {
   LayoutDashboard, Users, FileText,
   TrendingUp, Receipt, HeadphonesIcon, BarChart2,
-  LogOut, Sun, Moon, ClipboardCheck, UserCog, Settings, KeyRound, X
+  LogOut, Sun, Moon, ClipboardCheck, UserCog, Settings, KeyRound, X, Target
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
@@ -11,13 +11,14 @@ import api from "../services/api";
 import logo from "../assets/logo.svg";
 
 const NAV_LINKS = [
-  { to: "/dashboard", label: "Dashboard",    icon: <LayoutDashboard size={16} /> },
-  { to: "/clients",   label: "Clientes",     icon: <Users size={16} /> },
-  { to: "/quotes",    label: "Cotizaciones", icon: <FileText size={16} /> },
-  { to: "/sales",     label: "Ventas",       icon: <TrendingUp size={16} /> },
-  { to: "/invoices",  label: "Facturación",  icon: <Receipt size={16} /> },
-  { to: "/postsale",  label: "Post-Venta",   icon: <ClipboardCheck size={16} /> },
-  { to: "/reports",   label: "Reportes",     icon: <BarChart2 size={16} /> },
+  { to: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={16} /> },
+  { to: "/clients", label: "Clientes", icon: <Users size={16} /> },
+  { to: "/opportunities", label: "Oportunidades", icon: <Target size={16} /> },
+  { to: "/quotes", label: "Cotizaciones", icon: <FileText size={16} /> },
+  { to: "/sales", label: "Ventas", icon: <TrendingUp size={16} /> },
+  { to: "/invoices", label: "Facturación", icon: <Receipt size={16} /> },
+  { to: "/postsale", label: "Post-Venta", icon: <ClipboardCheck size={16} /> },
+  { to: "/reports", label: "Reportes", icon: <BarChart2 size={16} /> },
 ];
 
 export default function Navbar() {
@@ -25,11 +26,11 @@ export default function Navbar() {
   const { darkMode, setDarkMode } = useTheme();
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
-  const [modal, setModal]               = useState(false);
-  const [form, setForm]                 = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
-  const [saving, setSaving]             = useState(false);
-  const [error, setError]               = useState("");
-  const [success, setSuccess]           = useState("");
+  const [modal, setModal] = useState(false);
+  const [form, setForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const dropdownRef = useRef(null);
 
   // Cierra el dropdown al hacer clic fuera
@@ -61,7 +62,7 @@ export default function Navbar() {
     try {
       await api.put("/auth/change-password", {
         currentPassword: form.currentPassword,
-        newPassword:     form.newPassword,
+        newPassword: form.newPassword,
       });
       setSuccess("Contraseña actualizada correctamente.");
       setTimeout(() => { setModal(false); setSuccess(""); }, 2000);
@@ -107,8 +108,10 @@ export default function Navbar() {
             <div
               className="sidebar-user"
               onClick={() => setDropdownOpen(!dropdownOpen)}
-              style={{ cursor: "pointer", borderRadius: 8, transition: "background 0.15s",
-                background: dropdownOpen ? (darkMode ? "#252836" : "#f3f4f6") : "transparent" }}
+              style={{
+                cursor: "pointer", borderRadius: 8, transition: "background 0.15s",
+                background: dropdownOpen ? (darkMode ? "#252836" : "#f3f4f6") : "transparent"
+              }}
             >
               <div className="sidebar-avatar">
                 {user?.name?.charAt(0).toUpperCase() ?? "U"}
@@ -186,8 +189,8 @@ export default function Navbar() {
 
             <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
               {[
-                { label: "Contraseña actual",       key: "currentPassword" },
-                { label: "Nueva contraseña",         key: "newPassword" },
+                { label: "Contraseña actual", key: "currentPassword" },
+                { label: "Nueva contraseña", key: "newPassword" },
                 { label: "Confirmar nueva contraseña", key: "confirmPassword" },
               ].map(({ label, key }) => (
                 <div key={key} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -202,7 +205,7 @@ export default function Navbar() {
                 </div>
               ))}
 
-              {error   && <p style={{ color: "#dc2626", fontSize: 13, margin: 0 }}>⚠ {error}</p>}
+              {error && <p style={{ color: "#dc2626", fontSize: 13, margin: 0 }}>⚠ {error}</p>}
               {success && <p style={{ color: "#16a34a", fontSize: 13, margin: 0 }}>✓ {success}</p>}
 
               <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>

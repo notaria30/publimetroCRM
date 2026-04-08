@@ -1,5 +1,6 @@
 import { useEffect, useState, useMemo } from "react";
 import { getClients } from "../../services/clientService";
+import { getOpportunities } from "../../services/opportunityService";
 import { approveQuote, rejectQuote } from "../../services/quoteService";
 import { useAuth } from "../../context/AuthContext";
 import QuoteGeneralSection from "./QuoteGeneralSection.jsx";
@@ -23,6 +24,7 @@ const EMPTY_TARIFA = {
 
 const defaultForm = {
   client: "",
+  opportunityId: "",
   tarifas: [{ ...EMPTY_TARIFA }],
   duracion: "",
   activacionesActivo: false,
@@ -78,6 +80,7 @@ function mapInitialQuoteToForm(quote) {
 
   return {
     client: quote.client?._id || quote.client || "",
+    opportunityId: quote.opportunityId?._id || quote.opportunityId || "",
     tarifas: (quote.tarifas || []).map((t) => ({
       periodicidad: t.periodicidad || "",
       formato:      t.formato || "",
@@ -137,11 +140,13 @@ function mapInitialQuoteToForm(quote) {
 export default function QuoteForm({ mode = "create", initialQuote = null, onSubmit }) {
   const { user } = useAuth();
   const [clients, setClients]     = useState([]);
+  const [opportunities, setOpportunities] = useState([]);
   const [form, setForm]           = useState(() => initialQuote ? mapInitialQuoteToForm(initialQuote) : defaultForm);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     getClients().then((res) => setClients(res.data)).catch(console.error);
+    getOpportunities().then((res) => setOpportunities(res.data)).catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -242,6 +247,7 @@ export default function QuoteForm({ mode = "create", initialQuote = null, onSubm
   // ── Submit ────────────────────────────────────────────────────────────────
   const buildPayload = () => ({
     ...form,
+    opportunityId: form.opportunityId || null,
     tarifas: form.tarifas.map((t) => ({
       ...t,
       costo:      Number(t.costo) || 0,
@@ -306,7 +312,7 @@ export default function QuoteForm({ mode = "create", initialQuote = null, onSubm
   return (
     <div style={{ maxWidth: 1300, margin: "0 auto" }}>
       <form onSubmit={handleSubmit}>
-        <QuoteGeneralSection form={form} setForm={setForm} clients={clients} />
+        <QuoteGeneralSection form={form} setForm={setForm} clients={clients} opportunities={opportunities} />
         <QuoteTarifasSection
           form={form}
           setForm={setForm}

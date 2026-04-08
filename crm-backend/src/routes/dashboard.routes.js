@@ -3,6 +3,7 @@ const Sale = require("../models/Sale");
 const Client = require("../models/Client");
 const Quote = require("../models/Quote");
 const Invoice = require("../models/Invoice");
+const Opportunity = require("../models/Opportunity");
 const { auth } = require("../middlewares/auth.middleware");
 
 const router = express.Router();
@@ -24,9 +25,9 @@ router.get("/overview", auth, async (req, res) => {
 
     const totalClientes = await Client.countDocuments(clienteFiltro);
 
-    const ventasCerradas = await Sale.countDocuments({
+    const ventasCerradas = await Opportunity.countDocuments({
       ...ventaFiltro,
-      pipelineStage: "cierre",
+      stage: "cerrado_ganado",
     });
 
     const facturasPagadas = await Invoice.aggregate([
@@ -54,23 +55,35 @@ router.get("/overview", auth, async (req, res) => {
 });
 
 
-// Pipeline de ventas (conteo por etapa)
+// Pipeline de oportunidades (conteo por etapa)
 router.get("/pipeline", auth, async (req, res) => {
   try {
-    const etapas = ["prospeccion", "presentacion", "propuesta", "cierre"];
+    const etapas = ["prospeccion", "calificacion", "propuesta", "negociacion"]; // No contamos los cerrados aquí
     const pipelineData = {};
 
     for (const etapa of etapas) {
-      const filtro = { pipelineStage: etapa };
+      const filtro = { stage: etapa };
 
       if (req.user.role === "WORKER") {
-        filtro.assignedTo = req.user._id;
+        filtro.vendedorId = req.user._id;
       }
 
-      pipelineData[etapa] = await Sale.countDocuments(filtro);
+      pipelineData[etapa] = await Opportunity.countDocuments(filtro);
     }
 
-    res.json(pipelineData);
+    // Además podemos añadir cerrado ganado si el frontend lo requiere para pintar la barra, 
+    // pero user solicitó el pipeline del prospecto a ganador
+    pipelineData["cierre"] = await Opportunity.countDocuments({
+      stage: "cerrado_ganado",
+      ...(req.user.role === "WORKER" ? { vendedorId: req.user._id } : {})
+    });
+
+    res.json({
+        prospeccion: pipelineData["prospeccion"] || 0,
+        presentacion: pipelineData["calificacion"] || 0, // mapeo de legado por UI actual
+        propuesta: pipelineData["propuesta"] || 0,
+        cierre: pipelineData["cierre"] || 0,
+    });
   } catch (error) {
     res.status(500).json({ message: "Error interno" });
   }

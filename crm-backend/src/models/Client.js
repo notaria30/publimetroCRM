@@ -103,8 +103,8 @@ const clientSchema = new mongoose.Schema(
 
     status: {
       type: String,
-      enum: ["prospeccion", "presentacion", "propuesta", "cierre"],
-      default: "prospeccion",
+      enum: ["prospecto", "activo", "inactivo"],
+      default: "prospecto",
     },
 
     // Relación con trabajador asignado

@@ -116,15 +116,7 @@ export default function ClientEditPage() {
                 <option value="corporativo">Corporativo</option>
               </select>
             </div>
-            <div className="cl-form-group">
-              <label className="cl-label">Status</label>
-              <select className="cl-select" value={form.status || ""} onChange={(e) => set("status", e.target.value)}>
-                <option value="prospeccion">Prospección</option>
-                <option value="presentacion">Presentación</option>
-                <option value="propuesta">Propuesta</option>
-                <option value="cierre">Cierre</option>
-              </select>
-            </div>
+
           </div>
         </div>
 
@@ -157,16 +149,7 @@ export default function ClientEditPage() {
                 {users.map((u) => <option key={u._id} value={u._id}>{u.name} ({u.email})</option>)}
               </select>
             </div>
-            <div className="cl-form-group">
-              <label className="cl-label">Cliente Activo</label>
-              <label className="cl-toggle-wrap">
-                <span className="cl-toggle">
-                  <input type="checkbox" checked={form.clienteActivo} onChange={(e) => set("clienteActivo", e.target.checked)} />
-                  <span className="cl-toggle-slider" />
-                </span>
-                <span className="cl-toggle-label">{form.clienteActivo ? "Activo" : "Inactivo"}</span>
-              </label>
-            </div>
+
           </div>
         </div>
 

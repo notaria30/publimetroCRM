@@ -10,8 +10,7 @@ const STAGES = [
   "medicion_resultados",
   "encuesta_satisfaccion",
   "renovacion",
-  "reportes",
-  "cerrado",
+  "reportes"
 ];
 
 const STAGE_LABELS = {
@@ -20,7 +19,6 @@ const STAGE_LABELS = {
   encuesta_satisfaccion: "Encuesta de satisfacción",
   renovacion:            "Renovación",
   reportes:              "Reportes",
-  cerrado:               "Cerrado",
 };
 
 export default function PostSaleDetailPage() {
@@ -64,9 +62,9 @@ export default function PostSaleDetailPage() {
         <div className="sl-card-body">
           <div style={{ display: "flex", gap: 32, flexWrap: "wrap", alignItems: "flex-start" }}>
             <div className="ps-detail-meta" style={{ flex: 1 }}>
-              <p className="ps-detail-client">{record.client?.nombreComercial || "—"}</p>
+              <p className="ps-detail-client">{record.sale?.client?.nombreComercial || "—"}</p>
               <p className="ps-detail-sub">Venta: <strong>{record.sale?._id || "—"}</strong></p>
-              <p className="ps-detail-sub">Ejecutivo: <strong>{record.assignedTo?.name || "—"}</strong></p>
+              <p className="ps-detail-sub">Ejecutivo: <strong>{record.sale?.assignedTo?.name || "—"}</strong></p>
             </div>
             <div className="sl-form-group" style={{ minWidth: 240 }}>
               <label className="sl-label">Etapa actual</label>

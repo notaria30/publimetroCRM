@@ -47,8 +47,7 @@ export default function ClientCreatePage() {
       diseno:        { nombre: "", email: "", celular: "" },
       facturacion:   { nombre: "", email: "", celular: "" },
     },
-    clienteActivo: true,
-    status: "prospeccion",
+    status: "prospecto",
     assignedTo: "",
   });
 
@@ -192,15 +191,7 @@ export default function ClientCreatePage() {
                 {INDUSTRIAS.map((v) => <option key={v} value={v}>{v}</option>)}
               </select>
             </div>
-            <div className="cl-form-group">
-              <label className="cl-label">Status</label>
-              <select className="cl-select" value={form.status} onChange={(e) => set("status", e.target.value)}>
-                <option value="prospeccion">Prospección</option>
-                <option value="presentacion">Presentación</option>
-                <option value="propuesta">Propuesta</option>
-                <option value="cierre">Cierre</option>
-              </select>
-            </div>
+
           </div>
         </div>
 
@@ -236,17 +227,7 @@ export default function ClientCreatePage() {
                 </select>
               </div>
             )}
-            <div className="cl-form-group">
-              <label className="cl-label">Cliente Activo</label>
-              <label className="cl-toggle-wrap">
-                <span className="cl-toggle">
-                  <input type="checkbox" checked={form.clienteActivo}
-                    onChange={(e) => set("clienteActivo", e.target.checked)} />
-                  <span className="cl-toggle-slider" />
-                </span>
-                <span className="cl-toggle-label">{form.clienteActivo ? "Activo" : "Inactivo"}</span>
-              </label>
-            </div>
+
           </div>
         </div>
 

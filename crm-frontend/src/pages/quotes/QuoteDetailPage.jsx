@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { getQuoteById, deleteQuote } from "../../services/quoteService";
-import { createSaleFromQuote } from "../../services/salesService";
 import api from "../../services/api";
 import { ArrowLeft, Printer, Pencil, Trash2, ShoppingCart } from "lucide-react";
 import "./quotes.css";
@@ -50,6 +49,7 @@ export default function QuoteDetailPage() {
   const [quote, setQuote] = useState(null);
   const [loading, setLoading] = useState(true);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [errorDialog, setErrorDialog] = useState("");
   const [pdfDialog, setPdfDialog] = useState(false);
   const [dirigidoA, setDirigidoA] = useState("");
   const [pdfLoading, setPdfLoading] = useState(false);
@@ -65,18 +65,19 @@ export default function QuoteDetailPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  const handleCreateSale = async () => {
-    try {
-      const res = await createSaleFromQuote(quote._id);
-      navigate(`/sales/${res.data.sale._id}`);
-    } catch (err) { alert(err.response?.data?.message || "Error al crear venta"); }
-  };
-
   const handleDelete = async () => {
     try {
       await deleteQuote(quote._id);
       navigate("/quotes");
-    } catch (err) { alert(err.response?.data?.message || "Error al eliminar"); }
+    } catch (err) { 
+      setConfirmDelete(false);
+      const msg = err.response?.data?.message || "Error al eliminar la cotización.";
+      if (msg.toLowerCase().includes("dueño")) {
+        setErrorDialog("Solo el administrador puede borrar una cotización.");
+      } else {
+        setErrorDialog(msg);
+      }
+    }
   };
 
   const handleDownloadPdf = async () => {
@@ -114,11 +115,6 @@ export default function QuoteDetailPage() {
           <button className="qt-btn-secondary" type="button" onClick={() => setPdfDialog(true)}>
             <Printer size={14} /> Imprimir PDF
           </button>
-          {quote.status === "aprobado" && (
-            <button className="qt-btn-success" type="button" onClick={handleCreateSale}>
-              <ShoppingCart size={14} /> Crear venta
-            </button>
-          )}
           <Link to={`/quotes/${quote._id}/edit`} className="qt-btn-primary">
             <Pencil size={14} /> Editar
           </Link>
@@ -302,6 +298,25 @@ export default function QuoteDetailPage() {
             <div className="qt-dialog-actions">
               <button className="qt-btn-secondary" type="button" onClick={() => setConfirmDelete(false)}>Cancelar</button>
               <button className="qt-btn-danger" type="button" onClick={handleDelete}>Eliminar</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* DIALOG ERROR ELIMINAR */}
+      {errorDialog && (
+        <div className="qt-dialog-overlay">
+          <div className="qt-dialog" style={{ maxWidth: 400 }}>
+            <p className="qt-dialog-title" style={{ color: "#ef4444" }}>Acción Denegada</p>
+            <p className="qt-dialog-body" style={{ marginTop: "10px", marginBottom: "20px" }}>{errorDialog}</p>
+            <div className="qt-dialog-actions" style={{ justifyContent: "flex-end" }}>
+              <button 
+                className="qt-btn-secondary" 
+                type="button" 
+                onClick={() => setErrorDialog("")}
+              >
+                Aceptar
+              </button>
             </div>
           </div>
         </div>

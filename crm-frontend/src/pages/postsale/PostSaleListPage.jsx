@@ -12,7 +12,6 @@ const STAGE_META = {
   encuesta_satisfaccion: { label: "Encuesta de satisfacción",  cls: "ps-badge--secondary" },
   renovacion:            { label: "Renovación",                cls: "ps-badge--warning" },
   reportes:              { label: "Reportes",                  cls: "sl-badge--success" },
-  cerrado:               { label: "Cerrado",                   cls: "ps-badge--default" },
 };
 
 const fmtDate = (d) =>
@@ -36,8 +35,8 @@ export default function PostSaleListPage() {
     if (!q) return list;
     return list.filter((item) =>
       [
-        item.client?.nombreComercial,
-        item.assignedTo?.name,
+        item.sale?.client?.nombreComercial,
+        item.sale?.assignedTo?.name,
         item.sale?.folio || item.sale?._id,
         (item.postSaleStage || "").replace(/_/g, " "),
         String(item.encuestaSatisfaccion?.calificacion ?? ""),
@@ -90,11 +89,11 @@ if (loading) return <LoadingPage />;
                   {/* HEADER ROW */}
                   <div className="ps-card-header-row">
                     <div style={{ minWidth: 0 }}>
-                      <div className="ps-card-client" title={item.client?.nombreComercial || "—"}>
-                        {item.client?.nombreComercial || "—"}
+                      <div className="ps-card-client" title={item.sale?.client?.nombreComercial || "—"}>
+                        {item.sale?.client?.nombreComercial || "—"}
                       </div>
                       <div className="ps-card-exec">
-                        Ejecutivo: <strong>{item.assignedTo?.name || "—"}</strong>
+                        Ejecutivo: <strong>{item.sale?.assignedTo?.name || "—"}</strong>
                       </div>
                     </div>
                     <span className={`sl-badge ${meta.cls}`}>{meta.label}</span>

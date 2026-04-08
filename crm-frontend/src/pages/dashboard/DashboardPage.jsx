@@ -77,10 +77,10 @@ export default function DashboardPage() {
       : "0%";
 
   const pipelineData = [
-    { etapa: "Prosp.", cantidad: pipeline.prospeccion },
-    { etapa: "Present.", cantidad: pipeline.presentacion },
+    { etapa: "Prospecc.", cantidad: pipeline.prospeccion },
+    { etapa: "Calific.", cantidad: pipeline.presentacion },
     { etapa: "Propuesta", cantidad: pipeline.propuesta },
-    { etapa: "Cierre", cantidad: pipeline.cierre },
+    { etapa: "Cerrada", cantidad: pipeline.cierre },
   ];
 
   return (

@@ -1,0 +1,129 @@
+.opp-kanban-board {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  padding-bottom: 12px;
+  height: calc(100vh - 140px);
+}
+
+.opp-kanban-col {
+  background: #f9fafb;
+  border: 1px solid #d1d5db;
+  border-radius: 12px;
+  flex: 1;
+  min-width: 280px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+body.dark .opp-kanban-col { background: #0f172a; border-color: #334155; }
+
+.opp-col-header {
+  background: #166534;
+  color: white;
+  padding: 12px 16px;
+  font-weight: 700;
+  font-size: 14px;
+  display: flex;
+  justify-content: space-between;
+  border-top-left-radius: 11px;
+  border-top-right-radius: 11px;
+}
+/* En sales.css los table headers oscuros usan #253347 para dark mode y letras grises */
+body.dark .opp-col-header { background: #253347; color: #94a3b8; }
+
+.opp-col-body {
+  padding: 12px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow-y: auto;
+  border-bottom-left-radius: 11px;
+  border-bottom-right-radius: 11px;
+}
+
+.opp-card {
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  padding: 14px;
+  cursor: grab;
+  transition: transform 0.15s, box-shadow 0.15s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.opp-card:active { cursor: grabbing; }
+.opp-card:hover { transform: translateY(-3px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+
+body.dark .opp-card { background: #1e293b; border-color: #334155; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+body.dark .opp-card:hover { box-shadow: 0 6px 14px rgba(0,0,0,0.3); }
+
+.opp-card-title {
+  font-weight: 600;
+  font-size: 14px;
+  margin: 0 0 6px 0;
+  color: #111827;
+}
+body.dark .opp-card-title { color: #f1f5f9; }
+
+.opp-card-client {
+  font-size: 12px;
+  color: #6b7280;
+  margin: 0 0 12px 0;
+}
+body.dark .opp-card-client { color: #94a3b8; }
+
+.opp-card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 600;
+  color: #374151;
+}
+body.dark .opp-card-footer { color: #cbd5e1; }
+
+.opp-card-val {
+  color: #16a34a;
+}
+body.dark .opp-card-val { color: #22c55e; }
+
+.opp-card.dragging {
+  opacity: 0.4;
+}
+
+.opp-col-body.drag-over {
+  background: #f3f4f6;
+}
+body.dark .opp-col-body.drag-over { background: #1e293b; }
+
+/* MODAL OVERLAY PARA OPORTUNIDAD */
+.opp-modal-overlay {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0,0,0,0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.opp-modal {
+  background: white;
+  padding: 24px;
+  border-radius: 14px;
+  width: 440px;
+  max-width: 90vw;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+  border: 1px solid #d1d5db;
+}
+body.dark .opp-modal { background: #1e293b; border-color: #334155; }
+
+.opp-modal-header {
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+  margin-top: 0; /* Asegurarse de que el margen top sea 0 para match con form */
+  margin-bottom: 20px;
+}
+body.dark .opp-modal-header { color: #f1f5f9; }

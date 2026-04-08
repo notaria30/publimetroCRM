@@ -17,11 +17,10 @@ router.post("/", auth, async (req, res) => {
       numeroFactura,
       fechaFactura,
       importeSinIVA,
+      importeConIVA,
       metodoPago,
       formaPago,
-      pagado,
-      fechaPago,
-      importePago,
+      pagos,
     } = req.body;
 
     // Asegurarnos de que importeSinIVA sea número
@@ -41,11 +40,11 @@ router.post("/", auth, async (req, res) => {
       });
     }
 
-    // 16% de IVA
-    const IVA_RATE = 0.16;
-
-    // Calculamos el importe con IVA (2 decimales)
-    const importeConIVA = Number((base * (1 + IVA_RATE)).toFixed(2));
+    // Calculamos el importe con IVA (si no viene especificado manualmente)
+    let finalImporteConIVA = Number(importeConIVA);
+    if (Object.is(finalImporteConIVA, NaN) || importeConIVA === undefined || importeConIVA === null || importeConIVA === "") {
+      finalImporteConIVA = Number((base * 1.16).toFixed(2));
+    }
 
 
     // Validar cliente
@@ -71,12 +70,10 @@ router.post("/", auth, async (req, res) => {
       numeroFactura,
       fechaFactura,
       importeSinIVA: base,
-      importeConIVA,
+      importeConIVA: finalImporteConIVA,
       metodoPago: metodoPago || "PUE",
       formaPago: finalFormaPago,
-      pagado,
-      fechaPago,
-      importePago,
+      pagos: pagos || [],
       createdBy: req.user._id,
     });
     // 👈 Buscar la venta: primero por saleId enviado, luego por quote
@@ -85,10 +82,15 @@ router.post("/", auth, async (req, res) => {
       targetSale = await Sale.findById(sale);
     }
 
-    if (pagado && targetSale) {
+    if (factura.pagado && targetSale) {
       targetSale.paid = true;
-      targetSale.paidAt = fechaPago || new Date();
+      targetSale.paidAt = new Date();
       await targetSale.save();
+
+      if (targetSale.opportunityId) {
+        const Opportunity = require("../models/Opportunity");
+        await Opportunity.findByIdAndUpdate(targetSale.opportunityId, { stage: "cerrado_ganado" });
+      }
     }
 
     res.status(201).json({
@@ -96,6 +98,9 @@ router.post("/", auth, async (req, res) => {
       factura,
     });
   } catch (error) {
+    if (error.code === 11000 && error.keyPattern?.numeroFactura) {
+      return res.status(400).json({ message: "Ya existe una factura registrada con este mismo número." });
+    }
     console.error("Error al crear factura:", error);
     res.status(500).json({ message: "Error interno del servidor" });
   }
@@ -186,17 +191,36 @@ router.put("/:id", auth, async (req, res) => {
       return res.status(403).json({ message: "No tienes permiso para actualizar esta factura" });
     }
 
-    // Aplicar cambios manualmente
-    Object.assign(invoice, req.body);
+    // Aplicar cambios
+    invoice.set(req.body);
 
     // ✅ .save() SÍ dispara pre("save") → recalcula pagado y saldoPendiente
     const updated = await invoice.save();
+
+    // Sincronizar pago con la venta si correspondiera
+    if (updated.pagado && updated.sale) {
+      const Sale = require("../models/Sale");
+      const targetSale = await Sale.findById(updated.sale);
+      if (targetSale && !targetSale.paid) {
+        targetSale.paid = true;
+        targetSale.paidAt = new Date();
+        await targetSale.save();
+
+        if (targetSale.opportunityId) {
+          const Opportunity = require("../models/Opportunity");
+          await Opportunity.findByIdAndUpdate(targetSale.opportunityId, { stage: "cerrado_ganado" });
+        }
+      }
+    }
 
     res.json({
       message: "Factura actualizada correctamente",
       updated,
     });
   } catch (error) {
+    if (error.code === 11000 && error.keyPattern?.numeroFactura) {
+      return res.status(400).json({ message: "Ya existe una factura registrada con este mismo número." });
+    }
     console.error("Error al actualizar factura:", error);
     res.status(500).json({ message: "Error interno del servidor" });
   }

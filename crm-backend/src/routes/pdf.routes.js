@@ -204,7 +204,8 @@ Atentamente,`;
 
       // ===== HEADER =====
       doc.save();
-      doc.fillColor(headerBg).rect(startX, y, tableWidth, headerH).fill();
+      doc.fillColor(headerBg).roundedRect(startX, y, tableWidth, headerH + 5, 5).fill();
+      doc.fillColor(headerBg).rect(startX, y + 10, tableWidth, headerH - 10).fill();
       doc.restore();
 
       doc.fontSize(headerFontSize).fillColor(headerColor);
@@ -230,7 +231,7 @@ Atentamente,`;
       // ===== BODY =====
       doc.fontSize(bodyFontSize).fillColor("black");
 
-      rows.forEach((row) => {
+      rows.forEach((row, rowIndex) => {
         // 1) calcular alto real de la fila según la celda más alta
         let rowHeight = minRowHeight;
 
@@ -244,6 +245,11 @@ Atentamente,`;
         });
 
         ensureSpaceY(rowHeight + 10);
+
+        // ZEBRA FILL
+        if (rowIndex % 2 === 1) {
+          doc.save().fillColor("#F5FAF7").rect(startX, y, tableWidth, rowHeight).fill().restore();
+        }
 
         // 2) dibujar texto por celda
         x = startX;
@@ -328,12 +334,12 @@ Atentamente,`;
     const boxW = 500;
     const boxH = 65;  
     doc
-      .rect(boxX, boxTop, boxW, boxH)
+      .roundedRect(boxX, boxTop, boxW, boxH, 8)
       .fillColor("#F4FBF7")
       .fill();
 
     doc
-      .rect(boxX, boxTop, boxW, boxH)
+      .roundedRect(boxX, boxTop, boxW, boxH, 8)
       .strokeColor("#0A6A44")
       .lineWidth(1.2)
       .stroke();
@@ -431,10 +437,9 @@ Atentamente,`;
     // === HEADER (fondo + textos) ===
     const headerH = 26;
 
-    // Fondo verde
-    doc
-      .rect(50, tableTop, 500, headerH)
-      .fill("#0A6A44");
+    // Fondo verde redondeado
+    doc.roundedRect(50, tableTop, 500, headerH + 5, 5).fill("#0A6A44");
+    doc.rect(50, tableTop + 10, 500, headerH - 10).fill("#0A6A44");
 
     // Textos del header
     doc
@@ -459,7 +464,7 @@ Atentamente,`;
 
     const tarifas = quote.tarifas || [];
 
-    tarifas.forEach((t) => {
+    tarifas.forEach((t, rowIndex) => {
       const pageBottom = doc.page.height - 120; // espacio para pie
       if (y + 30 > pageBottom) {
         doc.addPage();
@@ -472,10 +477,9 @@ Atentamente,`;
         // === HEADER (fondo + textos) en nueva página ===
         const headerH = 26;
 
-        // Fondo verde
-        doc
-          .rect(50, newTableTop, 500, headerH)
-          .fill("#0A6A44");
+        // Fondo verde redondeado
+        doc.roundedRect(50, newTableTop, 500, headerH + 5, 5).fill("#0A6A44");
+        doc.rect(50, newTableTop + 10, 500, headerH - 10).fill("#0A6A44");
 
         // Textos del header
         doc
@@ -488,6 +492,7 @@ Atentamente,`;
             width: colWidths[i] - 10,
             lineBreak: false,
             ellipsis: true,
+            align: "center",
           });
           x2 += colWidths[i];
         });
@@ -516,6 +521,12 @@ Atentamente,`;
 
       const rowH = 28;
       const textY = y + 6;
+
+      // ZEBRA FILL
+      if (rowIndex % 2 === 1) {
+        doc.save().fillColor("#F5FAF7").rect(50, y, 500, rowH).fill().restore();
+      }
+      doc.fillColor("black");
 
       row.forEach((cell, i) => {
         doc.text(cell ?? "", xRow, textY, {

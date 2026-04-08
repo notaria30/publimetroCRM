@@ -127,3 +127,14 @@ body.dark .sl-skel {
   background-size: 200% 100%;
   animation: sl-shimmer 1.4s infinite;
 }
+.inv-abono-form {
+  background: #f9fafb;
+  border: 1px solid #d1d5db;
+  border-radius: 10px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+body.dark .inv-abono-form {
+  background: #1e293b;
+  border-color: #334155;
+}

@@ -8,61 +8,8 @@ const router = express.Router();
 const Counter = require("../models/Counter");
 const Invoice = require("../models/Invoice");
 
-// Crear venta desde una cotización (creación automática)
-router.post("/", auth, async (req, res) => {
-  try {
-    const { quoteId } = req.body;
-    if (!quoteId) {
-      return res.status(400).json({ message: "quoteId es requerido" });
-    }
-    // Buscar la cotización
-    const quote = await Quote.findById(quoteId).populate("client");
-    if (!quote) {
-      return res.status(404).json({ message: "Cotización no encontrada" });
-    }
-    // Validar aprobación
-    if (quote.status !== "aprobado") {
-      return res.status(400).json({ message: "La cotización debe estar aprobada antes de generar una venta" });
-    }
-    // Crear venta automáticamente
-    // Determinar a quién asignar la venta
-    // 1) Si la cotización tiene un creador, usarlo
-    // 2) Si no, usar al usuario que hace la aprobación
-    const assignedUser = quote.createdBy || req.user._id;
-
-    // Generar folio incremental seguro
-    const counter = await Counter.findByIdAndUpdate(
-      "saleFolio",
-      { $inc: { seq: 1 } },
-      { new: true, upsert: true }
-    );
-
-    const folio = `V-${String(counter.seq).padStart(4, "0")}`;
-
-    const sale = await Sale.create({
-      folio,
-      client: quote.client._id,
-      quote: quote._id,
-      assignedTo: assignedUser,   // ← ASIGNACIÓN CORRECTA
-      pipelineStage: "prospeccion",
-      notes: "",
-      isClosed: false,
-    });
-
-    // Sincronizar pipeline del cliente
-    const client = await Client.findById(quote.client._id);
-    client.status = "prospeccion";
-    await client.save();
-
-    res.status(201).json({
-      message: "Venta creada automáticamente desde la cotización",
-      sale,
-    });
-  } catch (error) {
-    console.error("Error al crear venta:", error);
-    res.status(500).json({ message: "Error interno del servidor" });
-  }
-});
+// NOTA: La creación de una venta a partir de cero o de cotización directamente 
+// ha sido reemplazada por el flujo de Opportunidades (POST /api/opportunities/:id/convert-to-sale).
 // Listar ventas
 router.get("/", auth, async (req, res) => {
   try {
@@ -109,7 +56,9 @@ router.get("/:id", auth, async (req, res) => {
     const sale = await Sale.findById(req.params.id)
       .populate("client", "nombreComercial status rfc")
       .populate("quote", "folio total status metodoPago formaPago")
-      .populate("assignedTo", "name email");
+      .populate("assignedTo", "name email")
+      .populate("tasks.createdBy", "name email")
+      .populate("followUpNotes.createdBy", "name email");
     if (!sale) {
       return res.status(404).json({ message: "Venta no encontrada" });
     }
@@ -163,7 +112,7 @@ router.put("/:id", auth, async (req, res) => {
       }
     }
 
-    const previousStage = sale.pipelineStage;
+    const previousStage = sale.executionStage; // CAMBIO AQUÍ
 
     // 🔥 Actualizar la venta
     const updatedSale = await Sale.findByIdAndUpdate(
@@ -178,11 +127,11 @@ router.put("/:id", auth, async (req, res) => {
 
 
 
-    // 🔥 Historial de pipeline
-    if (updates.pipelineStage && previousStage !== updates.pipelineStage) {
+    // 🔥 Historial de pipeline de ejecución
+    if (updates.executionStage && previousStage !== updates.executionStage) {
       updatedSale.history.push({
         fromStage: previousStage,
-        toStage: updates.pipelineStage,
+        toStage: updates.executionStage,
         changedBy: req.user._id,
       });
 
@@ -220,7 +169,7 @@ router.put("/:id/close", auth, async (req, res) => {
       }
     }
 
-    sale.pipelineStage = "cierre";
+    sale.executionStage = "testigos_enviados"; // Etapa final de la ejecución
     sale.isClosed = true;
     sale.closedAt = new Date();
     await sale.save();
@@ -253,6 +202,7 @@ router.post("/:id/notes", auth, async (req, res) => {
     });
 
     await sale.save();
+    await sale.populate("followUpNotes.createdBy", "name email");
 
     res.json({ message: "Nota agregada", notes: sale.followUpNotes });
   } catch (err) {
@@ -276,6 +226,7 @@ router.post("/:id/tasks", auth, async (req, res) => {
     });
 
     await sale.save();
+    await sale.populate("tasks.createdBy", "name email");
 
     res.json({ message: "Tarea agregada", tasks: sale.tasks });
   } catch (err) {
@@ -295,6 +246,7 @@ router.put("/:id/tasks/:taskId/complete", auth, async (req, res) => {
 
     task.completed = true;
     await sale.save();
+    await sale.populate("tasks.createdBy", "name email");
 
     res.json({ message: "Tarea completada", tasks: sale.tasks });
   } catch (err) {

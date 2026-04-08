@@ -19,6 +19,7 @@ export default function InvoiceCreatePage() {
   const [loadingSale, setLoadingSale] = useState(false);
   const [saleError, setSaleError] = useState(null);
   const [paymentManuallyEdited, setPaymentManuallyEdited] = useState(false);
+  const [invoiceNumberError, setInvoiceNumberError] = useState("");
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -102,13 +103,19 @@ export default function InvoiceCreatePage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setInvoiceNumberError("");
     if (!form.numeroFactura) return alert("El número de factura es obligatorio");
     if (!form.fechaFactura) return alert("La fecha de factura es obligatoria");
     try {
       await createInvoice({ ...form, sale: saleId });
       navigate("/invoices");
     } catch (error) {
-      alert(error.response?.data?.message || "Error al crear factura");
+      const msg = error.response?.data?.message || "Error al crear factura";
+      if (msg.includes("Ya existe")) {
+        setInvoiceNumberError(msg);
+      } else {
+        alert(msg);
+      }
     }
   };
 
@@ -214,10 +221,19 @@ export default function InvoiceCreatePage() {
                   className="sl-input"
                   name="numeroFactura"
                   value={form.numeroFactura}
-                  onChange={handleChange}
+                  onChange={(e) => {
+                    setInvoiceNumberError("");
+                    handleChange(e);
+                  }}
                   placeholder="Ej. F-0001"
+                  style={invoiceNumberError ? { borderColor: "#ef4444", boxShadow: "0 0 0 1px #ef4444" } : {}}
                   required
                 />
+                {invoiceNumberError && (
+                  <span style={{ color: "#ef4444", fontSize: "12px", marginTop: "4px", display: "block", fontWeight: 500 }}>
+                    {invoiceNumberError}
+                  </span>
+                )}
               </div>
               <div className="sl-form-group">
                 <label className="sl-label">Fecha factura *</label>
@@ -261,13 +277,14 @@ export default function InvoiceCreatePage() {
                 />
               </div>
               <div className="sl-form-group">
-                <label className="sl-label">Importe con IVA (16%)</label>
+                <label className="sl-label">Importe con IVA (Valor Final)</label>
                 <input
                   className="sl-input"
                   type="number"
+                  name="importeConIVA"
                   value={form.importeConIVA}
-                  disabled
-                  placeholder="—"
+                  onChange={handleChange}
+                  placeholder="Ej. 3480.00"
                 />
               </div>
             </div>

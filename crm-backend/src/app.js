@@ -4,6 +4,7 @@ const authRoutes = require("./routes/auth.routes");
 const clientRoutes = require("./routes/client.routes");
 const quoteRoutes = require("./routes/quote.routes");
 const saleRoutes = require("./routes/sale.routes");
+const opportunityRoutes = require("./routes/opportunity.routes"); // NUEVO
 const postSaleRoutes = require("./routes/postSale.routes");
 const invoiceRoutes = require("./routes/invoice.routes");
 const reportRoutes = require("./routes/report.routes");
@@ -23,6 +24,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/clients", clientRoutes);  
 app.use("/api/quotes", quoteRoutes);
 app.use("/api/sales", saleRoutes);
+app.use("/api/opportunities", opportunityRoutes); // MONTAJE NUEVO
 app.use("/api/campaigns", campaignRoutes);
 app.use("/api/postsale", postSaleRoutes);
 app.use("/api/invoices", invoiceRoutes);

@@ -80,7 +80,7 @@ export default function QuoteTarifasSection({
           <div
             key={index}
             style={{
-              border: "1px solid #d1d5db",
+              border: "none",
               borderRadius: 10,
               padding: 16,
               marginBottom: 14,

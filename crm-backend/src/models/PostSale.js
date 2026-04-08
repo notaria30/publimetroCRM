@@ -9,20 +9,6 @@ const postSaleSchema = new mongoose.Schema(
       required: true,
     },
 
-    // Relación con cliente
-    client: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Client",
-      required: true,
-    },
-
-    // Ejecutivo asignado
-    assignedTo: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "User",
-      required: true,
-    },
-
     // Estado actual post-venta
     postSaleStage: {
       type: String,
@@ -32,7 +18,6 @@ const postSaleSchema = new mongoose.Schema(
         "encuesta_satisfaccion",
         "renovacion",
         "reportes",
-        "cerrado",
       ],
       default: "servicio_post_venta",
     },

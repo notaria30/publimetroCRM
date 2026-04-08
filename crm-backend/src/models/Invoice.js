@@ -90,8 +90,9 @@ const invoiceSchema = new mongoose.Schema(
 );
 
 invoiceSchema.pre("save", function (next) {
-  if (this.importeSinIVA) {
-    this.importeConIVA = this.importeSinIVA * 1.16;
+  // Permitir custom importeConIVA
+  if (this.importeSinIVA && (this.importeConIVA == null || this.importeConIVA === undefined)) {
+    this.importeConIVA = Number((this.importeSinIVA * 1.16).toFixed(2));
   }
   // Calcular saldo y estado pagado automáticamente
   const totalPagado = (this.pagos || []).reduce((acc, p) => acc + (p.importe || 0), 0);

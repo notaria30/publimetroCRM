@@ -66,8 +66,8 @@ export default function CampaignListPage() {
                         {s.label}
                       </span>
                     </td>
-                    <td>{c.fechaInicio ? new Date(c.fechaInicio).toLocaleDateString("es-MX") : "—"}</td>
-                    <td>{c.fechaFin    ? new Date(c.fechaFin).toLocaleDateString("es-MX")    : "—"}</td>
+                    <td>{c.fechaInicio ? new Date(c.fechaInicio).toLocaleDateString("es-MX", { timeZone: "UTC" }) : "—"}</td>
+                    <td>{c.fechaFin    ? new Date(c.fechaFin).toLocaleDateString("es-MX", { timeZone: "UTC" })    : "—"}</td>
                     <td style={{ textAlign: "center" }}>
                       <button className="cl-btn-outline"
                         onClick={() => navigate(`/clients/${c.client?._id}/campaigns/${c._id}`)}>

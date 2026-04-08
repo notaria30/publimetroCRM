@@ -4,17 +4,14 @@ import { getSaleById, updateSale, addSaleNote, addSaleTask, completeSaleTask } f
 import { ArrowLeft } from "lucide-react";
 import "./sales.css";
 
-const STAGES = ["prospeccion", "presentacion", "propuesta", "cierre"];
+const STAGES = ["validacion", "diseno", "programado", "publicado", "testigos_enviados"];
 
 const STAGE_BADGE = {
-  prospeccion: "sl-badge--warning",
-  presentacion: "sl-badge--info",
-  propuesta: "sl-badge--purple",
-  cierre: "sl-badge--success",
-};
-
-const STAGE_PROB = {
-  prospeccion: 20, presentacion: 40, propuesta: 70, cierre: 100,
+  validacion: "sl-badge--warning",
+  diseno: "sl-badge--info",
+  programado: "sl-badge--purple",
+  publicado: "sl-badge--success",
+  testigos_enviados: "sl-badge--success",
 };
 
 const fmtDate = (d) =>
@@ -51,12 +48,7 @@ export default function SaleDetailPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  const handleChangeStage = async (stage) => {
-    try {
-      const res = await updateSale(id, stage);
-      setSale(res.data.updatedSale);
-    } catch { alert("Error al actualizar la etapa"); }
-  };
+  // pipeline functions removed
 
   const handleAddNote = async () => {
     if (!noteText.trim()) return alert("La nota no puede estar vacía");
@@ -86,8 +78,7 @@ export default function SaleDetailPage() {
   if (loading) return <div className="sl-status">Cargando venta...</div>;
   if (!sale)   return <div className="sl-status">No se encontró la venta.</div>;
 
-  const currentIdx = STAGES.indexOf(sale.pipelineStage);
-  const probability = STAGE_PROB[sale.pipelineStage] ?? 20;
+  const currentIdx = STAGES.indexOf(sale.executionStage);
 
   const tasks = sale.tasks || [];
   const overdue  = tasks.filter((t) => t.dueDate && !t.completed && new Date(t.dueDate) < new Date()).length;
@@ -118,11 +109,10 @@ export default function SaleDetailPage() {
             <InfoItem label="Total cotización"   value={sale.quote ? `$${sale.quote.total?.toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : "Sin cotización"} />
             <InfoItem label="Vendedor asignado"  value={sale.assignedTo?.name} />
             <InfoItem label="Etapa actual"       value={
-              <span className={`sl-badge ${STAGE_BADGE[sale.pipelineStage] || "sl-badge--gray"}`}>
-                {sale.pipelineStage?.replace(/_/g, " ")}
+              <span className={`sl-badge ${STAGE_BADGE[sale.executionStage] || "sl-badge--gray"}`}>
+                {sale.executionStage?.replace(/_/g, " ")}
               </span>
             } />
-            <InfoItem label="Probabilidad cierre" value={`${probability}%`} />
             <InfoItem label="Días desde creación" value={daysBetween(sale.createdAt)} />
             <InfoItem label="Creada"              value={fmtDate(sale.createdAt)} />
             <InfoItem label="Actualizada"         value={fmtDate(sale.updatedAt)} />
@@ -130,64 +120,7 @@ export default function SaleDetailPage() {
         </div>
       </div>
 
-      {/* PIPELINE VISUAL */}
-      <div className="sl-card">
-        <div className="sl-card-header">Pipeline de Venta</div>
-        <div className="sl-card-body">
-          <div className="sl-pipeline">
-            {STAGES.map((stage, idx) => {
-              const done   = idx < currentIdx;
-              const active = idx === currentIdx;
-              return (
-                <div key={stage} className="sl-pipeline-step" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <div
-                    className={`sl-pipeline-circle ${done ? "sl-pipeline-circle--done" : active ? "sl-pipeline-circle--active" : "sl-pipeline-circle--future"}`}
-                    onClick={() => handleChangeStage(stage)}
-                  >
-                    {idx + 1}
-                  </div>
-                  <span className={`sl-pipeline-label${active ? " sl-pipeline-label--active" : ""}`}>
-                    {stage.replace(/_/g, " ")}
-                  </span>
-                  {idx < STAGES.length - 1 && (
-                    <div className={`sl-pipeline-connector${done ? " sl-pipeline-connector--done" : ""}`} />
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          <div>
-            <label className="sl-label">Cambiar etapa manualmente</label>
-            <select className="sl-select-full" value={sale.pipelineStage} onChange={(e) => handleChangeStage(e.target.value)}>
-              {STAGES.map((s) => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
-            </select>
-          </div>
-        </div>
-      </div>
-
-      {/* HISTORIAL PIPELINE */}
-      <div className="sl-card">
-        <div className="sl-card-header">Historial del Pipeline</div>
-        <div className="sl-card-body">
-          {!sale.history?.length ? (
-            <p style={{ color: "#9ca3af", margin: 0 }}>No hay movimientos registrados.</p>
-          ) : (
-            <table className="sl-inner-table">
-              <thead><tr><th>De</th><th>A</th><th>Fecha</th></tr></thead>
-              <tbody>
-                {sale.history.map((h, i) => (
-                  <tr key={i}>
-                    <td style={{ textTransform: "capitalize" }}>{h.fromStage?.replace(/_/g, " ") || "—"}</td>
-                    <td style={{ textTransform: "capitalize" }}>{h.toStage?.replace(/_/g, " ") || "—"}</td>
-                    <td>{h.changedAt ? new Date(h.changedAt).toLocaleDateString("es-MX") : "—"}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          )}
-        </div>
-      </div>
+      {/* EL PIPELINE Y EL HISTORIAL FUERON ELIMINADOS COMO SE SOLICITÓ */}
 
       {/* MINI DASHBOARD */}
       <h2 className="sl-section-title">Actividad de Seguimiento</h2>

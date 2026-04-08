@@ -8,7 +8,7 @@ const USOS_CFDI     = [
   { value: "P01", label: "P01 - Por definir" },
 ];
 
-export default function QuoteGeneralSection({ clients, form, setForm }) {
+export default function QuoteGeneralSection({ clients, opportunities, form, setForm }) {
   const set = (field, value) => setForm((prev) => ({ ...prev, [field]: value }));
 
   return (
@@ -29,6 +29,21 @@ export default function QuoteGeneralSection({ clients, form, setForm }) {
               <option value="">Seleccione cliente...</option>
               {clients.map((c) => (
                 <option key={c._id} value={c._id}>{c.nombreComercial}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Oportunidad asociada */}
+          <div style={{ gridColumn: "span 2" }}>
+            <label className="qt-input-label">Oportunidad asociada</label>
+            <select
+              className="qt-input"
+              value={form.opportunityId}
+              onChange={(e) => set("opportunityId", e.target.value)}
+            >
+              <option value="">Sin oportunidad vinculada</option>
+              {opportunities?.filter(o => !form.client || o.client?._id === form.client || o.client === form.client).map((o) => (
+                <option key={o._id} value={o._id}>{o.title}</option>
               ))}
             </select>
           </div>

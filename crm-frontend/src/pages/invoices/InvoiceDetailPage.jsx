@@ -15,7 +15,7 @@ function InfoItem({ label, value }) {
 }
 
 const fmtDate = (d) =>
-  d ? new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+  d ? new Date(d).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric", timeZone: "UTC" }) : "—";
 
 const fmtMoney = (n) =>
   n != null ? `$${Number(n).toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : "—";
@@ -186,10 +186,7 @@ export default function InvoiceDetailPage() {
 
           {/* FORMULARIO ABONO */}
           {showAbono && (
-            <div style={{
-              background: "#f9fafb", border: "1px solid #d1d5db",
-              borderRadius: 10, padding: 16, marginBottom: 20,
-            }}>
+            <div className="inv-abono-form">
               <p style={{ fontWeight: 700, fontSize: 14, margin: "0 0 12px", color: "inherit" }}>Nuevo abono</p>
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr", gap: 12, marginBottom: 12 }}>
                 <div>

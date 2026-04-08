@@ -129,12 +129,7 @@ export default function ClientDetailPage() {
             </Field>
           ))}
 
-          <Field label="Status" value={client.status} editing={editing}>
-            <select className="cl-select" value={client.status || ""} onChange={(e) => set("status", e.target.value)}>
-              {["prospeccion","presentacion","propuesta","cierre"].map((s) => (
-                <option key={s} value={s}>{s.charAt(0).toUpperCase() + s.slice(1)}</option>
-              ))}
-            </select>
+          <Field label="Status" value={client.status?.charAt(0).toUpperCase() + client.status?.slice(1)} editing={false}>
           </Field>
 
           <Field label="Tipo de Cliente" value={client.tipoCliente} editing={editing}>
@@ -208,21 +203,7 @@ export default function ClientDetailPage() {
             </select>
           </Field>
 
-          <div className="cl-form-group">
-            <label className="cl-label">Cliente Activo</label>
-            {editing ? (
-              <label className="cl-toggle-wrap">
-                <span className="cl-toggle">
-                  <input type="checkbox" checked={client.clienteActivo}
-                    onChange={(e) => set("clienteActivo", e.target.checked)} />
-                  <span className="cl-toggle-slider" />
-                </span>
-                <span className="cl-toggle-label">{client.clienteActivo ? "Activo" : "Inactivo"}</span>
-              </label>
-            ) : (
-              <input className="cl-input" value={client.clienteActivo ? "Sí" : "No"} readOnly />
-            )}
-          </div>
+
         </div>
       </div>
 

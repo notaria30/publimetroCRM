@@ -11,8 +11,7 @@ const STAGES = [
   "medicion_resultados",
   "encuesta_satisfaccion",
   "renovacion",
-  "reportes",
-  "cerrado",
+  "reportes"
 ];
 
 const STAGE_LABELS = {
@@ -20,8 +19,7 @@ const STAGE_LABELS = {
   medicion_resultados:   "Medición de resultados",
   encuesta_satisfaccion: "Encuesta de satisfacción",
   renovacion:            "Renovación",
-  reportes:              "Reportes",
-  cerrado:               "Cerrado",
+  reportes:              "Reportes"
 };
 
 export default function PostSaleCreatePage() {

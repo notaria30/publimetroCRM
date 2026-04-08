@@ -108,6 +108,7 @@ const quoteSchema = new mongoose.Schema(
     metodoPago: {
       type: String,
       enum: ["PPD", "PUE"],
+      set: (v) => (v === "" ? undefined : v),
     },
 
     // Uso CFDI (G01, G03, P01, etc.)
@@ -143,11 +144,24 @@ const quoteSchema = new mongoose.Schema(
       default: 0,
     },
 
-    // Status cotización
+    // Status cotización (ACTUALIZADO)
     status: {
       type: String,
-      enum: ["pendiente", "aprobado", "rechazado"],
-      default: "pendiente",
+      enum: ["borrador", "enviada", "aprobada", "vencida", "pendiente", "rechazado"],
+      default: "borrador",
+    },
+
+    // Oportunidad a la que pertenece
+    opportunityId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Opportunity",
+      default: null,
+    },
+
+    // Versionado de cotizaciones
+    version: {
+      type: Number,
+      default: 1,
     },
 
     // Aprobación

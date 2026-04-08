@@ -25,11 +25,18 @@ const saleSchema = new mongoose.Schema(
       required: true,
     },
 
-    // Pipeline
-    pipelineStage: {
+    // Oportunidad de origen
+    opportunityId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Opportunity",
+      default: null,
+    },
+
+    // Nuevo Pipeline (Ejecución)
+    executionStage: {
       type: String,
-      enum: ["prospeccion", "presentacion", "propuesta", "cierre"],
-      default: "prospeccion",
+      enum: ["validacion", "diseno", "programado", "publicado", "testigos_enviados"],
+      default: "validacion",
     },
 
     // 👈 NUEVOS CAMPOS PARA FACTURACIÓN

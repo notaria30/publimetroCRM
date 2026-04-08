@@ -16,16 +16,8 @@ router.post("/", auth, async (req, res) => {
       return res.status(404).json({ message: "Venta no encontrada" });
     }
 
-    // Cliente relacionado
-    const clientData = await Client.findById(saleData.client);
-    if (!clientData) {
-      return res.status(404).json({ message: "Cliente no encontrado" });
-    }
-
     const postSale = await PostSale.create({
       sale,
-      client: saleData.client,
-      assignedTo: saleData.assignedTo, // el mismo ejecutivo
       postSaleStage,
       medicionResultados,
       encuestaSatisfaccion,
@@ -50,14 +42,24 @@ router.get("/", auth, async (req, res) => {
 
     if (req.user.role === "OWNER") {
       records = await PostSale.find()
-        .populate("sale", "folio _id")
-        .populate("client", "nombreComercial status")
-        .populate("assignedTo", "name email");
+        .populate({
+          path: "sale",
+          populate: [
+            { path: "client", select: "nombreComercial status" },
+            { path: "assignedTo", select: "name email" }
+          ]
+        });
     } else {
-      records = await PostSale.find({ assignedTo: req.user._id })
-        .populate("sale")
-        .populate("client", "nombreComercial status")
-        .populate("assignedTo", "name email");
+      // Necesitamos buscar por el vendedor asignado en la venta (esto podría requerir aggregate, pero por ahora filtramos en memoria o dejamos buscar todo y filtramos)
+      const userSales = await Sale.find({ assignedTo: req.user._id }).select("_id");
+      records = await PostSale.find({ sale: { $in: userSales } })
+        .populate({
+          path: "sale",
+          populate: [
+            { path: "client", select: "nombreComercial status" },
+            { path: "assignedTo", select: "name email" }
+          ]
+        });
     }
 
     res.json(records);
@@ -71,15 +73,19 @@ router.get("/", auth, async (req, res) => {
 router.get("/:id", auth, async (req, res) => {
   try {
     const record = await PostSale.findById(req.params.id)
-      .populate("sale")
-      .populate("client")
-      .populate("assignedTo", "name email");
+      .populate({
+        path: "sale",
+        populate: [
+          { path: "client" },
+          { path: "assignedTo", select: "name email" }
+        ]
+      });
 
     if (!record) {
       return res.status(404).json({ message: "Registro no encontrado" });
     }
 
-    if (req.user.role === "WORKER" && record.assignedTo._id.toString() !== req.user._id.toString()) {
+    if (req.user.role === "WORKER" && record.sale.assignedTo._id.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: "No puedes ver este registro" });
     }
 
@@ -99,7 +105,9 @@ router.put("/:id", auth, async (req, res) => {
       return res.status(404).json({ message: "Registro no encontrado" });
     }
 
-    if (req.user.role === "WORKER" && record.assignedTo.toString() !== req.user._id.toString()) {
+    // Necesitamos poblar record para validar worker
+    await record.populate({ path: "sale", select: "assignedTo" });
+    if (req.user.role === "WORKER" && record.sale?.assignedTo.toString() !== req.user._id.toString()) {
       return res.status(403).json({ message: "No puedes actualizar este registro" });
     }
 
