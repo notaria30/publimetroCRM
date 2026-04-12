@@ -1,14 +1,15 @@
 import { useState, useRef, useEffect } from "react";
 import {
   LayoutDashboard, Users, FileText,
-  TrendingUp, Receipt, HeadphonesIcon, BarChart2,
-  LogOut, Sun, Moon, ClipboardCheck, UserCog, Settings, KeyRound, X, Target
+  TrendingUp, Receipt, ClipboardCheck, UserCog,
+  BarChart2, LogOut, Sun, Moon, Settings, KeyRound, X, Target
 } from "lucide-react";
 import { NavLink } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import api from "../services/api";
 import logo from "../assets/logo.svg";
+import "./ProtectedLayout.css";
 
 const NAV_LINKS = [
   { to: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={16} /> },
@@ -21,6 +22,23 @@ const NAV_LINKS = [
   { to: "/reports", label: "Reportes", icon: <BarChart2 size={16} /> },
 ];
 
+const EyeOpen = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+const EyeOff = () => (
+  <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
+    fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+    <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+    <line x1="1" y1="1" x2="23" y2="23" />
+  </svg>
+);
+
 export default function Navbar() {
   const { user, logout, isOwner } = useAuth();
   const { darkMode, setDarkMode } = useTheme();
@@ -28,12 +46,12 @@ export default function Navbar() {
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [modal, setModal] = useState(false);
   const [form, setForm] = useState({ currentPassword: "", newPassword: "", confirmPassword: "" });
+  const [showPasswords, setShowPasswords] = useState({ currentPassword: false, newPassword: false, confirmPassword: false });
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const dropdownRef = useRef(null);
 
-  // Cierra el dropdown al hacer clic fuera
   useEffect(() => {
     const handler = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target))
@@ -43,9 +61,13 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handler);
   }, []);
 
+  const toggleShow = (key) =>
+    setShowPasswords((prev) => ({ ...prev, [key]: !prev[key] }));
+
   const openModal = () => {
     setDropdownOpen(false);
     setForm({ currentPassword: "", newPassword: "", confirmPassword: "" });
+    setShowPasswords({ currentPassword: false, newPassword: false, confirmPassword: false });
     setError(""); setSuccess("");
     setModal(true);
   };
@@ -71,15 +93,19 @@ export default function Navbar() {
     } finally { setSaving(false); }
   };
 
+  const fields = [
+    { label: "Contraseña actual", key: "currentPassword" },
+    { label: "Nueva contraseña", key: "newPassword" },
+    { label: "Confirmar nueva contraseña", key: "confirmPassword" },
+  ];
+
   return (
     <>
       <aside className="sidebar">
-        {/* Logo */}
         <div className="sidebar-logo">
           <img src={logo} alt="logo" style={{ height: 38 }} />
         </div>
 
-        {/* Links */}
         <nav className="sidebar-nav">
           {NAV_LINKS.map((l) => (
             <NavLink key={l.to} to={l.to}
@@ -95,7 +121,6 @@ export default function Navbar() {
           )}
         </nav>
 
-        {/* Footer */}
         <div className="sidebar-footer">
           <button className="sidebar-theme-toggle" onClick={() => setDarkMode(!darkMode)}>
             {darkMode
@@ -103,55 +128,33 @@ export default function Navbar() {
               : <><Moon size={14} style={{ marginRight: 6 }} />Modo oscuro</>}
           </button>
 
-          {/* Usuario con dropdown */}
           <div ref={dropdownRef} style={{ position: "relative" }}>
-            <div
-              className="sidebar-user"
-              onClick={() => setDropdownOpen(!dropdownOpen)}
+            <div className="sidebar-user" onClick={() => setDropdownOpen(!dropdownOpen)}
               style={{
                 cursor: "pointer", borderRadius: 8, transition: "background 0.15s",
                 background: dropdownOpen ? (darkMode ? "#252836" : "#f3f4f6") : "transparent"
-              }}
-            >
+              }}>
               <div className="sidebar-avatar">
                 {user?.name?.charAt(0).toUpperCase() ?? "U"}
               </div>
-              <div className="sidebar-user-info" style={{ flex: 1, minWidth: 0 }}>
-                <p className="sidebar-user-name" style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <p className="sidebar-user-name"
+                  style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: 0 }}>
                   {user?.name}
                 </p>
               </div>
               <Settings size={14} style={{ color: "#9ca3af", flexShrink: 0 }} />
             </div>
 
-            {/* Dropdown */}
             {dropdownOpen && (
-              <div style={{
-                position: "absolute", bottom: "calc(100% + 6px)", left: 0, right: 0,
-                background: darkMode ? "#1e293b" : "white",
-                border: `1px solid ${darkMode ? "#334155" : "#e5e7eb"}`,
-                borderRadius: 10, boxShadow: "0 4px 16px rgba(0,0,0,0.12)",
-                overflow: "hidden", zIndex: 200,
-              }}>
-                <div style={{ padding: "10px 14px 8px", borderBottom: `1px solid ${darkMode ? "#334155" : "#f0f0f0"}` }}>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: darkMode ? "#f1f5f9" : "#111827" }}>
-                    {user?.name}
-                  </p>
-                  <p style={{ margin: 0, fontSize: 11, color: "#9ca3af" }}>
+              <div className="sidebar-dropdown">
+                <div className="sidebar-dropdown-header">
+                  <p className="sidebar-dropdown-name">{user?.name}</p>
+                  <p className="sidebar-dropdown-role">
                     {user?.role === "OWNER" ? "Administrador" : "Trabajador"}
                   </p>
                 </div>
-                <button
-                  onClick={openModal}
-                  style={{
-                    width: "100%", padding: "10px 14px", background: "none", border: "none",
-                    cursor: "pointer", display: "flex", alignItems: "center", gap: 8,
-                    fontSize: 13, color: darkMode ? "#cbd5e1" : "#374151",
-                    fontFamily: "inherit", transition: "background 0.12s", textAlign: "left",
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.background = darkMode ? "#253347" : "#f9fafb"}
-                  onMouseLeave={(e) => e.currentTarget.style.background = "none"}
-                >
+                <button className="sidebar-dropdown-btn" onClick={openModal}>
                   <KeyRound size={14} />
                   Cambiar contraseña
                 </button>
@@ -166,51 +169,42 @@ export default function Navbar() {
         </div>
       </aside>
 
-      {/* MODAL cambiar contraseña */}
       {modal && (
-        <div style={{
-          position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)",
-          display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000,
-        }}>
-          <div style={{
-            background: darkMode ? "#1e293b" : "white",
-            borderRadius: 14, padding: 28, width: "100%", maxWidth: 420,
-            boxShadow: "0 8px 32px rgba(0,0,0,0.18)",
-          }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: darkMode ? "#f1f5f9" : "#111827" }}>
-                Cambiar contraseña
-              </h2>
-              <button onClick={() => setModal(false)}
-                style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280" }}>
+        <div className="cp-overlay">
+          <div className="cp-modal">
+            <div className="cp-modal-header">
+              <h2 className="cp-modal-title">Cambiar contraseña</h2>
+              <button className="cp-close-btn" onClick={() => setModal(false)}>
                 <X size={20} />
               </button>
             </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-              {[
-                { label: "Contraseña actual", key: "currentPassword" },
-                { label: "Nueva contraseña", key: "newPassword" },
-                { label: "Confirmar nueva contraseña", key: "confirmPassword" },
-              ].map(({ label, key }) => (
-                <div key={key} style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-                  <label style={{ fontSize: 12, fontWeight: 600, color: "#6b7280" }}>{label}</label>
-                  <input
-                    className="sl-input"
-                    type="password"
-                    value={form[key]}
-                    onChange={(e) => setForm({ ...form, [key]: e.target.value })}
-                    placeholder="••••••••"
-                  />
+            <div className="cp-form">
+              {fields.map(({ label, key }) => (
+                <div key={key} className="cp-form-group">
+                  <label className="cp-label">{label}</label>
+                  <div className="cp-input-wrap">
+                    <input
+                      className="cp-input"
+                      type={showPasswords[key] ? "text" : "password"}
+                      value={form[key]}
+                      onChange={(e) => setForm({ ...form, [key]: e.target.value })}
+                      placeholder="••••••••"
+                    />
+                    <button type="button" className="cp-eye-btn" tabIndex={-1}
+                      onClick={() => toggleShow(key)}>
+                      {showPasswords[key] ? <EyeOpen /> : <EyeOff />}
+                    </button>
+                  </div>
                 </div>
               ))}
 
-              {error && <p style={{ color: "#dc2626", fontSize: 13, margin: 0 }}>⚠ {error}</p>}
-              {success && <p style={{ color: "#16a34a", fontSize: 13, margin: 0 }}>✓ {success}</p>}
+              {error && <p className="cp-error">⚠ {error}</p>}
+              {success && <p className="cp-success">✓ {success}</p>}
 
-              <div style={{ display: "flex", gap: 10, justifyContent: "flex-end", marginTop: 4 }}>
-                <button className="sl-btn-secondary" onClick={() => setModal(false)}>Cancelar</button>
-                <button className="sl-btn-save" onClick={handleChangePassword} disabled={saving}>
+              <div className="cp-modal-footer">
+                <button className="cl-btn-secondary" onClick={() => setModal(false)}>Cancelar</button>
+                <button className="cl-btn-success" onClick={handleChangePassword} disabled={saving}>
                   {saving ? "Guardando…" : "Cambiar contraseña"}
                 </button>
               </div>

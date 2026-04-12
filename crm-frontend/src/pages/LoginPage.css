@@ -1,4 +1,5 @@
-html, body {
+html,
+body {
   margin: 0;
   padding: 0;
   height: 100%;
@@ -160,8 +161,14 @@ html, body {
   letter-spacing: 0.01em;
 }
 
-.login-btn:hover    { background: #15803d; }
-.login-btn:disabled { background: #86efac; cursor: not-allowed; }
+.login-btn:hover {
+  background: #15803d;
+}
+
+.login-btn:disabled {
+  background: #86efac;
+  cursor: not-allowed;
+}
 
 /* Divider */
 .login-divider {
@@ -180,13 +187,59 @@ html, body {
 
 /* Animación */
 @keyframes loginFadeIn {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Responsive */
 @media (max-width: 900px) {
-  .login-left  { display: none; }
-  .login-right { flex: 1; padding: 40px 20px; background: rgba(0,0,0,0.5); }
-  .login-card  { width: 100%; max-width: 400px; }
+  .login-left {
+    display: none;
+  }
+
+  .login-right {
+    flex: 1;
+    padding: 40px 20px;
+    background: rgba(0, 0, 0, 0.5);
+  }
+
+  .login-card {
+    width: 100%;
+    max-width: 400px;
+  }
+}
+
+/* Ojo para contraseña */
+.login-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.login-input-wrapper .login-input {
+  padding-right: 2.8rem;
+}
+
+.login-eye-btn {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1.1rem;
+  color: #9ca3af;
+  padding: 0;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.login-eye-btn:hover {
+  color: #16a34a;
 }

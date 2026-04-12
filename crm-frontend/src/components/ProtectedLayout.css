@@ -15,11 +15,13 @@
   display: flex;
   flex-direction: column;
   position: fixed;
-  top: 0; left: 0;
+  top: 0;
+  left: 0;
   height: 100vh;
   z-index: 100;
   padding: 20px 12px 24px 12px;
-  overflow-y: auto;      /* ← permite scroll si el contenido es largo */
+  overflow-y: auto;
+  /* ← permite scroll si el contenido es largo */
   overflow-x: hidden;
   box-shadow: 2px 0 12px rgba(0, 0, 0, 0.06);
 }
@@ -37,7 +39,8 @@
   flex-direction: column;
   gap: 6px;
   overflow-y: auto;
-  padding-bottom: 100px;  /* ← espacio para que el footer no tape los links */
+  padding-bottom: 100px;
+  /* ← espacio para que el footer no tape los links */
 }
 
 /* Botón modo oscuro */
@@ -268,6 +271,7 @@ body.dark .db-greeting-sub {
   margin: 0 auto;
   padding: 28px 32px;
 }
+
 body.dark .sidebar-footer {
   background: #1a1d27;
   border-top-color: #2d3148;
@@ -292,14 +296,269 @@ body.dark ::-webkit-scrollbar {
 }
 
 body.dark ::-webkit-scrollbar-track {
-  background: #0f1117; 
+  background: #0f1117;
 }
 
 body.dark ::-webkit-scrollbar-thumb {
-  background: #2d3148; 
+  background: #2d3148;
   border-radius: 6px;
 }
 
 body.dark ::-webkit-scrollbar-thumb:hover {
-  background: #3f4566; 
+  background: #3f4566;
+}
+
+/* ================================
+   NAVBAR — DROPDOWN
+   ================================ */
+.sidebar-dropdown {
+  position: absolute;
+  bottom: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  background: white;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  overflow: hidden;
+  z-index: 200;
+}
+
+.sidebar-dropdown-header {
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.sidebar-dropdown-name {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #111827;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.sidebar-dropdown-role {
+  margin: 0;
+  font-size: 11px;
+  color: #9ca3af;
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.sidebar-dropdown-btn {
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #374151;
+  font-family: 'Segoe UI', sans-serif;
+  transition: background 0.12s;
+  text-align: left;
+}
+
+.sidebar-dropdown-btn:hover {
+  background: #f9fafb;
+}
+
+/* Dark */
+body.dark .sidebar-dropdown {
+  background: #1e293b;
+  border-color: #334155;
+}
+
+body.dark .sidebar-dropdown-header {
+  border-bottom-color: #334155;
+}
+
+body.dark .sidebar-dropdown-name {
+  color: #f1f5f9;
+}
+
+body.dark .sidebar-dropdown-role {
+  color: #64748b;
+}
+
+body.dark .sidebar-dropdown-btn {
+  color: #cbd5e1;
+}
+
+body.dark .sidebar-dropdown-btn:hover {
+  background: #253347;
+}
+
+/* ================================
+   NAVBAR — MODAL CAMBIAR CONTRASEÑA
+   ================================ */
+.cp-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.cp-modal {
+  background: white;
+  border-radius: 14px;
+  padding: 28px;
+  width: 100%;
+  max-width: 420px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
+  font-family: 'Segoe UI', sans-serif;
+}
+
+.cp-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.cp-modal-title {
+  margin: 0;
+  font-size: 18px;
+  font-weight: 700;
+  color: #111827;
+}
+
+.cp-close-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #6b7280;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+
+.cp-close-btn:hover {
+  color: #111827;
+}
+
+.cp-form {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.cp-form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.cp-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.cp-input-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.cp-input {
+  width: 100%;
+  padding: 9px 36px 9px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 13px;
+  font-family: 'Segoe UI', sans-serif;
+  color: #111827;
+  background: white;
+  outline: none;
+  transition: border 0.15s;
+  box-sizing: border-box;
+}
+
+.cp-input:focus {
+  border-color: #16a34a;
+  box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.10);
+}
+
+.cp-eye-btn {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: #9ca3af;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  transition: color 0.15s;
+}
+
+.cp-eye-btn:hover {
+  color: #16a34a;
+}
+
+.cp-error {
+  color: #dc2626;
+  font-size: 13px;
+  margin: 0;
+}
+
+.cp-success {
+  color: #16a34a;
+  font-size: 13px;
+  margin: 0;
+}
+
+.cp-modal-footer {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 4px;
+}
+
+/* Dark */
+body.dark .cp-modal {
+  background: #1e293b;
+  border: 1px solid #334155;
+}
+
+body.dark .cp-modal-title {
+  color: #f1f5f9;
+}
+
+body.dark .cp-close-btn {
+  color: #64748b;
+}
+
+body.dark .cp-close-btn:hover {
+  color: #f1f5f9;
+}
+
+body.dark .cp-label {
+  color: #94a3b8;
+}
+
+body.dark .cp-input {
+  background: #0f172a;
+  border-color: #334155;
+  color: #f1f5f9;
+}
+
+body.dark .cp-input:focus {
+  border-color: #16a34a;
+}
+
+body.dark .cp-eye-btn {
+  color: #64748b;
+}
+
+body.dark .cp-eye-btn:hover {
+  color: #4ade80;
 }
