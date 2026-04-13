@@ -94,15 +94,40 @@ export default function OpportunityDetail() {
           <button className="sl-btn-save" onClick={handleDelete} style={{ background: "#ef4444", border: "none" }}>
             <Trash2 size={14} /> Eliminar
           </button>
-          {opp.stage !== "cerrado_ganado" && (
-            <button 
-              className="sl-btn-save" 
-              onClick={handleConvert} 
-              style={{ background: hasApprovedQuote ? "#8b5cf6" : "#9ca3af", cursor: hasApprovedQuote ? "pointer" : "not-allowed" }}
-              title={hasApprovedQuote ? "" : "Requiere cotización aprobada"}
-            >
-              Convertir a Venta
-            </button>
+          {opp.convertedToSale ? (
+            <div style={{ display: "flex", alignItems: "center", gap: "8px" }}>
+              <span style={{
+                background: "#16a34a22",
+                color: "#16a34a",
+                border: "1px solid #16a34a55",
+                borderRadius: "6px",
+                padding: "6px 14px",
+                fontSize: "13px",
+                fontWeight: 600,
+              }}>
+                ✓ Venta ya generada
+              </span>
+              {opp.saleId && (
+                <Link
+                  to={`/sales/${opp.saleId}`}
+                  className="sl-btn-secondary"
+                  style={{ fontSize: "13px" }}
+                >
+                  Ver Venta →
+                </Link>
+              )}
+            </div>
+          ) : (
+            opp.stage !== "cerrado_ganado" && (
+              <button
+                className="sl-btn-save"
+                onClick={handleConvert}
+                style={{ background: hasApprovedQuote ? "#8b5cf6" : "#9ca3af", cursor: hasApprovedQuote ? "pointer" : "not-allowed" }}
+                title={hasApprovedQuote ? "" : "Requiere cotización aprobada"}
+              >
+                Convertir a Venta
+              </button>
+            )
           )}
         </div>
       </div>
@@ -117,6 +142,27 @@ export default function OpportunityDetail() {
             <InfoItem label="Valor Estimado" value={(opp.estimatedValue || 0).toLocaleString("es-MX", { style: "currency", currency: "MXN" })} />
             <InfoItem label="Creación" value={new Date(opp.createdAt).toLocaleDateString("es-MX")} />
           </div>
+          {opp.convertedToSale && (
+            <div style={{
+              marginTop: 16,
+              padding: "12px 16px",
+              background: "#16a34a18",
+              border: "1px solid #16a34a44",
+              borderRadius: "8px",
+              color: "#16a34a",
+              fontSize: "14px",
+              display: "flex",
+              alignItems: "center",
+              gap: "8px"
+            }}>
+              ✓ Esta oportunidad ya fue <strong style={{ marginLeft: 4 }}>convertida a venta</strong>. No se puede convertir nuevamente.
+              {opp.saleId && (
+                <Link to={`/sales/${opp.saleId}`} style={{ color: "#16a34a", marginLeft: "auto", fontWeight: 600 }}>
+                  Ver Venta →
+                </Link>
+              )}
+            </div>
+          )}
 
           <div style={{ marginTop: 24 }}>
             <label className="sl-label">Cambiar Etapa Manualmente</label>
@@ -161,16 +207,16 @@ export default function OpportunityDetail() {
               Asegúrate de tener cotizaciones aprobadas antes de proceder.
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
-              <button 
-                type="button" 
-                className="sl-btn-secondary" 
+              <button
+                type="button"
+                className="sl-btn-secondary"
                 onClick={() => setShowConvertModal(false)}
               >
                 Cancelar
               </button>
-              <button 
-                type="button" 
-                className="sl-btn-save" 
+              <button
+                type="button"
+                className="sl-btn-save"
                 style={{ background: "#8b5cf6" }}
                 onClick={executeConvert}
               >
@@ -189,16 +235,16 @@ export default function OpportunityDetail() {
               ¿Estás seguro de eliminar esta oportunidad? Esta acción no se puede deshacer.
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end", gap: "12px" }}>
-              <button 
-                type="button" 
-                className="sl-btn-secondary" 
+              <button
+                type="button"
+                className="sl-btn-secondary"
                 onClick={() => setShowDeleteModal(false)}
               >
                 Cancelar
               </button>
-              <button 
-                type="button" 
-                className="sl-btn-save" 
+              <button
+                type="button"
+                className="sl-btn-save"
                 style={{ background: "#ef4444", border: "none" }}
                 onClick={executeDelete}
               >
@@ -217,9 +263,9 @@ export default function OpportunityDetail() {
               {showErrorModal}
             </p>
             <div style={{ display: "flex", justifyContent: "flex-end" }}>
-              <button 
-                type="button" 
-                className="sl-btn-secondary" 
+              <button
+                type="button"
+                className="sl-btn-secondary"
                 onClick={() => setShowErrorModal("")}
               >
                 Aceptar

@@ -30,7 +30,7 @@ const defaultForm = {
   activacionesActivo: false,
   activaciones: [],
   desarrolloInformativo: { activo: false, fecha: "", formato: "" },
-  posteoRedesSociales:   { activo: false, cantidad: 0, fechas: [""] },
+  posteoRedesSociales: { activo: false, cantidad: 0, fechas: [""] },
   intercambio: {
     activo: false,
     porcentajeEfectivo: 0,
@@ -65,12 +65,12 @@ function mapInitialQuoteToForm(quote) {
       : quote.activacion ? [quote.activacion] : [];
 
   const activaciones = activacionesRaw.map((a) => ({
-    cantidad:        a?.cantidad ?? 0,
+    cantidad: a?.cantidad ?? 0,
     costoActivacion: a?.costoActivacion ?? a?.costo ?? 0,
-    costoImpresion:  a?.costoImpresion ?? 0,
-    cantidadTipo:    a?.cantidadTipo ?? 0,
-    total:           a?.total ?? ((a?.cantidad ?? 0) * (a?.costoActivacion ?? 0)),
-    tipo:            a?.tipo || "",
+    costoImpresion: a?.costoImpresion ?? 0,
+    cantidadTipo: a?.cantidadTipo ?? 0,
+    total: a?.total ?? ((a?.cantidad ?? 0) * (a?.costoActivacion ?? 0)),
+    tipo: a?.tipo || "",
     fechas: (a?.fechas || [])
       .map(formatDateInput)
       .concat(Array(Math.max(0, 2 - (a?.fechas || []).length)).fill(""))
@@ -83,8 +83,8 @@ function mapInitialQuoteToForm(quote) {
     opportunityId: quote.opportunityId?._id || quote.opportunityId || "",
     tarifas: (quote.tarifas || []).map((t) => ({
       periodicidad: t.periodicidad || "",
-      formato:      t.formato || "",
-      costo:        t.costo ?? 0,
+      formato: t.formato || "",
+      costo: t.costo ?? 0,
       fechas: (t.fechas || [])
         .map(formatDateInput)
         .concat(Array(Math.max(0, 5 - (t.fechas || []).length)).fill(""))
@@ -95,12 +95,12 @@ function mapInitialQuoteToForm(quote) {
     activacionesActivo: activaciones.length > 0,
     activaciones,
     desarrolloInformativo: {
-      activo:  quote.desarrolloInformativo?.activo ?? false,
-      fecha:   formatDateInput(quote.desarrolloInformativo?.fecha),
+      activo: quote.desarrolloInformativo?.activo ?? false,
+      fecha: formatDateInput(quote.desarrolloInformativo?.fecha),
       formato: quote.desarrolloInformativo?.formato || "",
     },
     posteoRedesSociales: {
-      activo:   quote.posteoRedesSociales?.activo ?? false,
+      activo: quote.posteoRedesSociales?.activo ?? false,
       cantidad: quote.posteoRedesSociales?.cantidad ?? 0,
       fechas: (quote.posteoRedesSociales?.fechas || [])
         .map(formatDateInput)
@@ -108,16 +108,16 @@ function mapInitialQuoteToForm(quote) {
         .slice(0, 5),
     },
     intercambio: {
-      activo:             quote.intercambio?.activo ?? false,
+      activo: quote.intercambio?.activo ?? false,
       porcentajeEfectivo: quote.intercambio?.porcentajeEfectivo ?? 0,
-      porcentajeEspecie:  quote.intercambio?.porcentajeEspecie ?? 0,
-      ofrecemos:          quote.intercambio?.ofrecemos || "",
-      nosOfrecen:         quote.intercambio?.nosOfrecen || "",
+      porcentajeEspecie: quote.intercambio?.porcentajeEspecie ?? 0,
+      ofrecemos: quote.intercambio?.ofrecemos || "",
+      nosOfrecen: quote.intercambio?.nosOfrecen || "",
     },
     cortesias: {
-      activo:   quote.cortesias?.activo ?? false,
+      activo: quote.cortesias?.activo ?? false,
       cantidad: quote.cortesias?.cantidad ?? 0,
-      formato:  quote.cortesias?.formato || "",
+      formato: quote.cortesias?.formato || "",
       fechas: (quote.cortesias?.fechas || [])
         .map(formatDateInput)
         .concat(Array(Math.max(0, (quote.cortesias?.cantidad ?? 0) - (quote.cortesias?.fechas || []).length)).fill(""))
@@ -125,28 +125,35 @@ function mapInitialQuoteToForm(quote) {
     },
     ajustesPrecios: {
       porcentajeAjuste: quote.ajustesPrecios?.porcentajeAjuste ?? 0,
-      valorAjuste:      quote.ajustesPrecios?.valorAjuste ?? 0,
-      tipoAccion:       quote.ajustesPrecios?.tipoAccion || "Ninguno",
+      valorAjuste: quote.ajustesPrecios?.valorAjuste ?? 0,
+      tipoAccion: quote.ajustesPrecios?.tipoAccion || "Ninguno",
     },
-    formaPago:         quote.formaPago || "",
-    metodoPago:        quote.metodoPago || "",
-    usoCFDI:           quote.usoCFDI || "",
+    formaPago: quote.formaPago || "",
+    metodoPago: quote.metodoPago || "",
+    usoCFDI: quote.usoCFDI || "",
     facturacionEstado: quote.facturacionEstado || "por_facturar",
-    total:             quote.total ?? 0,
-    status:            quote.status || "pendiente",
+    total: quote.total ?? 0,
+    status: quote.status || "pendiente",
   };
 }
 
 export default function QuoteForm({ mode = "create", initialQuote = null, onSubmit }) {
   const { user } = useAuth();
-  const [clients, setClients]     = useState([]);
+  const [clients, setClients] = useState([]);
   const [opportunities, setOpportunities] = useState([]);
-  const [form, setForm]           = useState(() => initialQuote ? mapInitialQuoteToForm(initialQuote) : defaultForm);
+  const [form, setForm] = useState(() => initialQuote ? mapInitialQuoteToForm(initialQuote) : defaultForm);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     getClients().then((res) => setClients(res.data)).catch(console.error);
-    getOpportunities().then((res) => setOpportunities(res.data)).catch(console.error);
+    getOpportunities()
+      .then((res) => {
+        const abiertas = res.data.filter(
+          (opp) => opp.stage !== "cerrado_ganado" && opp.stage !== "cerrado_perdido"
+        );
+        setOpportunities(abiertas);
+      })
+      .catch(console.error);
   }, []);
 
   useEffect(() => {
@@ -228,7 +235,7 @@ export default function QuoteForm({ mode = "create", initialQuote = null, onSubm
     const aj = form.ajustesPrecios;
     let base = subtotalTarifas;
     if (aj.tipoAccion !== "Ninguno") {
-      const val  = Number(aj.valorAjuste) || 0;
+      const val = Number(aj.valorAjuste) || 0;
       const porc = Number(aj.porcentajeAjuste) || 0;
       if (val > 0) {
         base = aj.tipoAccion === "Aumentar" ? base + val : base - val;
@@ -250,19 +257,19 @@ export default function QuoteForm({ mode = "create", initialQuote = null, onSubm
     opportunityId: form.opportunityId || null,
     tarifas: form.tarifas.map((t) => ({
       ...t,
-      costo:      Number(t.costo) || 0,
+      costo: Number(t.costo) || 0,
       totalLinea: Number(t.totalLinea) || 0,
-      fechas:     (t.fechas || []).filter(Boolean),
+      fechas: (t.fechas || []).filter(Boolean),
     })),
     activaciones: form.activacionesActivo
       ? (form.activaciones || []).map((a) => ({
-          ...a,
-          cantidad:        Number(a.cantidad) || 0,
-          costoActivacion: Number(a.costoActivacion) || 0,
-          costoImpresion:  Number(a.costoImpresion) || 0,
-          total:           Number(a.total) || 0,
-          fechas:          (a.fechas || []).filter(Boolean),
-        }))
+        ...a,
+        cantidad: Number(a.cantidad) || 0,
+        costoActivacion: Number(a.costoActivacion) || 0,
+        costoImpresion: Number(a.costoImpresion) || 0,
+        total: Number(a.total) || 0,
+        fechas: (a.fechas || []).filter(Boolean),
+      }))
       : [],
     desarrolloInformativo: {
       ...form.desarrolloInformativo,
@@ -271,28 +278,28 @@ export default function QuoteForm({ mode = "create", initialQuote = null, onSubm
     posteoRedesSociales: {
       ...form.posteoRedesSociales,
       cantidad: Number(form.posteoRedesSociales.cantidad) || 0,
-      fechas:   (form.posteoRedesSociales.fechas || []).filter(Boolean),
+      fechas: (form.posteoRedesSociales.fechas || []).filter(Boolean),
     },
     intercambio: {
       ...form.intercambio,
       porcentajeEfectivo: Number(form.intercambio.porcentajeEfectivo) || 0,
-      porcentajeEspecie:  Number(form.intercambio.porcentajeEspecie) || 0,
+      porcentajeEspecie: Number(form.intercambio.porcentajeEspecie) || 0,
     },
     cortesias: {
       ...form.cortesias,
       cantidad: Number(form.cortesias.cantidad) || 0,
-      fechas:   (form.cortesias.fechas || []).filter(Boolean),
+      fechas: (form.cortesias.fechas || []).filter(Boolean),
     },
     ajustesPrecios: {
       ...form.ajustesPrecios,
       porcentajeAjuste: Number(form.ajustesPrecios.porcentajeAjuste) || 0,
-      valorAjuste:      Number(form.ajustesPrecios.valorAjuste) || 0,
+      valorAjuste: Number(form.ajustesPrecios.valorAjuste) || 0,
     },
-    formaPago:         form.formaPago,
-    metodoPago:        form.metodoPago,
-    usoCFDI:           form.usoCFDI,
+    formaPago: form.formaPago,
+    metodoPago: form.metodoPago,
+    usoCFDI: form.usoCFDI,
     facturacionEstado: form.facturacionEstado || "por_facturar",
-    total:             Number(form.total) || 0,
+    total: Number(form.total) || 0,
   });
 
   const handleSubmit = async (e) => {
@@ -323,11 +330,11 @@ export default function QuoteForm({ mode = "create", initialQuote = null, onSubm
           addTarifa={addTarifa}
           removeTarifa={removeTarifa}
         />
-        <QuoteActivacionSection          form={form} setForm={setForm} />
+        <QuoteActivacionSection form={form} setForm={setForm} />
         <QuoteDesarrolloInformativoSection form={form} setForm={setForm} />
-        <QuotePosteoRedesSection         form={form} setForm={setForm} />
-        <QuoteIntercambioSection         form={form} setForm={setForm} />
-        <QuoteCortesiasSection           form={form} setForm={setForm} />
+        <QuotePosteoRedesSection form={form} setForm={setForm} />
+        <QuoteIntercambioSection form={form} setForm={setForm} />
+        <QuoteCortesiasSection form={form} setForm={setForm} />
         <QuoteEstadoAprobacionSection
           form={form}
           setForm={setForm}

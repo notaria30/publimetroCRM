@@ -1,4 +1,5 @@
 import "./quotes.css";
+import DateInput from "../../components/DateInput";
 
 const FORMATOS_CORTESIA = [
   "1/4 plana",
@@ -128,12 +129,10 @@ export default function QuoteCortesiasSection({ form, setForm }) {
                 {form.cortesias.fechas.map((fecha, i) => (
                   <div key={i}>
                     <label className="qt-input-label">Fecha {i + 1}</label>
-                    <input
-                      className="qt-input"
-                      type="date"
+                    <DateInput
                       value={fecha || ""}
-                      min={new Date().toISOString().split("T")[0]}
-                      onChange={(e) => handleFechaChange(i, e.target.value)}
+                      minDate={new Date().toISOString().split("T")[0]}
+                      onChange={(val) => handleFechaChange(i, val)}
                     />
                   </div>
                 ))}

@@ -1,4 +1,5 @@
 import { Trash2, Plus } from "lucide-react";
+import DateInput from "../../components/DateInput";
 import "./quotes.css";
 
 const FORMATOS = [
@@ -164,12 +165,10 @@ export default function QuoteTarifasSection({
                   {tarifa.fechas.map((f, iFecha) => (
                     <div key={iFecha}>
                       <label className="qt-input-label">Fecha {iFecha + 1}</label>
-                      <input
-                        className="qt-input"
-                        type="date"
+                      <DateInput
                         value={f || ""}
-                        min={new Date().toISOString().split("T")[0]}
-                        onChange={(e) => handleTarifaFecha(index, iFecha, e.target.value)}
+                        minDate={new Date().toISOString().split("T")[0]}
+                        onChange={(val) => handleTarifaFecha(index, iFecha, val)}
                       />
                     </div>
                   ))}

@@ -20,7 +20,7 @@ router.get("/", auth, async (req, res) => {
       .populate("client", "nombreComercial status")
       .populate("vendedorId", "name email")
       .populate("quotes", "folio total status version");
-    
+
     res.json(opportunities);
   } catch (error) {
     console.error("Error obteniendo oportunidades:", error);
@@ -53,7 +53,7 @@ router.get("/:id", auth, async (req, res) => {
 router.post("/", auth, async (req, res) => {
   try {
     const { title, clientId, assignedToId, estimatedValue, expectedCloseDate } = req.body;
-    
+
     const assignedId = req.user.role === "OWNER" && assignedToId ? assignedToId : req.user._id;
 
     const newOpp = await Opportunity.create({
@@ -77,7 +77,7 @@ router.patch("/:id/stage", auth, async (req, res) => {
   try {
     const { stage } = req.body;
     const opp = await Opportunity.findById(req.params.id);
-    
+
     if (!opp) return res.status(404).json({ message: "Oportunidad no encontrada" });
 
     if (req.user.role === "WORKER" && String(opp.vendedorId) !== String(req.user._id)) {
@@ -127,6 +127,13 @@ router.post("/:id/convert-to-sale", auth, async (req, res) => {
     const opp = await Opportunity.findById(req.params.id).populate("quotes");
     if (!opp) return res.status(404).json({ message: "Oportunidad no encontrada" });
 
+    if (opp.convertedToSale) {
+      return res.status(400).json({
+        message: "Esta oportunidad ya fue convertida a venta anteriormente.",
+        saleId: opp.saleId
+      });
+    }
+
     if (opp.stage === "cerrado_ganado") {
       return res.status(400).json({ message: "Esta oportunidad ya fue ganada" });
     }
@@ -159,10 +166,15 @@ router.post("/:id/convert-to-sale", auth, async (req, res) => {
       isClosed: false,
     });
 
+    // Marcar oportunidad como convertida (bloquear futuras conversiones)
+    opp.convertedToSale = true;
+    opp.saleId = newSale._id;
+    await opp.save();
+
     // Actualizar status del cliente
     const client = await Client.findById(opp.client);
-    if(client) {
-      client.status = "activo"; // Se vuelve cliente activo
+    if (client) {
+      client.status = "activo";
       await client.save();
     }
 

@@ -1,4 +1,5 @@
 import "./quotes.css";
+import DateInput from "../../components/DateInput";
 
 export default function QuotePosteoRedesSection({ form, setForm }) {
   const isActivo = !!form.posteoRedesSociales.activo;
@@ -70,12 +71,10 @@ export default function QuotePosteoRedesSection({ form, setForm }) {
                 {form.posteoRedesSociales.fechas.map((fecha, i) => (
                   <div key={i}>
                     <label className="qt-input-label">Fecha {i + 1}</label>
-                    <input
-                      className="qt-input"
-                      type="date"
+                    <DateInput
                       value={fecha || ""}
-                      min={new Date().toISOString().split("T")[0]}
-                      onChange={(e) => handleFechaChange(i, e.target.value)}
+                      minDate={new Date().toISOString().split("T")[0]}
+                      onChange={(val) => handleFechaChange(i, val)}
                     />
                   </div>
                 ))}

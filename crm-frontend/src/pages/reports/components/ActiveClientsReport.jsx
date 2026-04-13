@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { getActiveClientsReport } from "../../../services/reportService";
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import ReactApexChart from "react-apexcharts";
 import { Search } from "lucide-react";
 import "../reports.css";
 import "../../sales/sales.css";
@@ -8,7 +8,17 @@ import { exportToExcel } from "../../../utils/exportToExcel";
 
 const fmtMoney = (v) =>
   new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 2 }).format(v || 0);
-const ttStyle = { background: "#1e293b", border: "none", borderRadius: 8, color: "#f1f5f9", fontSize: 12 };
+function useApexTheme() {
+  const [dark, setDark] = useState(() => document.body.classList.contains("dark"));
+  useEffect(() => {
+    const obs = new MutationObserver(() =>
+      setDark(document.body.classList.contains("dark"))
+    );
+    obs.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
+  return dark;
+}
 
 export default function ActiveClientsReport() {
   const [loading, setLoading] = useState(false);
@@ -17,6 +27,7 @@ export default function ActiveClientsReport() {
   const [resumen, setResumen] = useState(null);
   const [search, setSearch] = useState("");
   const [hasSearched, setHasSearched] = useState(false);
+  const dark = useApexTheme();
 
   const handleSearch = async () => {
     setLoading(true); setHasSearched(true);
@@ -46,7 +57,123 @@ export default function ActiveClientsReport() {
   const totalVentasActivos = data.filter((c) => c.estado === "Activo").reduce((s, c) => s + c.totalVentas, 0);
   const pctActivos = resumen?.totalClientes > 0 ? (resumen.activos / resumen.totalClientes) * 100 : 0;
   const promedio = resumen?.activos > 0 ? totalVentasActivos / resumen.activos : 0;
+  const textColor = dark ? "#94a3b8" : "#6b7280";
+  const gridColor = dark ? "#1e293b" : "#f1f5f9";
 
+  // ── Gráfica 1: Donut activos vs inactivos ──
+  const donutOptions = {
+    chart: {
+      type: "donut",
+      height: 260,
+      toolbar: { show: false },
+      fontFamily: "inherit",
+      background: "transparent",
+      animations: { enabled: true, easing: "easeinout", speed: 600 },
+    },
+    theme: { mode: dark ? "dark" : "light" },
+    labels: pieData.map((d) => d.name),
+    colors: pieData.map((d) => d.color),
+    legend: {
+      position: "bottom",
+      fontSize: "12px",
+      labels: { colors: textColor },
+      markers: { radius: 4, width: 10, height: 10 },
+    },
+    dataLabels: {
+      enabled: true,
+      style: { fontSize: "12px", fontFamily: "inherit", fontWeight: 500 },
+      formatter: (val) => `${Math.round(val)}%`,
+      dropShadow: { enabled: false },
+    },
+    plotOptions: {
+      pie: {
+        donut: {
+          size: "62%",
+          labels: {
+            show: true,
+            total: {
+              show: true,
+              label: "Total",
+              fontSize: "13px",
+              fontFamily: "inherit",
+              color: textColor,
+              formatter: () => String(resumen?.totalClientes || 0),
+            },
+            value: {
+              fontSize: "22px",
+              fontFamily: "inherit",
+              fontWeight: 500,
+              color: dark ? "#f1f5f9" : "#111827",
+            },
+          },
+        },
+      },
+    },
+    stroke: { width: 2, colors: [dark ? "#0f172a" : "#ffffff"] },
+    tooltip: {
+      theme: dark ? "dark" : "light",
+      y: { formatter: (v) => `${v} clientes` },
+    },
+  };
+
+  const donutSeries = pieData.map((d) => d.value);
+
+  // ── Gráfica 2: Barras horizontales top 10 clientes ──
+  const barTopOptions = {
+    chart: {
+      type: "bar",
+      height: 280,
+      toolbar: { show: false },
+      fontFamily: "inherit",
+      background: "transparent",
+      animations: { enabled: true, easing: "easeinout", speed: 600 },
+    },
+    theme: { mode: dark ? "dark" : "light" },
+    plotOptions: {
+      bar: {
+        horizontal: true,
+        borderRadius: 5,
+        borderRadiusApplication: "end",
+        barHeight: "55%",
+        distributed: true,   // cada barra toma su color individual
+      },
+    },
+    colors: topClients.map((c) => c.estado === "Activo" ? "#16a34a" : "#ef4444"),
+    dataLabels: { enabled: false },
+    legend: { show: false },
+    grid: {
+      borderColor: gridColor,
+      strokeDashArray: 4,
+      xaxis: { lines: { show: false } },
+    },
+    xaxis: {
+      categories: topClients.map((c) => c.nombre),
+      labels: {
+        style: { colors: textColor, fontSize: "10px" },
+        formatter: (v) => `$${(v / 1000).toFixed(0)}k`,
+      },
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+    },
+    yaxis: {
+      labels: { style: { colors: textColor, fontSize: "10px" } },
+    },
+    tooltip: {
+      theme: dark ? "dark" : "light",
+      y: {
+        formatter: (v) =>
+          new Intl.NumberFormat("es-MX", {
+            style: "currency", currency: "MXN",
+            minimumFractionDigits: 2,
+          }).format(v),
+        title: { formatter: () => "Ventas totales:" },
+      },
+    },
+  };
+
+  const barTopSeries = [
+    { name: "Ventas totales", data: topClients.map((c) => c.ventas) },
+  ];
   const handleExport = () => {
     exportToExcel(filtered.map((row) => ({
       "Cliente": row.cliente,
@@ -106,16 +233,13 @@ export default function ActiveClientsReport() {
                 <p className="rp-chart-subtitle">Activos vs Inactivos en últimos {resumen.periodoDias} días</p>
               </div>
               <div className="rp-chart-body">
-                <ResponsiveContainer width="100%" height={260}>
-                  <PieChart>
-                    <Pie data={pieData} cx="50%" cy="50%" outerRadius={90} dataKey="value"
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`} labelLine>
-                      {pieData.map((e, i) => <Cell key={i} fill={e.color} />)}
-                    </Pie>
-                    <Tooltip contentStyle={ttStyle} formatter={(v) => [`${v} clientes`, "Cantidad"]} />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
+                <ReactApexChart
+                  key={`donut-clients-${dark}`}
+                  type="donut"
+                  options={donutOptions}
+                  series={donutSeries}
+                  height={260}
+                />
               </div>
               <p className="rp-chart-foot">{resumen.activos} activos generaron {fmtMoney(totalVentasActivos)} en ventas</p>
             </div>
@@ -126,17 +250,13 @@ export default function ActiveClientsReport() {
                 <p className="rp-chart-subtitle">Mayor facturación en últimos {resumen.periodoDias} días</p>
               </div>
               <div className="rp-chart-body">
-                <ResponsiveContainer width="100%" height={280}>
-                  <BarChart data={topClients} layout="vertical" margin={{ top: 5, right: 20, left: 80, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis type="number" tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 10 }} />
-                    <YAxis type="category" dataKey="nombre" width={80} tick={{ fontSize: 10 }} />
-                    <Tooltip contentStyle={ttStyle} formatter={(v) => [fmtMoney(v), "Ventas totales"]} labelFormatter={(l) => `Cliente: ${l}`} />
-                    <Bar dataKey="ventas" name="Ventas totales" radius={[0, 4, 4, 0]}>
-                      {topClients.map((e, i) => <Cell key={i} fill={e.estado === "Activo" ? "#16a34a" : "#ef4444"} />)}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
+                <ReactApexChart
+                  key={`bar-top-${dark}`}
+                  type="bar"
+                  options={barTopOptions}
+                  series={barTopSeries}
+                  height={280}
+                />
               </div>
               {topClients[0] && <p className="rp-chart-foot">🏆 Cliente líder: <strong>{topClients[0].nombre}</strong> con {fmtMoney(topClients[0].ventas)}</p>}
             </div>

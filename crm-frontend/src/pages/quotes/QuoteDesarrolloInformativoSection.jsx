@@ -1,4 +1,5 @@
 import "./quotes.css";
+import DateInput from "../../components/DateInput";
 
 const FORMATOS = [
   "1/4 plana",
@@ -51,12 +52,10 @@ export default function QuoteDesarrolloInformativoSection({ form, setForm }) {
             {/* Fecha */}
             <div>
               <label className="qt-input-label">Fecha</label>
-              <input
-                className="qt-input"
-                type="date"
+              <DateInput
                 value={form.desarrolloInformativo.fecha || ""}
-                min={new Date().toISOString().split("T")[0]}
-                onChange={(e) => update({ fecha: e.target.value })}
+                minDate={new Date().toISOString().split("T")[0]}
+                onChange={(val) => update({ fecha: val })}
               />
             </div>
 

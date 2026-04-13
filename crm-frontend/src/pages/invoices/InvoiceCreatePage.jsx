@@ -7,6 +7,7 @@ import { getSaleById } from "../../services/salesService";
 import { ArrowLeft } from "lucide-react";
 import "./invoices.css";
 import "../sales/sales.css";
+import DateInput from "../../components/DateInput";
 
 export default function InvoiceCreatePage() {
   const navigate = useNavigate();
@@ -237,13 +238,9 @@ export default function InvoiceCreatePage() {
               </div>
               <div className="sl-form-group">
                 <label className="sl-label">Fecha factura *</label>
-                <input
-                  className="sl-input"
-                  type="date"
-                  name="fechaFactura"
+                <DateInput
                   value={form.fechaFactura?.slice(0, 10) || today}
-                  onChange={(e) => setForm((prev) => ({ ...prev, fechaFactura: new Date(e.target.value).toISOString() }))}
-                  required
+                  onChange={(val) => setForm((prev) => ({ ...prev, fechaFactura: new Date(val).toISOString() }))}
                 />
               </div>
               <div className="sl-form-group">
@@ -318,13 +315,11 @@ export default function InvoiceCreatePage() {
               <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr auto", gap: 12, marginBottom: 12, alignItems: "end" }}>
                 <div className="sl-form-group">
                   <label className="sl-label">Fecha</label>
-                  <input
-                    className="sl-input"
-                    type="date"
+                  <DateInput
                     value={pago.fecha}
-                    onChange={(e) => {
+                    onChange={(val) => {
                       const pagos = [...form.pagos];
-                      pagos[i] = { ...pagos[i], fecha: e.target.value };
+                      pagos[i] = { ...pagos[i], fecha: val };
                       setForm((prev) => ({ ...prev, pagos }));
                     }}
                   />

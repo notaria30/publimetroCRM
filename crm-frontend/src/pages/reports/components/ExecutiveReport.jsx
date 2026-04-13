@@ -1,19 +1,26 @@
 import { useEffect, useState } from "react";
 import { getExecutiveReport, getReportClients, getReportExecutives, getSalesGoals } from "../../../services/reportService";
-import {
-  BarChart, Bar, LineChart, Line,
-  XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  ResponsiveContainer,
-} from "recharts";
+import ReactApexChart from "react-apexcharts";
 import "../reports.css";
 import "../../sales/sales.css";
 import { exportToExcel } from "../../../utils/exportToExcel";
+import DateInput from "../../../components/DateInput";
 
 const fmtMoney = (v) =>
   new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v || 0);
 const fmtPct = (v) => `${(v || 0).toFixed(2)}%`;
 const cumplColor = (p) => (p >= 100 ? "sl-badge--success" : p >= 80 ? "sl-badge--warning" : "sl-badge--error");
-const ttStyle = { background: "#1e293b", border: "none", borderRadius: 8, color: "#f1f5f9", fontSize: 12 };
+function useApexTheme() {
+  const [dark, setDark] = useState(() => document.body.classList.contains("dark"));
+  useEffect(() => {
+    const obs = new MutationObserver(() =>
+      setDark(document.body.classList.contains("dark"))
+    );
+    obs.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
+  return dark;
+}
 
 export default function ExecutiveReport() {
   const [loading, setLoading] = useState(false);
@@ -22,6 +29,7 @@ export default function ExecutiveReport() {
   const [clients, setClients] = useState([]);
   const [executives, setExecutives] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const dark = useApexTheme();
   const [filters, setFilters] = useState({
     startDate: new Date(new Date().getFullYear(), 0, 1).toISOString(),
     endDate: new Date().toISOString(),
@@ -95,6 +103,94 @@ export default function ExecutiveReport() {
   const totalMeta = data.reduce((s, d) => s + d.meta, 0);
   const promCumpl = data.length ? data.reduce((s, d) => s + d.pctDec, 0) / data.length : 0;
   const execActivos = new Set(data.map((d) => d.ejecutivo)).size;
+  const textColor = dark ? "#94a3b8" : "#6b7280";
+  const gridColor = dark ? "#1e293b" : "#f1f5f9";
+
+  const baseOpts = {
+    chart: {
+      toolbar: { show: false }, fontFamily: "inherit", background: "transparent",
+      animations: { enabled: true, easing: "easeinout", speed: 600 }
+    },
+    theme: { mode: dark ? "dark" : "light" },
+    grid: { borderColor: gridColor, strokeDashArray: 4, xaxis: { lines: { show: false } } },
+    legend: {
+      position: "bottom", fontSize: "12px", labels: { colors: textColor },
+      markers: { radius: 4, width: 10, height: 10 }, itemMargin: { horizontal: 12 }
+    },
+    tooltip: { theme: dark ? "dark" : "light" },
+  };
+
+  // Gráfica 1: Barras horizontales por ejecutivo
+  const barHorizOptions = {
+    ...baseOpts,
+    chart: { ...baseOpts.chart, type: "bar", height: 300 },
+    plotOptions: { bar: { horizontal: true, borderRadius: 5, borderRadiusApplication: "end", barHeight: "55%" } },
+    colors: ["#16a34a"],
+    dataLabels: { enabled: false },
+    xaxis: {
+      categories: execChartData.map((d) => d.nombre),
+      labels: {
+        style: { colors: textColor, fontSize: "11px" },
+        formatter: (v) => `$${(v / 1000).toFixed(0)}k`
+      },
+      axisBorder: { show: false }, axisTicks: { show: false },
+    },
+    yaxis: { labels: { style: { colors: textColor, fontSize: "11px" } } },
+    tooltip: {
+      ...baseOpts.tooltip,
+      y: {
+        formatter: (v) => new Intl.NumberFormat("es-MX", {
+          style: "currency", currency: "MXN",
+          minimumFractionDigits: 0, maximumFractionDigits: 0
+        }).format(v)
+      }
+    },
+  };
+
+  const barHorizSeries = [
+    { name: "Ventas totales", data: execChartData.map((d) => d.ventas) },
+  ];
+
+  // Gráfica 2: Evolución mensual del ejecutivo seleccionado
+  const lineEvolOptions = {
+    ...baseOpts,
+    chart: { ...baseOpts.chart, type: "line", height: 300 },
+    stroke: { curve: "smooth", width: [2.5, 2], dashArray: [0, 6] },
+    colors: ["#16a34a", "#f59e0b"],
+    markers: {
+      size: [5, 4],
+      colors: ["#16a34a", "#f59e0b"],
+      strokeColors: dark ? "#1e293b" : "#ffffff",
+      strokeWidth: 2,
+      hover: { size: 7 },
+    },
+    dataLabels: { enabled: false },
+    xaxis: {
+      categories: evolutionData.map((d) => d.mes),
+      labels: { style: { colors: textColor, fontSize: "10px" } },
+      axisBorder: { show: false }, axisTicks: { show: false },
+    },
+    yaxis: {
+      labels: {
+        style: { colors: textColor, fontSize: "11px" },
+        formatter: (v) => `$${(v / 1000).toFixed(0)}k`
+      },
+    },
+    tooltip: {
+      ...baseOpts.tooltip,
+      y: {
+        formatter: (v) => new Intl.NumberFormat("es-MX", {
+          style: "currency", currency: "MXN",
+          minimumFractionDigits: 0, maximumFractionDigits: 0
+        }).format(v)
+      }
+    },
+  };
+
+  const lineEvolSeries = [
+    { name: "Ventas reales", data: evolutionData.map((d) => d.ventas) },
+    { name: "Meta", data: evolutionData.map((d) => d.meta) },
+  ];
   const handleExport = () => {
     exportToExcel(data.map((row) => ({
       "Mes": row.fecha,
@@ -114,13 +210,17 @@ export default function ExecutiveReport() {
         <div className="rp-filter-row">
           <div className="rp-filter-group rp-filter-group--sm">
             <label className="sl-label">Fecha inicio</label>
-            <input className="sl-input" type="date" value={filters.startDate.slice(0, 10)}
-              onChange={(e) => setFilters({ ...filters, startDate: new Date(e.target.value).toISOString() })} />
+            <DateInput
+              value={filters.startDate.slice(0, 10)}
+              onChange={(val) => setFilters({ ...filters, startDate: new Date(val).toISOString() })}
+            />
           </div>
           <div className="rp-filter-group rp-filter-group--sm">
             <label className="sl-label">Fecha fin</label>
-            <input className="sl-input" type="date" value={filters.endDate.slice(0, 10)}
-              onChange={(e) => setFilters({ ...filters, endDate: new Date(e.target.value).toISOString() })} />
+            <DateInput
+              value={filters.endDate.slice(0, 10)}
+              onChange={(val) => setFilters({ ...filters, endDate: new Date(val).toISOString() })}
+            />
           </div>
           <div className="rp-filter-group">
             <label className="sl-label">Cliente</label>
@@ -183,16 +283,13 @@ export default function ExecutiveReport() {
                 <p className="rp-chart-subtitle">Total de ventas en el periodo seleccionado</p>
               </div>
               <div className="rp-chart-body">
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={execChartData} layout="vertical" margin={{ top: 10, right: 20, left: 80, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis type="number" tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
-                    <YAxis type="category" dataKey="nombre" width={80} tick={{ fontSize: 11 }} />
-                    <Tooltip contentStyle={ttStyle} formatter={(v) => fmtMoney(v)} />
-                    <Legend />
-                    <Bar dataKey="ventas" name="Ventas totales" fill="#16a34a" radius={[0, 4, 4, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <ReactApexChart
+                  key={`bar-exec-${dark}`}
+                  type="bar"
+                  options={barHorizOptions}
+                  series={barHorizSeries}
+                  height={300}
+                />
               </div>
             </div>
 
@@ -209,17 +306,13 @@ export default function ExecutiveReport() {
               </div>
               <div className="rp-chart-body">
                 {evolutionData.length > 0 ? (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={evolutionData} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                      <XAxis dataKey="mes" tick={{ fontSize: 10 }} />
-                      <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
-                      <Tooltip contentStyle={ttStyle} formatter={(v) => fmtMoney(v)} />
-                      <Legend />
-                      <Line type="monotone" dataKey="ventas" name="Ventas reales" stroke="#16a34a" strokeWidth={2} dot={{ r: 4, fill: "#16a34a" }} />
-                      <Line type="monotone" dataKey="meta" name="Meta" stroke="#f59e0b" strokeWidth={2} strokeDasharray="5 5" />
-                    </LineChart>
-                  </ResponsiveContainer>
+                  <ReactApexChart
+                    key={`line-evol-${dark}`}
+                    type="line"
+                    options={lineEvolOptions}
+                    series={lineEvolSeries}
+                    height={300}
+                  />
                 ) : (
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "center", height: 300 }}>
                     <p style={{ color: "#9ca3af", fontSize: 13, textAlign: "center" }}>

@@ -45,6 +45,15 @@ const opportunitySchema = new mongoose.Schema(
         ref: "Quote",
       },
     ],
+    convertedToSale: {
+      type: Boolean,
+      default: false,
+    },
+    saleId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Sale",
+      default: null,
+    },
   },
   { timestamps: true }
 );

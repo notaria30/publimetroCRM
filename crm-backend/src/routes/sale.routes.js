@@ -255,4 +255,68 @@ router.put("/:id/tasks/:taskId/complete", auth, async (req, res) => {
   }
 });
 
+// POST /api/sales/from-quote/:quoteId
+router.post("/from-quote/:quoteId", auth, async (req, res) => {
+  try {
+    const quote = await Quote.findById(req.params.quoteId);
+    if (!quote) return res.status(404).json({ message: "Cotización no encontrada" });
+
+    // Si la cotización ya tiene oportunidad, bloquear — debe usarse el flujo de oportunidad
+    if (quote.opportunityId) {
+      return res.status(400).json({
+        message: "Esta cotización pertenece a una oportunidad. Convierte desde la oportunidad.",
+      });
+    }
+
+    // Verificar que no exista ya una venta para esta cotización
+    const existingSale = await Sale.findOne({ quote: quote._id });
+    if (existingSale) {
+      return res.status(400).json({
+        message: "Ya existe una venta para esta cotización.",
+        saleId: existingSale._id,
+      });
+    }
+
+    // Permisos: WORKER solo puede convertir sus propias cotizaciones
+    if (
+      req.user.role === "WORKER" &&
+      String(quote.createdBy) !== String(req.user._id)
+    ) {
+      return res.status(403).json({ message: "No tienes permiso para convertir esta cotización." });
+    }
+
+    const counter = await Counter.findByIdAndUpdate(
+      "saleFolio",
+      { $inc: { seq: 1 } },
+      { new: true, upsert: true }
+    );
+    const folio = `V-${String(counter.seq).padStart(4, "0")}`;
+
+    const newSale = await Sale.create({
+      folio,
+      client: quote.client,
+      quote: quote._id,
+      opportunityId: null,
+      assignedTo: quote.createdBy,
+      executionStage: "validacion",
+      isClosed: false,
+    });
+
+    // Actualizar status del cliente
+    const client = await Client.findById(quote.client);
+    if (client) {
+      client.status = "activo";
+      await client.save();
+    }
+
+    res.status(201).json({
+      message: "Venta creada correctamente desde cotización.",
+      sale: newSale,
+    });
+  } catch (error) {
+    console.error("Error convirtiendo cotización a venta:", error);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
 module.exports = router;

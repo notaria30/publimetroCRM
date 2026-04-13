@@ -1,14 +1,25 @@
 import { useEffect, useState } from "react";
 import { getAdvertisingReport, getReportClients } from "../../../services/reportService";
-import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import ReactApexChart from "react-apexcharts";
 import "../reports.css";
 import "../../sales/sales.css";
 import { exportToExcel } from "../../../utils/exportToExcel";
+import DateInput from "../../../components/DateInput";
 
 const TIPO_LABELS = { pagada: "Pagada", intercambio: "Intercambio", cortesias: "Cortesías", desarrollo_informativo: "Desarrollo informativo" };
 const TIPO_COLORS = { pagada: "#16a34a", intercambio: "#f59e0b", cortesias: "#3b82f6", desarrollo_informativo: "#8b5cf6" };
 const TIPO_BADGE = { pagada: "sl-badge--success", intercambio: "sl-badge--warning", cortesias: "sl-badge--info", desarrollo_informativo: "sl-badge--purple" };
-const ttStyle = { background: "#1e293b", border: "none", borderRadius: 8, color: "#f1f5f9", fontSize: 12 };
+function useApexTheme() {
+  const [dark, setDark] = useState(() => document.body.classList.contains("dark"));
+  useEffect(() => {
+    const obs = new MutationObserver(() =>
+      setDark(document.body.classList.contains("dark"))
+    );
+    obs.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
+  return dark;
+}
 
 export default function AdvertisingReport() {
   const [loading, setLoading] = useState(false);
@@ -16,6 +27,7 @@ export default function AdvertisingReport() {
   const [data, setData] = useState([]);
   const [clients, setClients] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const dark = useApexTheme();
   const [filters, setFilters] = useState({
     startDate: new Date(new Date().getFullYear(), 0, 1).toISOString(),
     endDate: new Date().toISOString(),
@@ -41,7 +53,109 @@ export default function AdvertisingReport() {
   const total = data.length;
   const clienteCount = data.reduce((acc, d) => { acc[d.cliente] = (acc[d.cliente] || 0) + 1; return acc; }, {});
   const topCliente = Object.entries(clienteCount).sort((a, b) => b[1] - a[1])[0];
+  const textColor = dark ? "#94a3b8" : "#6b7280";
+  const gridColor = dark ? "#1e293b" : "#f1f5f9";
 
+  // ── Gráfica 1: Donut por tipo de publicidad ──
+  const donutOptions = {
+    chart: {
+      type: "donut",
+      height: 260,
+      toolbar: { show: false },
+      fontFamily: "inherit",
+      background: "transparent",
+      animations: { enabled: true, easing: "easeinout", speed: 600 },
+    },
+    theme: { mode: dark ? "dark" : "light" },
+    labels: pieData.map((d) => d.name),
+    colors: pieData.map((d) => TIPO_COLORS[d.tipo] || "#94a3b8"),
+    legend: { show: false },   // usamos tu leyenda custom de abajo
+    dataLabels: {
+      enabled: true,
+      style: { fontSize: "12px", fontFamily: "inherit", fontWeight: 500 },
+      formatter: (val) => `${Math.round(val)}%`,
+      dropShadow: { enabled: false },
+    },
+    plotOptions: {
+      pie: {
+        donut: {
+          size: "62%",
+          labels: {
+            show: true,
+            total: {
+              show: true,
+              label: "Total",
+              fontSize: "13px",
+              fontFamily: "inherit",
+              color: textColor,
+              formatter: () => String(total),
+            },
+            value: {
+              fontSize: "22px",
+              fontFamily: "inherit",
+              fontWeight: 500,
+              color: dark ? "#f1f5f9" : "#111827",
+            },
+          },
+        },
+      },
+    },
+    stroke: { width: 2, colors: [dark ? "#0f172a" : "#ffffff"] },
+    tooltip: {
+      theme: dark ? "dark" : "light",
+      y: { formatter: (v) => `${v} publicaciones` },
+    },
+  };
+
+  const donutSeries = pieData.map((d) => d.value);
+
+  // ── Gráfica 2: Barras por formato ──
+  const barFmtOptions = {
+    chart: {
+      type: "bar",
+      height: 300,
+      toolbar: { show: false },
+      fontFamily: "inherit",
+      background: "transparent",
+      animations: { enabled: true, easing: "easeinout", speed: 600 },
+    },
+    theme: { mode: dark ? "dark" : "light" },
+    plotOptions: {
+      bar: { columnWidth: "50%", borderRadius: 5, borderRadiusApplication: "end" },
+    },
+    colors: ["#16a34a"],
+    dataLabels: {
+      enabled: true,
+      style: { fontSize: "11px", fontFamily: "inherit", colors: [dark ? "#f1f5f9" : "#111827"] },
+      offsetY: -6,
+    },
+    grid: {
+      borderColor: gridColor,
+      strokeDashArray: 4,
+      xaxis: { lines: { show: false } },
+    },
+    xaxis: {
+      categories: fmtCount.map((d) => d.name),
+      labels: { style: { colors: textColor, fontSize: "11px" } },
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+    },
+    yaxis: {
+      labels: {
+        style: { colors: textColor, fontSize: "11px" },
+        formatter: (v) => Math.round(v),
+      },
+    },
+    legend: { show: false },
+    tooltip: {
+      theme: dark ? "dark" : "light",
+      y: { formatter: (v) => `${v} publicaciones` },
+    },
+  };
+
+  const barFmtSeries = [
+    { name: "Publicaciones", data: fmtCount.map((d) => d.cantidad) },
+  ];
   const handleExport = () => {
     exportToExcel(data.map((row) => ({
       "Fecha": row.fecha,
@@ -58,13 +172,17 @@ export default function AdvertisingReport() {
         <div className="rp-filter-row">
           <div className="rp-filter-group rp-filter-group--sm">
             <label className="sl-label">Fecha inicio</label>
-            <input className="sl-input" type="date" value={filters.startDate.slice(0, 10)}
-              onChange={(e) => setFilters({ ...filters, startDate: new Date(e.target.value).toISOString() })} />
+            <DateInput
+              value={filters.startDate.slice(0, 10)}
+              onChange={(val) => setFilters({ ...filters, startDate: new Date(val).toISOString() })}
+            />
           </div>
           <div className="rp-filter-group rp-filter-group--sm">
             <label className="sl-label">Fecha fin</label>
-            <input className="sl-input" type="date" value={filters.endDate.slice(0, 10)}
-              onChange={(e) => setFilters({ ...filters, endDate: new Date(e.target.value).toISOString() })} />
+            <DateInput
+              value={filters.endDate.slice(0, 10)}
+              onChange={(val) => setFilters({ ...filters, endDate: new Date(val).toISOString() })}
+            />
           </div>
           <div className="rp-filter-group">
             <label className="sl-label">Cliente</label>
@@ -131,15 +249,13 @@ export default function AdvertisingReport() {
                 <p className="rp-chart-subtitle">Porcentaje de cada tipo sobre el total</p>
               </div>
               <div className="rp-chart-body">
-                <ResponsiveContainer width="100%" height={260}>
-                  <PieChart>
-                    <Pie data={pieData} cx="50%" cy="50%" outerRadius={90} dataKey="value"
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`} labelLine>
-                      {pieData.map((entry, i) => <Cell key={i} fill={TIPO_COLORS[entry.tipo] || "#94a3b8"} />)}
-                    </Pie>
-                    <Tooltip contentStyle={ttStyle} formatter={(v, n) => [`${v} publicaciones`, n]} />
-                  </PieChart>
-                </ResponsiveContainer>
+                <ReactApexChart
+                  key={`donut-${dark}`}
+                  type="donut"
+                  options={donutOptions}
+                  series={donutSeries}
+                  height={260}
+                />
               </div>
               <div className="rp-pie-legend">
                 {pieData.map((item, i) => (
@@ -160,16 +276,13 @@ export default function AdvertisingReport() {
                 <p className="rp-chart-subtitle">Cantidad de publicaciones por formato</p>
               </div>
               <div className="rp-chart-body">
-                <ResponsiveContainer width="100%" height={300}>
-                  <BarChart data={fmtCount} margin={{ top: 10, right: 20, left: 10, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip contentStyle={ttStyle} formatter={(v) => [`${v} publicaciones`, "Cantidad"]} />
-                    <Legend />
-                    <Bar dataKey="cantidad" name="Publicaciones" fill="#16a34a" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <ReactApexChart
+                  key={`bar-fmt-${dark}`}
+                  type="bar"
+                  options={barFmtOptions}
+                  series={barFmtSeries}
+                  height={300}
+                />
               </div>
               <p className="rp-chart-foot">Total de publicaciones: {total}</p>
             </div>

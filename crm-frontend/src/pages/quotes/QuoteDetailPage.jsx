@@ -54,6 +54,8 @@ export default function QuoteDetailPage() {
   const [dirigidoA, setDirigidoA] = useState("");
   const [pdfLoading, setPdfLoading] = useState(false);
   const [toast, setToast] = useState(null);
+  const [convertDialog, setConvertDialog] = useState(false);
+  const [converting, setConverting] = useState(false);
 
   useEffect(() => {
     getQuoteById(id)
@@ -69,7 +71,7 @@ export default function QuoteDetailPage() {
     try {
       await deleteQuote(quote._id);
       navigate("/quotes");
-    } catch (err) { 
+    } catch (err) {
       setConfirmDelete(false);
       const msg = err.response?.data?.message || "Error al eliminar la cotización.";
       if (msg.toLowerCase().includes("dueño")) {
@@ -103,6 +105,23 @@ export default function QuoteDetailPage() {
   const tieneAjustes = ajustes.tipoAccion && ajustes.tipoAccion !== "Ninguno" &&
     ((ajustes.porcentajeAjuste || 0) !== 0 || (ajustes.valorAjuste || 0) !== 0);
 
+  const handleConvertToSale = async () => {
+    try {
+      setConverting(true);
+      const res = await api.post(`/sales/from-quote/${quote._id}`);
+      setToast({ msg: "Venta creada correctamente", type: "success" });
+      setConvertDialog(false);
+      // Opcional: navegar a la venta creada
+      setTimeout(() => navigate(`/sales/${res.data.sale._id}`), 1500);
+    } catch (err) {
+      const msg = err.response?.data?.message || "Error al convertir a venta";
+      setToast({ msg, type: "error" });
+      setConvertDialog(false);
+    } finally {
+      setConverting(false);
+    }
+  };
+
   return (
     <div className="qt-page">
       {toast && <Toast msg={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
@@ -121,6 +140,16 @@ export default function QuoteDetailPage() {
           <button className="qt-btn-danger" type="button" onClick={() => setConfirmDelete(true)}>
             <Trash2 size={14} /> Eliminar
           </button>
+          {!quote.opportunityId && (
+            <button
+              className="qt-btn-primary"
+              type="button"
+              onClick={() => setConvertDialog(true)}
+              style={{ background: "#16a34a", borderColor: "#16a34a" }}
+            >
+              <ShoppingCart size={14} /> Convertir a Venta
+            </button>
+          )}
         </div>
       </div>
 
@@ -310,9 +339,9 @@ export default function QuoteDetailPage() {
             <p className="qt-dialog-title" style={{ color: "#ef4444" }}>Acción Denegada</p>
             <p className="qt-dialog-body" style={{ marginTop: "10px", marginBottom: "20px" }}>{errorDialog}</p>
             <div className="qt-dialog-actions" style={{ justifyContent: "flex-end" }}>
-              <button 
-                className="qt-btn-secondary" 
-                type="button" 
+              <button
+                className="qt-btn-secondary"
+                type="button"
                 onClick={() => setErrorDialog("")}
               >
                 Aceptar
@@ -342,6 +371,36 @@ export default function QuoteDetailPage() {
               </button>
               <button className="qt-btn-primary" type="button" onClick={handleDownloadPdf} disabled={pdfLoading}>
                 {pdfLoading ? "Generando..." : "Abrir PDF"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {convertDialog && (
+        <div className="qt-dialog-overlay">
+          <div className="qt-dialog">
+            <p className="qt-dialog-title">Convertir a Venta</p>
+            <p className="qt-dialog-body">
+              ¿Deseas crear una venta a partir de la cotización <strong>#{quote.folio}</strong>?
+              Esta acción no se puede deshacer.
+            </p>
+            <div className="qt-dialog-actions">
+              <button
+                className="qt-btn-secondary"
+                type="button"
+                onClick={() => setConvertDialog(false)}
+                disabled={converting}
+              >
+                Cancelar
+              </button>
+              <button
+                className="qt-btn-primary"
+                type="button"
+                onClick={handleConvertToSale}
+                disabled={converting}
+                style={{ background: "#16a34a", borderColor: "#16a34a" }}
+              >
+                {converting ? "Creando venta..." : "Confirmar"}
               </button>
             </div>
           </div>

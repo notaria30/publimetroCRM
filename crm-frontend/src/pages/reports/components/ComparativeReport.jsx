@@ -3,13 +3,23 @@
 // ============================================================
 import { useEffect, useState } from "react";
 import { getComparativeReport, getReportClients, getReportExecutives } from "../../../services/reportService";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import ReactApexChart from "react-apexcharts";
 import "../reports.css";
 import "../../sales/sales.css";
 import { exportToExcel } from "../../../utils/exportToExcel";
 
 const fmtMoney = (v) => new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v || 0);
-const ttStyle = { background: "#1e293b", border: "none", borderRadius: 8, color: "#f1f5f9", fontSize: 12 };
+function useApexTheme() {
+  const [dark, setDark] = useState(() => document.body.classList.contains("dark"));
+  useEffect(() => {
+    const obs = new MutationObserver(() =>
+      setDark(document.body.classList.contains("dark"))
+    );
+    obs.observe(document.body, { attributes: true, attributeFilter: ["class"] });
+    return () => obs.disconnect();
+  }, []);
+  return dark;
+}
 const sign = (v) => (v > 0 ? "+" : "");
 
 export function ComparativeReport() {
@@ -18,6 +28,7 @@ export function ComparativeReport() {
   const [data, setData] = useState([]);
   const [executives, setExecutives] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
+  const dark = useApexTheme();
   const MESES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
   const anioActual = new Date().getFullYear();
   const aniosDisponibles = [anioActual - 2, anioActual - 1, anioActual];
@@ -85,7 +96,65 @@ export function ComparativeReport() {
   const perdidos = data.filter((d) => d.periodoBase > 0 && d.periodoComparativo === 0).length;
 
   const varBadge = (v) => (v > 0 ? "sl-badge--success" : v < 0 ? "sl-badge--error" : "sl-badge--gray");
+  const textColor = dark ? "#94a3b8" : "#6b7280";
+  const gridColor = dark ? "#1e293b" : "#f1f5f9";
 
+  const barCompOptions = {
+    chart: {
+      type: "bar",
+      height: 380,
+      toolbar: { show: false },
+      fontFamily: "inherit",
+      background: "transparent",
+      animations: { enabled: true, easing: "easeinout", speed: 600 },
+    },
+    theme: { mode: dark ? "dark" : "light" },
+    plotOptions: {
+      bar: { columnWidth: "55%", borderRadius: 5, borderRadiusApplication: "end" },
+    },
+    colors: ["#16a34a", "#f59e0b"],
+    dataLabels: { enabled: false },
+    grid: {
+      borderColor: gridColor,
+      strokeDashArray: 4,
+      xaxis: { lines: { show: false } },
+    },
+    xaxis: {
+      categories: chartData.map((d) => d.fecha),
+      labels: { style: { colors: textColor, fontSize: "11px" }, rotate: -30 },
+      axisBorder: { show: false },
+      axisTicks: { show: false },
+    },
+    yaxis: {
+      labels: {
+        style: { colors: textColor, fontSize: "11px" },
+        formatter: (v) => `$${(v / 1000).toFixed(0)}k`,
+      },
+    },
+    legend: {
+      position: "bottom",
+      fontSize: "12px",
+      labels: { colors: textColor },
+      markers: { radius: 4, width: 10, height: 10 },
+      itemMargin: { horizontal: 12 },
+    },
+    tooltip: {
+      theme: dark ? "dark" : "light",
+      y: {
+        formatter: (v) =>
+          new Intl.NumberFormat("es-MX", {
+            style: "currency", currency: "MXN",
+            minimumFractionDigits: 0, maximumFractionDigits: 0,
+          }).format(v),
+      },
+    },
+    fill: { opacity: [1, 0.8] },
+  };
+
+  const barCompSeries = [
+    { name: "Periodo base", data: chartData.map((d) => d.periodoBase) },
+    { name: "Periodo comparativo", data: chartData.map((d) => d.periodoComparativo) },
+  ];
   const handleExport = () => {
     exportToExcel(data.map((row) => ({
       "Período": row.fecha,
@@ -216,17 +285,13 @@ export function ComparativeReport() {
                 <p className="rp-chart-subtitle">Ingresos entre períodos seleccionados</p>
               </div>
               <div className="rp-chart-body">
-                <ResponsiveContainer width="100%" height={380}>
-                  <BarChart data={chartData} margin={{ top: 10, right: 20, left: 60, bottom: 30 }}>
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis dataKey="fecha" tick={{ fontSize: 11 }} />
-                    <YAxis tickFormatter={(v) => `$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11 }} />
-                    <Tooltip contentStyle={ttStyle} formatter={(v, n) => [fmtMoney(v), n]} labelFormatter={(l) => `Período: ${l}`} />
-                    <Legend />
-                    <Bar dataKey="periodoBase" name="Periodo base" fill="#16a34a" radius={[4, 4, 0, 0]} />
-                    <Bar dataKey="periodoComparativo" name="Periodo comparativo" fill="#f59e0b" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
+                <ReactApexChart
+                  key={`bar-comp-${dark}`}
+                  type="bar"
+                  options={barCompOptions}
+                  series={barCompSeries}
+                  height={380}
+                />
               </div>
             </div>
           </div>
