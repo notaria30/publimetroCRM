@@ -285,7 +285,7 @@ router.put("/:id/approve", auth, async (req, res) => {
     const quote = await Quote.findByIdAndUpdate(
       req.params.id,
       {
-        status: "aprobado",
+        status: "aprobada",
         approvedBy: req.user._id,
         approvedAt: new Date(),
       },

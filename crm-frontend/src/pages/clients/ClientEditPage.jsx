@@ -16,6 +16,41 @@ const REGIMENES = [
   "RÉGIMEN DE INCORPORACIÓN FISCAL",
 ];
 
+const ESTADOS = [
+  "Aguascalientes",
+  "Baja California",
+  "Baja California Sur",
+  "Campeche",
+  "Chiapas",
+  "Chihuahua",
+  "Coahuila",
+  "Colima",
+  "Ciudad de México",
+  "Durango",
+  "Guanajuato",
+  "Guerrero",
+  "Hidalgo",
+  "Jalisco",
+  "Estado de México",
+  "Michoacán",
+  "Morelos",
+  "Nayarit",
+  "Nuevo León",
+  "Oaxaca",
+  "Puebla",
+  "Querétaro",
+  "Quintana Roo",
+  "San Luis Potosí",
+  "Sinaloa",
+  "Sonora",
+  "Tabasco",
+  "Tamaulipas",
+  "Tlaxcala",
+  "Veracruz",
+  "Yucatán",
+  "Zacatecas"
+];
+
 export default function ClientEditPage() {
   const navigate = useNavigate();
   const { id } = useParams();
@@ -45,7 +80,8 @@ export default function ClientEditPage() {
       navigate(`/clients/${id}`);
     } catch (err) {
       console.error(err);
-      alert("Error guardando cambios");
+      const errorMsg = err.response?.data?.message || "Error guardando cambios";
+      alert(errorMsg);
     }
   };
 
@@ -82,7 +118,14 @@ export default function ClientEditPage() {
             {[["calleNumero","Calle y Número"],["colonia","Colonia"],["ciudad","Ciudad"],["estado","Estado"],["pais","País"],["cp","CP"],["telefono","Teléfono"]].map(([f,l]) => (
               <div className="cl-form-group" key={f}>
                 <label className="cl-label">{l}</label>
-                <input className="cl-input" value={form.direccion?.[f] || ""} onChange={(e) => setDir(f, e.target.value)} />
+                {f === "estado" ? (
+                  <select className="cl-select" value={form.direccion?.[f] || ""} onChange={(e) => setDir(f, e.target.value)}>
+                    <option value="">Seleccione Estado...</option>
+                    {ESTADOS.map((est) => <option key={est} value={est}>{est}</option>)}
+                  </select>
+                ) : (
+                  <input className="cl-input" value={form.direccion?.[f] || ""} onChange={(e) => setDir(f, e.target.value)} />
+                )}
               </div>
             ))}
           </div>

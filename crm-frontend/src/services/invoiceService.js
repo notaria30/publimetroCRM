@@ -11,3 +11,5 @@ export const getSalesInvoiceStatus = () =>
       Authorization: `Bearer ${localStorage.getItem("token")}`,
     },
   });
+export const getQuoteInvoiceLimit = (quoteId) =>
+  api.get(`/invoices/quote-limit/${quoteId}`);

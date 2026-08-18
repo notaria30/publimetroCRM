@@ -923,3 +923,18 @@ body.dark .MuiPaper-root {
   background-color: #1e293b !important;
   border-color: #334155 !important;
 }
+
+/* ── PuntosDropdown – dark mode ── */
+body.dark .qt-puntos-dropdown {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+body.dark .qt-puntos-dropdown label {
+  border-bottom-color: #1e293b;
+  color: #cbd5e1;
+}
+
+body.dark .qt-puntos-dropdown label:hover {
+  background: #1e293b !important;
+}

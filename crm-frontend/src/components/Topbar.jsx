@@ -1,30 +1,8 @@
 import { useState, useRef, useEffect } from "react";
-import {
-  LayoutDashboard, Users, FileText,
-  TrendingUp, Receipt, ClipboardCheck, UserCog,
-  BarChart2, LogOut, Sun, Moon, Settings, KeyRound, X, Target
-} from "lucide-react";
-import { NavLink } from "react-router-dom";
+import { LogOut, Sun, Moon, Settings, KeyRound, X } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { useTheme } from "../context/ThemeContext";
 import api from "../services/api";
-import logo from "../assets/logo.svg";
-import "./ProtectedLayout.css";
-
-const NAV_LINKS = [
-  { to: "/dashboard", label: "Dashboard", icon: <LayoutDashboard size={16} strokeWidth={1.5} /> },
-  { to: "/clients", label: "Clientes", icon: <Users size={16} strokeWidth={1.5} /> },
-  { to: "/opportunities", label: "Oportunidades", icon: <Target size={16} strokeWidth={1.5} /> },
-  { to: "/quotes", label: "Cotizaciones", icon: <FileText size={16} strokeWidth={1.5} /> },
-  { to: "/sales", label: "Ventas", icon: <TrendingUp size={16} strokeWidth={1.5} /> },
-  { to: "/postsale", label: "Post-Venta", icon: <ClipboardCheck size={16} strokeWidth={1.5} /> },
-  { to: "/reports", label: "Reportes", icon: <BarChart2 size={16} strokeWidth={1.5} /> },
-];
-
-// Enlace exclusivo para administradores (OWNER)
-const OWNER_LINKS = [
-  { to: "/invoices", label: "Facturación", icon: <Receipt size={16} strokeWidth={1.5} /> },
-];
 
 const EyeOpen = () => (
   <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24"
@@ -43,8 +21,8 @@ const EyeOff = () => (
   </svg>
 );
 
-export default function Navbar() {
-  const { user, logout, isOwner } = useAuth();
+export default function Topbar() {
+  const { user, logout } = useAuth();
   const { darkMode, setDarkMode } = useTheme();
 
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -105,80 +83,44 @@ export default function Navbar() {
 
   return (
     <>
-      <aside className="sidebar">
-        <div className="sidebar-logo">
-          <img src={logo} alt="logo" style={{ height: 38 }} />
-        </div>
-
-        <nav className="sidebar-nav">
-          {NAV_LINKS.map((l) => (
-            <NavLink key={l.to} to={l.to}
-              className={({ isActive }) => "sidebar-link" + (isActive ? " sidebar-link--active" : "")}>
-              {l.icon}{l.label}
-            </NavLink>
-          ))}
-          {/* Enlace de Facturación – solo visible para OWNER */}
-          {isOwner && OWNER_LINKS.map((l) => (
-            <NavLink key={l.to} to={l.to}
-              className={({ isActive }) => "sidebar-link" + (isActive ? " sidebar-link--active" : "")}>
-              {l.icon}{l.label}
-            </NavLink>
-          ))}
-          {isOwner && (
-            <NavLink to="/users"
-              className={({ isActive }) => "sidebar-link" + (isActive ? " sidebar-link--active" : "")}>
-              <UserCog size={16} strokeWidth={1.5} />Usuarios
-            </NavLink>
-          )}
-        </nav>
-
-        <div className="sidebar-footer">
-          <button className="sidebar-theme-toggle" onClick={() => setDarkMode(!darkMode)}>
-            {darkMode
-              ? <><Sun size={14} strokeWidth={1.5} style={{ marginRight: 6 }} />Modo claro</>
-              : <><Moon size={14} strokeWidth={1.5} style={{ marginRight: 6 }} />Modo oscuro</>}
+      <header className="topbar">
+        <div className="topbar-right">
+          
+          <button className="topbar-icon-btn" onClick={() => setDarkMode(!darkMode)}>
+            {darkMode ? <Sun size={18} strokeWidth={1.5} /> : <Moon size={18} strokeWidth={1.5} />}
           </button>
 
           <div ref={dropdownRef} style={{ position: "relative" }}>
-            <div className="sidebar-user" onClick={() => setDropdownOpen(!dropdownOpen)}
-              style={{
-                cursor: "pointer", borderRadius: 8, transition: "background 0.15s",
-                background: dropdownOpen ? (darkMode ? "#252836" : "#f3f4f6") : "transparent"
-              }}>
-              <div className="sidebar-avatar">
+            <div className="topbar-user" onClick={() => setDropdownOpen(!dropdownOpen)}>
+              <div className="topbar-avatar">
                 {user?.name?.charAt(0).toUpperCase() ?? "U"}
               </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <p className="sidebar-user-name"
-                  style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", margin: 0 }}>
-                  {user?.name}
-                </p>
-              </div>
+              <p className="topbar-user-name">{user?.name}</p>
               <Settings size={14} strokeWidth={1.5} style={{ color: "#9ca3af", flexShrink: 0 }} />
             </div>
 
             {dropdownOpen && (
-              <div className="sidebar-dropdown">
-                <div className="sidebar-dropdown-header">
-                  <p className="sidebar-dropdown-name">{user?.name}</p>
-                  <p className="sidebar-dropdown-role">
+              <div className="topbar-dropdown">
+                <div className="topbar-dropdown-header">
+                  <p className="topbar-dropdown-name">{user?.name}</p>
+                  <p className="topbar-dropdown-role">
                     {user?.role === "OWNER" ? "Administrador" : "Trabajador"}
                   </p>
                 </div>
-                <button className="sidebar-dropdown-btn" onClick={openModal}>
-                  <KeyRound size={14} strokeWidth={1.5} />
+                <button className="topbar-dropdown-btn" onClick={openModal}>
+                  <KeyRound size={15} strokeWidth={1.5} />
                   Cambiar contraseña
+                </button>
+                <button className="topbar-dropdown-btn logout-btn" onClick={logout}>
+                  <LogOut size={15} strokeWidth={1.5} />
+                  Cerrar sesión
                 </button>
               </div>
             )}
           </div>
 
-          <button className="sidebar-logout" onClick={logout}>
-            <LogOut size={14} strokeWidth={1.5} style={{ marginRight: 6 }} />
-            Cerrar sesión
-          </button>
         </div>
-      </aside>
+      </header>
 
       {modal && (
         <div className="cp-overlay">

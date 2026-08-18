@@ -5,7 +5,7 @@ const clientSchema = new mongoose.Schema(
   {
     nombreComercial: { type: String, required: true },
     razonSocial: { type: String, required: true },
-    rfc: { type: String, required: true },
+    rfc: { type: String, required: true, uppercase: true, trim: true },
     curp: { type: String },
     direccion: {
       calleNumero: String,

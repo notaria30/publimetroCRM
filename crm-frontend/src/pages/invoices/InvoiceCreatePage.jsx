@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { createInvoice } from "../../services/invoiceService";
+import { createInvoice, getQuoteInvoiceLimit } from "../../services/invoiceService";
 import { getClients } from "../../services/clientService";
 import { getQuotes } from "../../services/quoteService";
 import { getSaleById } from "../../services/salesService";
@@ -21,6 +21,7 @@ export default function InvoiceCreatePage() {
   const [saleError, setSaleError] = useState(null);
   const [paymentManuallyEdited, setPaymentManuallyEdited] = useState(false);
   const [invoiceNumberError, setInvoiceNumberError] = useState("");
+  const [quoteLimit, setQuoteLimit] = useState(null);
 
   const today = new Date().toISOString().slice(0, 10);
 
@@ -76,11 +77,18 @@ export default function InvoiceCreatePage() {
   useEffect(() => {
     if (!form.quote) {
       setForm((prev) => ({ ...prev, formaPago: "", metodoPago: "PUE", importeSinIVA: "", importeConIVA: "" }));
+      setQuoteLimit(null);
       return;
     }
     const q = quotes.find((q) => q._id === form.quote);
     if (!q) return;
-    const importe = q.total || 0;
+    
+    let importe = q.total || 0;
+    if (q.intercambio && q.intercambio.activo) {
+      const porcentaje = q.intercambio.porcentajeEfectivo || 0;
+      importe = Number((importe * (porcentaje / 100)).toFixed(2));
+    }
+
     setForm((prev) => ({
       ...prev,
       importeSinIVA: importe,
@@ -88,6 +96,11 @@ export default function InvoiceCreatePage() {
       formaPago: paymentManuallyEdited ? prev.formaPago : (q.formaPago || prev.formaPago),
       metodoPago: paymentManuallyEdited ? prev.metodoPago : (q.metodoPago || prev.metodoPago),
     }));
+
+    // Obtener límite de facturación en tiempo real
+    getQuoteInvoiceLimit(form.quote)
+      .then((res) => setQuoteLimit(res.data))
+      .catch(() => setQuoteLimit(null));
   }, [form.quote, quotes, paymentManuallyEdited]);
 
   /* RECALCULAR IVA AL CAMBIAR IMPORTE SIN IVA */
@@ -152,6 +165,30 @@ export default function InvoiceCreatePage() {
           ℹ Creando factura a partir de la venta #{saleId.slice(-6)}. Cliente y cotización ya están precargados.
         </div>
       )}
+      
+      {/* ALERTA DE INTERCAMBIO */}
+      {quoteLimit && quoteLimit.tieneIntercambio && (() => {
+        const fmtM = (n) => `$${Number(n).toLocaleString("es-MX", { minimumFractionDigits: 2 })}`;
+        const pctUsed = quoteLimit.maxAllowedCash > 0
+          ? Math.min(100, ((quoteLimit.alreadyInvoiced / quoteLimit.maxAllowedCash) * 100)).toFixed(0)
+          : 100;
+        return (
+          <div className="inv-alert inv-alert--info" style={{ background: "#eff6ff", color: "#1e3a8a", borderColor: "#3b82f6", borderLeft: "4px solid #3b82f6" }}>
+            <strong>🔄 Cotización Mixta con Intercambio</strong>
+            <div style={{ marginTop: 8, display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+              <div><span style={{ fontSize: 11, opacity: 0.7, textTransform: "uppercase" }}>Tope máximo</span><br /><strong>{fmtM(quoteLimit.maxAllowedCash)}</strong> ({quoteLimit.porcentajeEfectivo}%)</div>
+              <div><span style={{ fontSize: 11, opacity: 0.7, textTransform: "uppercase" }}>Ya facturado</span><br /><strong>{fmtM(quoteLimit.alreadyInvoiced)}</strong></div>
+              <div><span style={{ fontSize: 11, opacity: 0.7, textTransform: "uppercase" }}>Disponible</span><br /><strong style={{ color: quoteLimit.disponible === 0 ? "#dc2626" : "#166534" }}>{fmtM(quoteLimit.disponible)}</strong></div>
+            </div>
+            <div style={{ marginTop: 10, background: "#dbeafe", borderRadius: 4, height: 6, overflow: "hidden" }}>
+              <div style={{ width: `${pctUsed}%`, height: "100%", background: Number(pctUsed) >= 100 ? "#dc2626" : "#3b82f6", borderRadius: 4, transition: "width 0.4s" }} />
+            </div>
+            {quoteLimit.disponible === 0 && (
+              <p style={{ marginTop: 6, color: "#dc2626", fontWeight: 600, fontSize: 12 }}>⚠ Límite alcanzado. No es posible emitir más facturas para esta cotización.</p>
+            )}
+          </div>
+        );
+      })()}
 
       <form onSubmit={handleSubmit}>
 

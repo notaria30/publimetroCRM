@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getInvoices } from "../../services/invoiceService";
+import { useAuth } from "../../context/AuthContext";
 import { Search, Plus } from "lucide-react";
 import "./invoices.css";
 import "../sales/sales.css";
@@ -20,6 +21,7 @@ function getPagoInfo(inv) {
 
 export default function InvoiceListPage() {
   const navigate = useNavigate();
+  const { isOwner } = useAuth();
   const [invoices, setInvoices] = useState([]);
   const [loading, setLoading]   = useState(true);
   const [search, setSearch]     = useState("");
@@ -68,9 +70,11 @@ export default function InvoiceListPage() {
               onChange={(e) => setSearch(e.target.value)}
             />
           </div>
-          <button className="sl-btn-primary" onClick={() => navigate("/invoices/new")}>
-            <Plus size={14} /> Crear factura
-          </button>
+          {isOwner && (
+            <button className="sl-btn-primary" onClick={() => navigate("/invoices/new")}>
+              <Plus size={14} /> Crear factura
+            </button>
+          )}
         </div>
       </div>
 

@@ -2,11 +2,12 @@ const express = require("express");
 const Sale = require("../models/Sale");
 const Client = require("../models/Client");
 const Quote = require("../models/Quote");
-const { auth } = require("../middlewares/auth.middleware");
+const { auth, canConvertToSale } = require("../middlewares/auth.middleware");
 const PostSale = require("../models/PostSale");
 const router = express.Router();
 const Counter = require("../models/Counter");
 const Invoice = require("../models/Invoice");
+const { updateClientStatus } = require("../services/clientStatus.service");
 
 // NOTA: La creación de una venta a partir de cero o de cotización directamente 
 // ha sido reemplazada por el flujo de Opportunidades (POST /api/opportunities/:id/convert-to-sale).
@@ -173,10 +174,8 @@ router.put("/:id/close", auth, async (req, res) => {
     sale.isClosed = true;
     sale.closedAt = new Date();
     await sale.save();
-    // actualizar al cliente
-    const client = await Client.findById(sale.client);
-    client.status = "cierre";
-    await client.save();
+    // Evaluar estatus del cliente con la regla de los 90 días
+    await updateClientStatus(sale.client);
 
     res.json({
       message: "Venta cerrada correctamente",
@@ -256,7 +255,8 @@ router.put("/:id/tasks/:taskId/complete", auth, async (req, res) => {
 });
 
 // POST /api/sales/from-quote/:quoteId
-router.post("/from-quote/:quoteId", auth, async (req, res) => {
+// Solo OWNER y DIRECTOR pueden convertir. La cotización debe estar "aprobada".
+router.post("/from-quote/:quoteId", auth, canConvertToSale, async (req, res) => {
   try {
     const quote = await Quote.findById(req.params.quoteId);
     if (!quote) return res.status(404).json({ message: "Cotización no encontrada" });
@@ -277,12 +277,13 @@ router.post("/from-quote/:quoteId", auth, async (req, res) => {
       });
     }
 
-    // Permisos: WORKER solo puede convertir sus propias cotizaciones
-    if (
-      req.user.role === "WORKER" &&
-      String(quote.createdBy) !== String(req.user._id)
-    ) {
-      return res.status(403).json({ message: "No tienes permiso para convertir esta cotización." });
+    // Candado: la cotización debe estar en estatus "aprobada"
+    if (quote.status !== "aprobada") {
+      return res.status(403).json({
+        message:
+          `No se puede convertir a venta. La cotización tiene estatus "${quote.status}". ` +
+          "Solo las cotizaciones con estatus \"aprobada\" pueden convertirse en venta.",
+      });
     }
 
     const counter = await Counter.findByIdAndUpdate(
@@ -302,12 +303,8 @@ router.post("/from-quote/:quoteId", auth, async (req, res) => {
       isClosed: false,
     });
 
-    // Actualizar status del cliente
-    const client = await Client.findById(quote.client);
-    if (client) {
-      client.status = "activo";
-      await client.save();
-    }
+    // Evaluar estatus del cliente con la regla de los 90 días
+    await updateClientStatus(quote.client);
 
     res.status(201).json({
       message: "Venta creada correctamente desde cotización.",

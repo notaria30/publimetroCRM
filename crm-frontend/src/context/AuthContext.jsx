@@ -50,6 +50,9 @@ export function AuthProvider({ children }) {
     logout,
     isOwner: user?.role === "OWNER",
     isWorker: user?.role === "WORKER",
+    isDirector: user?.role === "DIRECTOR",
+    // Puede convertir una cotización aprobada a venta
+    canConvert: user?.role === "OWNER" || user?.role === "DIRECTOR",
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -31,12 +31,14 @@ export default function QuoteTarifasSection({
       }));
       return;
     }
-    if (!/^\d+$/.test(raw)) return;
+    // Permitir decimales: e.g. "6.5" para 6.5%
+    if (!/^\d*\.?\d*$/.test(raw)) return;
     const pct = Number(raw);
-    const valor = Math.round((subtotalTarifas * pct) / 100);
+    // Valor exacto sin redondeo para preservar centavos
+    const valor = subtotalTarifas > 0 ? parseFloat(((subtotalTarifas * pct) / 100).toFixed(2)) : 0;
     setForm((prev) => ({
       ...prev,
-      ajustesPrecios: { ...prev.ajustesPrecios, porcentajeAjuste: pct, valorAjuste: valor },
+      ajustesPrecios: { ...prev.ajustesPrecios, porcentajeAjuste: raw, valorAjuste: valor },
     }));
   };
 
@@ -48,12 +50,18 @@ export default function QuoteTarifasSection({
       }));
       return;
     }
-    if (!/^\d+$/.test(raw)) return;
+    // Permitir decimales en el monto: e.g. "1500.50"
+    if (!/^\d*\.?\d*$/.test(raw)) return;
     const val = Number(raw);
-    const pct = subtotalTarifas > 0 ? Math.round((val * 100) / subtotalTarifas) : 0;
+    // Porcentaje con 2 decimales para evitar que el redondeo a entero
+    // produzca un valor derivado distinto al que el usuario escribió
+    const pct =
+      subtotalTarifas > 0
+        ? parseFloat(((val / subtotalTarifas) * 100).toFixed(2))
+        : 0;
     setForm((prev) => ({
       ...prev,
-      ajustesPrecios: { ...prev.ajustesPrecios, valorAjuste: val, porcentajeAjuste: pct },
+      ajustesPrecios: { ...prev.ajustesPrecios, valorAjuste: raw, porcentajeAjuste: pct },
     }));
   };
 

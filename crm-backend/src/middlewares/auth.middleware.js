@@ -37,4 +37,19 @@ const isOwner = (req, res, next) => {
   }
   next();
 };
-module.exports = { auth, isOwner };
+
+// Middleware para operaciones de conversión a venta
+// Solo OWNER y DIRECTOR tienen autorización. Los WORKER nunca pueden convertir.
+const canConvertToSale = (req, res, next) => {
+  const allowed = ["OWNER", "DIRECTOR"];
+  if (!allowed.includes(req.user.role)) {
+    return res.status(403).json({
+      message:
+        "Solo el administrador o director puede convertir una cotización a venta. " +
+        "Solicita autorización a Enrique Solorio.",
+    });
+  }
+  next();
+};
+
+module.exports = { auth, isOwner, canConvertToSale };

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getInvoiceById, updateInvoice } from "../../services/invoiceService";
+import { useAuth } from "../../context/AuthContext";
 import { ArrowLeft, Plus } from "lucide-react";
 import "./invoices.css";
 import "../sales/sales.css";
@@ -25,6 +26,7 @@ const today = new Date().toISOString().slice(0, 10);
 export default function InvoiceDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { isOwner } = useAuth();
   const [invoice, setInvoice]     = useState(null);
   const [loading, setLoading]     = useState(true);
   const [showAbono, setShowAbono] = useState(false);
@@ -127,6 +129,9 @@ export default function InvoiceDetailPage() {
             <InfoItem label="Fecha Factura"   value={fmtDate(invoice.fechaFactura)} />
             <InfoItem label="Importe sin IVA" value={fmtMoney(invoice.importeSinIVA)} />
             <InfoItem label="Importe con IVA" value={fmtMoney(invoice.importeConIVA)} />
+            {invoice.tieneIntercambio && (
+              <InfoItem label="Descuento por Intercambio" value={`-${fmtMoney(invoice.importeIntercambio)}`} />
+            )}
           </div>
         </div>
       </div>
@@ -135,7 +140,7 @@ export default function InvoiceDetailPage() {
       <div className="sl-card">
         <div className="sl-card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <span>Pago</span>
-          {!pagadoCompleto && (
+          {isOwner && !pagadoCompleto && (
             <button
               type="button"
               className="sl-btn-secondary"

@@ -19,6 +19,7 @@
     "jsonwebtoken": "^9.0.2",
     "moment": "^2.30.1",
     "mongoose": "^8.19.4",
+    "node-cron": "^4.6.0",
     "pdfkit": "^0.17.2",
     "puppeteer": "^24.30.0"
   },

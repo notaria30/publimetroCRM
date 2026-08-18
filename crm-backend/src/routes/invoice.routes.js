@@ -59,6 +59,31 @@ router.post("/", auth, async (req, res) => {
       return res.status(404).json({ message: "Cotización no encontrada" });
     }
 
+    // --- LÓGICA DE INTERCAMBIO (Validación de tope máximo) ---
+    let tieneIntercambio = false;
+    let importeIntercambio = 0;
+    let porcentajeEfectivoAplicado = 100;
+
+    if (quoteData.intercambio && quoteData.intercambio.activo) {
+      tieneIntercambio = true;
+      porcentajeEfectivoAplicado = quoteData.intercambio.porcentajeEfectivo || 0;
+      
+      // El máximo en efectivo que se puede facturar
+      const maxAllowedCash = Number((quoteData.total * (porcentajeEfectivoAplicado / 100)).toFixed(2));
+      importeIntercambio = Number((quoteData.total - maxAllowedCash).toFixed(2));
+      
+      // Sumar facturas existentes para esta cotización
+      const existingInvoices = await Invoice.find({ quote });
+      const alreadyInvoiced = existingInvoices.reduce((acc, inv) => acc + (inv.importeSinIVA || 0), 0);
+      
+      // + 0.05 de tolerancia por redondeos
+      if (alreadyInvoiced + base > maxAllowedCash + 0.05) {
+        return res.status(400).json({ 
+          message: `El monto excede el límite de efectivo permitido por intercambio. Tope en efectivo: $${maxAllowedCash}. Ya facturado: $${alreadyInvoiced}. Disponible: $${Math.max(0, maxAllowedCash - alreadyInvoiced).toFixed(2)}.` 
+        });
+      }
+    }
+
     const finalFormaPago = formaPago || quoteData.formaPago || "";
     const saleData = await Sale.findOne({ quote });
 
@@ -75,6 +100,9 @@ router.post("/", auth, async (req, res) => {
       formaPago: finalFormaPago,
       pagos: pagos || [],
       createdBy: req.user._id,
+      tieneIntercambio,
+      importeIntercambio,
+      porcentajeEfectivoAplicado,
     });
     // 👈 Buscar la venta: primero por saleId enviado, luego por quote
     let targetSale = saleData;
@@ -154,6 +182,50 @@ router.get("/sales-status", auth, async (req, res) => {
   }
 });
 
+// ✅ Límite de facturación por intercambio para una cotización
+router.get("/quote-limit/:quoteId", auth, async (req, res) => {
+  try {
+    const quoteData = await Quote.findById(req.params.quoteId);
+    if (!quoteData) return res.status(404).json({ message: "Cotización no encontrada" });
+
+    // Sin intercambio: límite es el total completo
+    if (!quoteData.intercambio || !quoteData.intercambio.activo) {
+      return res.json({
+        tieneIntercambio: false,
+        totalCotizacion: quoteData.total,
+        maxAllowedCash: quoteData.total,
+        importeIntercambio: 0,
+        porcentajeEfectivo: 100,
+        alreadyInvoiced: 0,
+        disponible: quoteData.total,
+      });
+    }
+
+    const porcentajeEfectivo = quoteData.intercambio.porcentajeEfectivo || 0;
+    const maxAllowedCash = Number((quoteData.total * (porcentajeEfectivo / 100)).toFixed(2));
+    const importeIntercambio = Number((quoteData.total - maxAllowedCash).toFixed(2));
+
+    const existingInvoices = await Invoice.find({ quote: req.params.quoteId });
+    const alreadyInvoiced = Number(
+      existingInvoices.reduce((acc, inv) => acc + (inv.importeSinIVA || 0), 0).toFixed(2)
+    );
+    const disponible = Number(Math.max(0, maxAllowedCash - alreadyInvoiced).toFixed(2));
+
+    res.json({
+      tieneIntercambio: true,
+      totalCotizacion: quoteData.total,
+      maxAllowedCash,
+      importeIntercambio,
+      porcentajeEfectivo,
+      alreadyInvoiced,
+      disponible,
+    });
+  } catch (error) {
+    console.error("Error al obtener límite de cotización:", error);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
 router.get("/:id", auth, async (req, res) => {
   try {
     const invoice = await Invoice.findById(req.params.id)
@@ -189,6 +261,31 @@ router.put("/:id", auth, async (req, res) => {
       invoice.createdBy.toString() !== req.user._id.toString()
     ) {
       return res.status(403).json({ message: "No tienes permiso para actualizar esta factura" });
+    }
+
+    // --- LÓGICA DE INTERCAMBIO (Validación de tope máximo en edición) ---
+    if (req.body.importeSinIVA !== undefined) {
+      const quoteData = await Quote.findById(invoice.quote);
+      if (quoteData && quoteData.intercambio && quoteData.intercambio.activo) {
+        const porcentajeEfectivoAplicado = quoteData.intercambio.porcentajeEfectivo || 0;
+        const maxAllowedCash = Number((quoteData.total * (porcentajeEfectivoAplicado / 100)).toFixed(2));
+        
+        // Sumar facturas existentes excluyendo esta misma
+        const existingInvoices = await Invoice.find({ quote: invoice.quote, _id: { $ne: invoice._id } });
+        const alreadyInvoiced = existingInvoices.reduce((acc, inv) => acc + (inv.importeSinIVA || 0), 0);
+        const nuevoImporte = Number(req.body.importeSinIVA) || 0;
+        
+        if (alreadyInvoiced + nuevoImporte > maxAllowedCash + 0.05) {
+          return res.status(400).json({ 
+            message: `El monto excede el límite de efectivo permitido por intercambio. Tope en efectivo: $${maxAllowedCash}. Ya facturado (otras facturas): $${alreadyInvoiced}. Disponible: $${Math.max(0, maxAllowedCash - alreadyInvoiced).toFixed(2)}.` 
+          });
+        }
+        
+        // Actualizar datos del intercambio en caso de que hayan cambiado
+        req.body.tieneIntercambio = true;
+        req.body.importeIntercambio = Number((quoteData.total - maxAllowedCash).toFixed(2));
+        req.body.porcentajeEfectivoAplicado = porcentajeEfectivoAplicado;
+      }
     }
 
     // Aplicar cambios

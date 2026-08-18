@@ -4,7 +4,8 @@ const Client = require("../models/Client");
 const Quote = require("../models/Quote");
 const Sale = require("../models/Sale");
 const Counter = require("../models/Counter");
-const { auth } = require("../middlewares/auth.middleware");
+const { auth, canConvertToSale } = require("../middlewares/auth.middleware");
+const { updateClientStatus } = require("../services/clientStatus.service");
 
 const router = express.Router();
 
@@ -88,11 +89,8 @@ router.patch("/:id/stage", auth, async (req, res) => {
     await opp.save();
 
     if (stage === "cerrado_ganado") {
-      const client = await Client.findById(opp.client);
-      if (client) {
-        client.status = "activo";
-        await client.save();
-      }
+      // Evaluar estatus del cliente con la regla de los 90 días
+      await updateClientStatus(opp.client);
     }
 
     res.json(opp);
@@ -122,7 +120,9 @@ router.delete("/:id", auth, async (req, res) => {
 });
 
 // POST /api/opportunities/:id/convert-to-sale
-router.post("/:id/convert-to-sale", auth, async (req, res) => {
+// Solo OWNER y DIRECTOR pueden ejecutar esta acción (canConvertToSale middleware).
+// La oportunidad debe tener al menos una cotización con status "aprobada".
+router.post("/:id/convert-to-sale", auth, canConvertToSale, async (req, res) => {
   try {
     const opp = await Opportunity.findById(req.params.id).populate("quotes");
     if (!opp) return res.status(404).json({ message: "Oportunidad no encontrada" });
@@ -142,9 +142,19 @@ router.post("/:id/convert-to-sale", auth, async (req, res) => {
       return res.status(403).json({ message: "No tienes permiso para convertir esta oportunidad" });
     }
 
-    // Buscamos una cotización aprobada (idealmente)
-    const approvedQuote = opp.quotes.find(q => q.status === "aprobado");
-    const quoteId = approvedQuote ? approvedQuote._id : (opp.quotes.length > 0 ? opp.quotes[0]._id : null);
+    // Verificar que exista al menos una cotización con status "aprobada"
+    const hasApprovedQuote = opp.quotes.some(q => q.status === "aprobada");
+    if (!hasApprovedQuote) {
+      return res.status(403).json({
+        message:
+          "No se puede convertir a venta. La oportunidad debe tener al menos " +
+          "una cotización con estatus \"aprobada\".",
+      });
+    }
+
+    // Tomar la cotización aprobada (o la primera si hay varias aprobadas)
+    const approvedQuote = opp.quotes.find(q => q.status === "aprobada");
+    const quoteId = approvedQuote ? approvedQuote._id : null;
 
     // (Eliminado el auto-cierre de la oportunidad, se cerrará al pagar factura)
 
@@ -171,12 +181,8 @@ router.post("/:id/convert-to-sale", auth, async (req, res) => {
     opp.saleId = newSale._id;
     await opp.save();
 
-    // Actualizar status del cliente
-    const client = await Client.findById(opp.client);
-    if (client) {
-      client.status = "activo";
-      await client.save();
-    }
+    // Evaluar estatus del cliente con la regla de los 90 días
+    await updateClientStatus(opp.client);
 
     res.status(201).json({
       message: "Venta creada correctamente (Oportunidad en pausa hasta pago)",

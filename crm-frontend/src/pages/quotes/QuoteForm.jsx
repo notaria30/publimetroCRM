@@ -235,16 +235,22 @@ export default function QuoteForm({ mode = "create", initialQuote = null, onSubm
     const aj = form.ajustesPrecios;
     let base = subtotalTarifas;
     if (aj.tipoAccion !== "Ninguno") {
-      const val = Number(aj.valorAjuste) || 0;
-      const porc = Number(aj.porcentajeAjuste) || 0;
+      // valorAjuste es la fuente de verdad cuando el usuario ingresa un monto.
+      // Si solo ingresó %, el valorAjuste ya fue pre-calculado con precisión de 2 decimales
+      // en handlePorcentajeChange, por lo que siempre se usa el valor monetario exacto.
+      const val = parseFloat(Number(aj.valorAjuste).toFixed(2)) || 0;
+      const porc = parseFloat(Number(aj.porcentajeAjuste).toFixed(4)) || 0;
       if (val > 0) {
+        // Monto ingresado directamente (o derivado del %)
         base = aj.tipoAccion === "Aumentar" ? base + val : base - val;
       } else if (porc > 0) {
-        const mod = (base * porc) / 100;
+        // Fallback: solo % sin monto derivado (edge case: subtotal era 0 al tipear)
+        const mod = parseFloat(((base * porc) / 100).toFixed(2));
         base = aj.tipoAccion === "Aumentar" ? base + mod : base - mod;
       }
     }
-    return Math.max(0, base + extras);
+    // Redondear a 2 decimales para eliminar ruido de punto flotante
+    return parseFloat(Math.max(0, base + extras).toFixed(2));
   }, [subtotalTarifas, form.activaciones, form.activacionesActivo, form.ajustesPrecios]);
 
   useEffect(() => {

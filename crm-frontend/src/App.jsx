@@ -296,35 +296,35 @@ function App() {
               }
             />
 
-            {/* INVOICES */}
+            {/* INVOICES – solo OWNER */}
             <Route
               path="/invoices"
               element={
-                <PrivateRoute>
+                <OwnerRoute>
                   <ProtectedLayout>
                     <InvoiceListPage />
                   </ProtectedLayout>
-                </PrivateRoute>
+                </OwnerRoute>
               }
             />
             <Route
               path="/invoices/new"
               element={
-                <PrivateRoute>
+                <OwnerRoute>
                   <ProtectedLayout>
                     <InvoiceCreatePage />
                   </ProtectedLayout>
-                </PrivateRoute>
+                </OwnerRoute>
               }
             />
             <Route
               path="/invoices/:id"
               element={
-                <PrivateRoute>
+                <OwnerRoute>
                   <ProtectedLayout>
                     <InvoiceDetailPage />
                   </ProtectedLayout>
-                </PrivateRoute>
+                </OwnerRoute>
               }
             />
 

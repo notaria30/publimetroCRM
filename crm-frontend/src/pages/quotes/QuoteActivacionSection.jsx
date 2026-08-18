@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, ChevronDown, X } from "lucide-react";
 import DateInput from "../../components/DateInput";
 import "./quotes.css";
 
@@ -22,6 +22,74 @@ const TIPOS = [
   "Fajillas",
 ];
 
+// Puntos de distribución predefinidos de Publimetro
+const PUNTOS_DISTRIBUCION = [
+  // CDMX – Metro
+  "Metro Balderas",
+  "Metro Bellas Artes",
+  "Metro Buenavista",
+  "Metro Candelaria",
+  "Metro Centro Médico",
+  "Metro Chapultepec",
+  "Metro Ciudad Azteca",
+  "Metro Copilco",
+  "Metro Cuatro Caminos",
+  "Metro Doctores",
+  "Metro El Rosario",
+  "Metro Ermita",
+  "Metro Garibaldi",
+  "Metro Guerrero",
+  "Metro Hidalgo",
+  "Metro Indios Verdes",
+  "Metro Instituto del Petróleo",
+  "Metro Jamaica",
+  "Metro La Raza",
+  "Metro Legaria",
+  "Metro Lindavista",
+  "Metro Martin Carrera",
+  "Metro Mixcoac",
+  "Metro Nativitas",
+  "Metro Observatorio",
+  "Metro Pantitlán",
+  "Metro Pino Suárez",
+  "Metro Politécnico",
+  "Metro Revolución",
+  "Metro Salto del Agua",
+  "Metro San Antonio Abad",
+  "Metro San Lázaro",
+  "Metro Tacuba",
+  "Metro Tacubaya",
+  "Metro Tasqueña",
+  "Metro Terminal Aérea",
+  "Metro Tlatelolco",
+  "Metro Universidad",
+  "Metro Viaducto",
+  "Metro Xola",
+  "Metro Zócalo",
+  // CDMX – Metrobús
+  "Metrobús Buenavista",
+  "Metrobús Chapultepec",
+  "Metrobús El Rosario",
+  "Metrobús Indios Verdes",
+  "Metrobús La Raza",
+  "Metrobús Peñón Viejo",
+  "Metrobús Politécnico",
+  "Metrobús Revolución",
+  "Metrobús Tlatelolco",
+  // Otras ciudades
+  "Monterrey – Macroplaza",
+  "Monterrey – Metrorrey Sendero",
+  "Monterrey – Metrorrey Talleres",
+  "Guadalajara – Centro Histórico",
+  "Guadalajara – Tren Ligero Periférico",
+  "Guadalajara – Plaza Universidad",
+  "Querétaro – Centro Histórico",
+  "León – Bus RT Blvd. Torres Landa",
+  "Puebla – Zócalo",
+  "Mérida – Paseo Montejo",
+  "Morelia – Centro Histórico",
+];
+
 const resizeFechas = (prevFechas = [], newLen) => {
   const safeLen = Math.max(0, Number(newLen) || 0);
   const next = prevFechas.slice(0, safeLen);
@@ -35,6 +103,106 @@ const calcularTotalActivacion = (a) => {
   const costoImpresion = Number(a.costoImpresion) || 0;
   return cantidad * costoActivacion + costoImpresion;
 };
+
+// ── Componente de selección múltiple para puntos de distribución ────────────
+function PuntosDropdown({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+
+  // value es un string con puntos separados por coma
+  const selected = value
+    ? value.split(",").map((s) => s.trim()).filter(Boolean)
+    : [];
+
+  const toggle = (punto) => {
+    const next = selected.includes(punto)
+      ? selected.filter((p) => p !== punto)
+      : [...selected, punto];
+    onChange(next.join(", "));
+  };
+
+  const remove = (punto, e) => {
+    e.stopPropagation();
+    onChange(selected.filter((p) => p !== punto).join(", "));
+  };
+
+  return (
+    <div style={{ position: "relative" }}>
+      {/* Chips de seleccionados */}
+      {selected.length > 0 && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 6 }}>
+          {selected.map((p) => (
+            <span
+              key={p}
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 4,
+                background: "var(--qt-accent, #16a34a)", color: "#fff",
+                borderRadius: 4, padding: "2px 8px", fontSize: 11, fontWeight: 500,
+              }}
+            >
+              {p}
+              <button
+                type="button"
+                onClick={(e) => remove(p, e)}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "#fff", padding: 0, lineHeight: 1 }}
+              >
+                <X size={10} />
+              </button>
+            </span>
+          ))}
+        </div>
+      )}
+
+      {/* Botón para abrir el dropdown */}
+      <button
+        type="button"
+        className="qt-input"
+        onClick={() => setOpen((prev) => !prev)}
+        style={{
+          width: "100%", display: "flex", justifyContent: "space-between",
+          alignItems: "center", cursor: "pointer", textAlign: "left",
+          color: selected.length === 0 ? "#9ca3af" : "inherit",
+        }}
+      >
+        <span>{selected.length === 0 ? "Seleccione puntos..." : `${selected.length} punto(s) seleccionado(s)`}</span>
+        <ChevronDown size={14} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
+      </button>
+
+      {/* Lista desplegable */}
+      {open && (
+        <div
+          style={{
+            position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+            background: "var(--qt-card-bg, #fff)", border: "1px solid var(--qt-border, #e5e7eb)",
+            borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 50,
+            maxHeight: 260, overflowY: "auto",
+          }}
+        >
+          {PUNTOS_DISTRIBUCION.map((punto) => (
+            <label
+              key={punto}
+              style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "8px 14px", cursor: "pointer", fontSize: 13,
+                background: selected.includes(punto) ? "var(--qt-accent-light, #dcfce7)" : "transparent",
+                borderBottom: "1px solid var(--qt-border-light, #f3f4f6)",
+              }}
+              onMouseEnter={(e) => { if (!selected.includes(punto)) e.currentTarget.style.background = "var(--qt-hover, #f9fafb)"; }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = selected.includes(punto) ? "var(--qt-accent-light, #dcfce7)" : "transparent"; }}
+            >
+              <input
+                type="checkbox"
+                checked={selected.includes(punto)}
+                onChange={() => toggle(punto)}
+                style={{ accentColor: "#16a34a" }}
+              />
+              {punto}
+            </label>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function QuoteActivacionSection({ form, setForm }) {
   const activaciones = form.activaciones || [];
@@ -274,15 +442,14 @@ export default function QuoteActivacionSection({ form, setForm }) {
                 </div>
               )}
 
-              {/* Puntos de distribución */}
+              {/* Puntos de distribución – dropdown multi-selección */}
               <div style={{ marginTop: 14 }}>
-                <label className="qt-input-label">Puntos de distribución</label>
-                <textarea
-                  className="qt-input"
-                  rows={4}
+                <label className="qt-input-label" style={{ marginBottom: 6, display: "block" }}>
+                  Puntos de distribución
+                </label>
+                <PuntosDropdown
                   value={act.puntosDistribucion}
-                  onChange={(e) => updateActivacion(idx, { puntosDistribucion: e.target.value })}
-                  style={{ resize: "vertical" }}
+                  onChange={(val) => updateActivacion(idx, { puntosDistribucion: val })}
                 />
               </div>
             </div>

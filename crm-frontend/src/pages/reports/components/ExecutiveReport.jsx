@@ -35,6 +35,7 @@ export default function ExecutiveReport() {
     endDate: new Date().toISOString(),
     clientId: "all",
     executiveId: "all",
+    tipoVenta: "all",
   });
 
   useEffect(() => {
@@ -65,9 +66,14 @@ export default function ExecutiveReport() {
         if (!grouped[key]) {
           const exec = executives.find((e) => e.name === item.ejecutivo);
           const meta = exec ? (goalsMap[`${year}-${month}-${exec._id}`] || 0) : 0;
-          grouped[key] = { fecha: `${monthName} ${year}`, ejecutivo: item.ejecutivo, totalVentasSinIVA: 0, meta, cantidadVentas: 0 };
+          grouped[key] = { fecha: `${monthName} ${year}`, ejecutivo: item.ejecutivo, totalVentasSinIVA: 0, facturado: 0, intercambio: 0, meta, cantidadVentas: 0 };
         }
         grouped[key].totalVentasSinIVA += item.ventasSinIVA;
+        if (item.tipoVenta === "facturada") {
+          grouped[key].facturado += item.ventasSinIVA;
+        } else {
+          grouped[key].intercambio += item.ventasSinIVA;
+        }
         grouped[key].cantidadVentas += 1;
       });
 
@@ -195,7 +201,9 @@ export default function ExecutiveReport() {
     exportToExcel(data.map((row) => ({
       "Mes": row.fecha,
       "Ejecutivo": row.ejecutivo,
-      "Total Ventas": row.totalVentasSinIVA,
+      "Facturado (s/IVA)": row.facturado,
+      "Intercambio (s/IVA)": row.intercambio,
+      "Total Ventas (s/IVA)": row.totalVentasSinIVA,
       "Meta Mensual": row.meta,
       "% Cumplimiento": Number(row.pctDec.toFixed(2)),
       "Número de Ventas": row.cantidadVentas,
@@ -236,6 +244,15 @@ export default function ExecutiveReport() {
               onChange={(e) => setFilters({ ...filters, executiveId: e.target.value })}>
               <option value="all">Todos</option>
               {executives.map((e) => <option key={e._id} value={e._id}>{e.name}</option>)}
+            </select>
+          </div>
+          <div className="rp-filter-group rp-filter-group--sm">
+            <label className="sl-label">Tipo Venta</label>
+            <select className="sl-select-full" value={filters.tipoVenta}
+              onChange={(e) => setFilters({ ...filters, tipoVenta: e.target.value })}>
+              <option value="all">Todas</option>
+              <option value="facturada">Facturada (Efectivo)</option>
+              <option value="intercambio">Intercambio (Especie)</option>
             </select>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
@@ -328,7 +345,9 @@ export default function ExecutiveReport() {
             <table className="sl-table">
               <thead><tr>
                 <th>Mes</th><th>Ejecutivo</th>
-                <th style={{ textAlign: "right" }}>Total ventas</th>
+                <th style={{ textAlign: "right" }}>Facturado</th>
+                <th style={{ textAlign: "right" }}>Intercambio</th>
+                <th style={{ textAlign: "right" }}>Total (s/IVA)</th>
                 <th style={{ textAlign: "right" }}>Meta mensual</th>
                 <th style={{ textAlign: "center" }}>% Cumplimiento</th>
                 <th style={{ textAlign: "center" }}>N° ventas</th>
@@ -338,7 +357,9 @@ export default function ExecutiveReport() {
                   <tr key={i}>
                     <td>{row.fecha}</td>
                     <td>{row.ejecutivo}</td>
-                    <td style={{ textAlign: "right" }}>{fmtMoney(row.totalVentasSinIVA)}</td>
+                    <td style={{ textAlign: "right", color: "#16a34a" }}>{fmtMoney(row.facturado)}</td>
+                    <td style={{ textAlign: "right", color: "#3b82f6" }}>{fmtMoney(row.intercambio)}</td>
+                    <td style={{ textAlign: "right", fontWeight: "bold" }}>{fmtMoney(row.totalVentasSinIVA)}</td>
                     <td style={{ textAlign: "right" }}>{fmtMoney(row.meta)}</td>
                     <td style={{ textAlign: "center" }}>
                       <span className={`sl-badge ${cumplColor(row.pctDec)}`}>{fmtPct(row.pctDec)}</span>

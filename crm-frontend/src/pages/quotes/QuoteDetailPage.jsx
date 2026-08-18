@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { getQuoteById, deleteQuote } from "../../services/quoteService";
+import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
 import { ArrowLeft, Printer, Pencil, Trash2, ShoppingCart } from "lucide-react";
 import "./quotes.css";
@@ -46,6 +47,7 @@ function Toast({ msg, type, onClose }) {
 export default function QuoteDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { canConvert } = useAuth();
   const [quote, setQuote] = useState(null);
   const [loading, setLoading] = useState(true);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -140,16 +142,26 @@ export default function QuoteDetailPage() {
           <button className="qt-btn-danger" type="button" onClick={() => setConfirmDelete(true)}>
             <Trash2 size={14} /> Eliminar
           </button>
-          {!quote.opportunityId && (
-            <button
-              className="qt-btn-primary"
-              type="button"
-              onClick={() => setConvertDialog(true)}
-              style={{ background: "#16a34a", borderColor: "#16a34a" }}
-            >
-              <ShoppingCart size={14} /> Convertir a Venta
-            </button>
-          )}
+          {!quote.opportunityId && canConvert && (() => {
+            const isApproved = quote.status === "aprobada";
+            return (
+              <button
+                className="qt-btn-primary"
+                type="button"
+                onClick={() => isApproved ? setConvertDialog(true) : null}
+                disabled={!isApproved}
+                title={isApproved ? "" : "La cotización debe estar aprobada para convertirla a venta"}
+                style={{
+                  background: isApproved ? "#16a34a" : "#9ca3af",
+                  borderColor: isApproved ? "#16a34a" : "#9ca3af",
+                  cursor: isApproved ? "pointer" : "not-allowed",
+                  opacity: isApproved ? 1 : 0.7,
+                }}
+              >
+                <ShoppingCart size={14} /> Convertir a Venta
+              </button>
+            );
+          })()}
         </div>
       </div>
 

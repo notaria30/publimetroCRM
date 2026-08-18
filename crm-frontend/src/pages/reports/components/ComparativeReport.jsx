@@ -41,6 +41,7 @@ export function ComparativeReport() {
     anioComp: String(anioActual),
     tipoCliente: "all",
     ejecutivoId: "all",
+    tipoVenta: "all",
   });
 
   useEffect(() => {
@@ -56,6 +57,7 @@ export function ComparativeReport() {
       const params = {
         tipoCliente: filters.tipoCliente,
         ejecutivoId: filters.ejecutivoId,
+        tipoVenta: filters.tipoVenta,
       };
 
       if (filters.modo === "mes-libre") {
@@ -236,6 +238,17 @@ export function ComparativeReport() {
               onChange={(e) => setFilters({ ...filters, ejecutivoId: e.target.value })}>
               <option value="all">Todos</option>
               {executives.map((e) => <option key={e._id} value={e._id}>{e.name}</option>)}
+            </select>
+          </div>
+
+          {/* Tipo Venta */}
+          <div className="rp-filter-group rp-filter-group--sm">
+            <label className="sl-label">Tipo Venta</label>
+            <select className="sl-select-full" value={filters.tipoVenta}
+              onChange={(e) => setFilters({ ...filters, tipoVenta: e.target.value })}>
+              <option value="all">Todas</option>
+              <option value="facturada">Facturada (Efectivo)</option>
+              <option value="intercambio">Intercambio (Especie)</option>
             </select>
           </div>
 

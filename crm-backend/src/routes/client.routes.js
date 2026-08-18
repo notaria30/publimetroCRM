@@ -1,6 +1,7 @@
 const express = require("express");
 const Client = require("../models/Client");
 const { auth, isOwner } = require("../middlewares/auth.middleware");
+const { refreshAllClientStatuses } = require("../services/clientStatus.service");
 const router = express.Router();
 
 // Validar RFC (para evitar clientes duplicados en cualquier worker)
@@ -12,7 +13,7 @@ router.get("/check-rfc", auth, async (req, res) => {
       return res.status(400).json({ message: "Falta el RFC" });
     }
 
-    const client = await Client.findOne({ rfc: rfc.toUpperCase().trim() })
+    const client = await Client.findOne({ rfc: new RegExp(`^${rfc.trim()}$`, "i") })
       .populate("assignedTo", "name email role");
 
     if (!client) {
@@ -21,6 +22,7 @@ router.get("/check-rfc", auth, async (req, res) => {
 
     return res.json({
       exists: true,
+      clientName: client.nombreComercial || client.razonSocial || "Desconocido",
       workerName: client.assignedTo?.name || "Desconocido",
       workerEmail: client.assignedTo?.email || null
     });
@@ -31,18 +33,21 @@ router.get("/check-rfc", auth, async (req, res) => {
   }
 });
 
-// Validar NOMBRE COMERCIAL (para evitar clientes duplicados por nombre)
+// Validar NOMBRE COMERCIAL o RAZÓN SOCIAL (para evitar clientes duplicados)
 router.get("/check-name", auth, async (req, res) => {
   try {
     const { nombreComercial } = req.query;
 
     if (!nombreComercial) {
-      return res.status(400).json({ message: "Falta el nombre comercial" });
+      return res.status(400).json({ message: "Falta el nombre comercial o razón social" });
     }
 
-    // Búsqueda case-insensitive
+    // Búsqueda case-insensitive por nombreComercial o razonSocial
     const client = await Client.findOne({
-      nombreComercial: new RegExp(`^${nombreComercial.trim()}$`, "i"),
+      $or: [
+        { nombreComercial: new RegExp(`^${nombreComercial.trim()}$`, "i") },
+        { razonSocial: new RegExp(`^${nombreComercial.trim()}$`, "i") }
+      ]
     }).populate("assignedTo", "name email role");
 
     if (!client) {
@@ -64,6 +69,33 @@ router.get("/check-name", auth, async (req, res) => {
 router.post("/", auth, async (req, res) => {
   try {
     const data = req.body;
+
+    // Validar duplicados en backend por seguridad
+    if (data.rfc) {
+      const existingRfc = await Client.findOne({ rfc: new RegExp(`^${data.rfc.trim()}$`, "i") });
+      if (existingRfc) {
+        return res.status(400).json({ message: `Este RFC ya pertenece al cliente ${existingRfc.nombreComercial || existingRfc.razonSocial}` });
+      }
+    }
+
+    if (data.nombreComercial) {
+      const existingName = await Client.findOne({
+        nombreComercial: new RegExp(`^${data.nombreComercial.trim()}$`, "i"),
+      });
+      if (existingName) {
+        return res.status(400).json({ message: "El Nombre Comercial ya está registrado en el sistema" });
+      }
+    }
+
+    if (data.razonSocial) {
+      const existingRazon = await Client.findOne({
+        razonSocial: new RegExp(`^${data.razonSocial.trim()}$`, "i"),
+      });
+      if (existingRazon) {
+        return res.status(400).json({ message: "La Razón Social ya está registrada en el sistema" });
+      }
+    }
+
     let assignedTo = req.user._id;
     // Si es OWNER y envía un assignedTo válido, respetarlo
     if (req.user.role === "OWNER" && data.assignedTo) {
@@ -80,7 +112,7 @@ router.post("/", auth, async (req, res) => {
   } catch (error) {
     console.error("Error al crear cliente:", error);
 
-    // RFC duplicado
+    // RFC duplicado (por si acaso ocurriese a nivel de base de datos)
     if (error.code === 11000 && error.keyPattern?.rfc) {
       return res.status(400).json({ message: "El RFC ya está registrado en el sistema" });
     }
@@ -154,6 +186,37 @@ router.put("/:id", auth, async (req, res) => {
       delete req.body.assignedTo;
     }
 
+    // Validar duplicados en backend para updates
+    if (req.body.rfc) {
+      const existingRfc = await Client.findOne({
+        rfc: new RegExp(`^${req.body.rfc.trim()}$`, "i"),
+        _id: { $ne: req.params.id }
+      });
+      if (existingRfc) {
+        return res.status(400).json({ message: `Este RFC ya pertenece al cliente ${existingRfc.nombreComercial || existingRfc.razonSocial}` });
+      }
+    }
+
+    if (req.body.nombreComercial) {
+      const existingName = await Client.findOne({
+        nombreComercial: new RegExp(`^${req.body.nombreComercial.trim()}$`, "i"),
+        _id: { $ne: req.params.id }
+      });
+      if (existingName) {
+        return res.status(400).json({ message: "El Nombre Comercial ya está registrado en otro cliente" });
+      }
+    }
+
+    if (req.body.razonSocial) {
+      const existingRazon = await Client.findOne({
+        razonSocial: new RegExp(`^${req.body.razonSocial.trim()}$`, "i"),
+        _id: { $ne: req.params.id }
+      });
+      if (existingRazon) {
+        return res.status(400).json({ message: "La Razón Social ya está registrada en otro cliente" });
+      }
+    }
+
     // OWNER sí puede reasignar clientes libremente
     const updatedClient = await Client.findByIdAndUpdate(
       req.params.id,
@@ -184,4 +247,23 @@ router.delete("/:id", auth, isOwner, async (req, res) => {
     res.status(500).json({ message: "Error interno del servidor" });
   }
 });
+
+// Refrescar estatus de todos los clientes manualmente (solo OWNER)
+// POST /api/clients/refresh-status
+router.post("/refresh-status", auth, isOwner, async (req, res) => {
+  try {
+    console.log(`[refresh-status] Evaluación manual iniciada por: ${req.user.email}`);
+    const summary = await refreshAllClientStatuses();
+    res.json({
+      message: "Evaluación de estatus completada",
+      total: summary.total,
+      updated: summary.updated,
+      results: summary.results,
+    });
+  } catch (error) {
+    console.error("Error en refresh-status:", error);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
 module.exports = router;

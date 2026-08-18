@@ -18,11 +18,46 @@ const REGIMENES = [
 ];
 
 const INDUSTRIAS = [
-  "autos","inmobiliaria","restaurantes","hoteles","tiendas departamentales",
-  "tiendas de conveniencia","hospitales","opticas","farmacias","gimnasios",
-  "clinicas","escuelas","universidades","clubs deportivos","eventos o espectaculos",
-  "servicios financieros","aseguradoras","notarias","talleres mecanicos",
-  "distribuidoras de autos","cursos o diplomados","laboratorios medicos",
+  "autos", "inmobiliaria", "restaurantes", "hoteles", "tiendas departamentales",
+  "tiendas de conveniencia", "hospitales", "opticas", "farmacias", "gimnasios",
+  "clinicas", "escuelas", "universidades", "clubs deportivos", "eventos o espectaculos",
+  "servicios financieros", "aseguradoras", "notarias", "talleres mecanicos",
+  "distribuidoras de autos", "cursos o diplomados", "laboratorios medicos",
+];
+
+const ESTADOS = [
+  "Aguascalientes",
+  "Baja California",
+  "Baja California Sur",
+  "Campeche",
+  "Chiapas",
+  "Chihuahua",
+  "Coahuila",
+  "Colima",
+  "Ciudad de México",
+  "Durango",
+  "Guanajuato",
+  "Guerrero",
+  "Hidalgo",
+  "Jalisco",
+  "Estado de México",
+  "Michoacán",
+  "Morelos",
+  "Nayarit",
+  "Nuevo León",
+  "Oaxaca",
+  "Puebla",
+  "Querétaro",
+  "Quintana Roo",
+  "San Luis Potosí",
+  "Sinaloa",
+  "Sonora",
+  "Tabasco",
+  "Tamaulipas",
+  "Tlaxcala",
+  "Veracruz",
+  "Yucatán",
+  "Zacatecas"
 ];
 
 function Toast({ msg, type, onClose }) {
@@ -36,6 +71,7 @@ export default function ClientCreatePage() {
   const [users, setUsers] = useState([]);
   const [rfcInfo, setRfcInfo] = useState(null);
   const [nameInfo, setNameInfo] = useState(null);
+  const [razonSocialInfo, setRazonSocialInfo] = useState(null);
   const [toast, setToast] = useState(null);
 
   const [form, setForm] = useState({
@@ -44,8 +80,8 @@ export default function ClientCreatePage() {
     regimen: "", agenciaODirecto: "", tipoCliente: "", tipoIndustria: "",
     contactos: {
       mercadotecnia: { nombre: "", email: "", celular: "" },
-      diseno:        { nombre: "", email: "", celular: "" },
-      facturacion:   { nombre: "", email: "", celular: "" },
+      diseno: { nombre: "", email: "", celular: "" },
+      facturacion: { nombre: "", email: "", celular: "" },
     },
     status: "prospecto",
     assignedTo: "",
@@ -70,14 +106,49 @@ export default function ClientCreatePage() {
     try { setNameInfo((await checkClientName(form.nombreComercial)).data); } catch { }
   };
 
+  const handleRazonSocialBlur = async () => {
+    if (!form.razonSocial) return;
+    try { setRazonSocialInfo((await checkClientName(form.razonSocial)).data); } catch { }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!form.regimen || !form.agenciaODirecto || !form.tipoCliente || !form.tipoIndustria) {
       setToast({ msg: "Completa Régimen, Agencia/Directo, Tipo de Cliente e Industria", type: "error" });
       return;
     }
-    if (rfcInfo?.exists) { setToast({ msg: "Este RFC ya existe.", type: "error" }); return; }
-    if (nameInfo?.exists) { setToast({ msg: "Este Nombre Comercial ya existe.", type: "error" }); return; }
+
+    try {
+      // Validaciones en tiempo real al enviar
+      if (form.rfc) {
+        const rfcRes = await checkRFC(form.rfc);
+        if (rfcRes.data.exists) {
+          setRfcInfo(rfcRes.data);
+          setToast({ msg: <span>Este <strong>RFC</strong> ya pertenece al cliente <strong>{rfcRes.data.clientName}</strong></span>, type: "error" });
+          return;
+        }
+      }
+      if (form.nombreComercial) {
+        const nameRes = await checkClientName(form.nombreComercial);
+        if (nameRes.data.exists) {
+          setNameInfo(nameRes.data);
+          setToast({ msg: `Este Nombre Comercial ya existe (Registrado con: ${nameRes.data.workerName})`, type: "error" });
+          return;
+        }
+      }
+      if (form.razonSocial) {
+        const razonSocialRes = await checkClientName(form.razonSocial);
+        if (razonSocialRes.data.exists) {
+          setRazonSocialInfo(razonSocialRes.data);
+          setToast({ msg: `Esta Razón Social ya existe (Registrado con: ${razonSocialRes.data.workerName})`, type: "error" });
+          return;
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setToast({ msg: "Error al validar campos duplicados", type: "error" });
+      return;
+    }
 
     const payload = { ...form };
     if (isWorker) payload.assignedTo = user._id;
@@ -86,7 +157,10 @@ export default function ClientCreatePage() {
       await createClient(payload);
       setToast({ msg: "Cliente creado correctamente", type: "success" });
       setTimeout(() => navigate("/clients"), 1200);
-    } catch { setToast({ msg: "Error creando cliente", type: "error" }); }
+    } catch (err) {
+      const errorMsg = err.response?.data?.message || "Error creando cliente";
+      setToast({ msg: errorMsg, type: "error" });
+    }
   };
 
   return (
@@ -113,24 +187,31 @@ export default function ClientCreatePage() {
                 onBlur={handleNameBlur} />
               {nameInfo?.exists && (
                 <div className="cl-alert cl-alert--warning">
-                  Nombre ya registrado con: <strong>{nameInfo.workerName}</strong>
+                  Cliente ya registrado con: <strong>{nameInfo.workerName}</strong>
                 </div>
               )}
             </div>
 
             <div className="cl-form-group">
               <label className="cl-label">Razón Social</label>
-              <input className="cl-input" value={form.razonSocial} onChange={(e) => set("razonSocial", e.target.value)} />
+              <input className="cl-input" value={form.razonSocial}
+                onChange={(e) => { set("razonSocial", e.target.value); setRazonSocialInfo(null); }}
+                onBlur={handleRazonSocialBlur} />
+              {razonSocialInfo?.exists && (
+                <div className="cl-alert cl-alert--warning">
+                  Razón Social ya registrada con: <strong>{razonSocialInfo.workerName}</strong>
+                </div>
+              )}
             </div>
 
             <div className="cl-form-group">
               <label className="cl-label">RFC</label>
               <input className="cl-input" value={form.rfc}
-                onChange={(e) => { set("rfc", e.target.value); setRfcInfo(null); }}
+                onChange={(e) => { set("rfc", e.target.value.toUpperCase()); setRfcInfo(null); }}
                 onBlur={handleRFCBlur} />
               {rfcInfo?.exists && (
                 <div className="cl-alert cl-alert--error">
-                  RFC ya registrado con: <strong>{rfcInfo.workerName}</strong>
+                  Este <strong>RFC</strong> ya pertenece al cliente <strong>{rfcInfo.clientName}</strong>
                 </div>
               )}
             </div>
@@ -146,11 +227,18 @@ export default function ClientCreatePage() {
         <div className="cl-card">
           <p className="cl-section-title">Dirección</p>
           <div className="cl-form-grid">
-            {[["calleNumero","Calle y Número"],["colonia","Colonia"],["ciudad","Ciudad"],
-              ["estado","Estado"],["pais","País"],["cp","CP"],["telefono","Teléfono"]].map(([f,l]) => (
+            {[["calleNumero", "Calle y Número"], ["colonia", "Colonia"], ["ciudad", "Ciudad"],
+            ["estado", "Estado"], ["pais", "País"], ["cp", "CP"], ["telefono", "Teléfono"]].map(([f, l]) => (
               <div className="cl-form-group" key={f}>
                 <label className="cl-label">{l}</label>
-                <input className="cl-input" value={form.direccion[f]} onChange={(e) => setDir(f, e.target.value)} />
+                {f === "estado" ? (
+                  <select className="cl-select" value={form.direccion[f]} onChange={(e) => setDir(f, e.target.value)}>
+                    <option value="">Seleccione Estado...</option>
+                    {ESTADOS.map((est) => <option key={est} value={est}>{est}</option>)}
+                  </select>
+                ) : (
+                  <input className="cl-input" value={form.direccion[f]} onChange={(e) => setDir(f, e.target.value)} />
+                )}
               </div>
             ))}
           </div>
@@ -198,11 +286,11 @@ export default function ClientCreatePage() {
         {/* CONTACTOS */}
         <div className="cl-card">
           <p className="cl-section-title">Contactos</p>
-          {["mercadotecnia","diseno","facturacion"].map((area) => (
+          {["mercadotecnia", "diseno", "facturacion"].map((area) => (
             <div key={area} style={{ marginBottom: 20 }}>
               <p style={{ fontSize: 13, fontWeight: 600, color: "#6b7280", marginBottom: 10, textTransform: "capitalize" }}>{area}</p>
               <div className="cl-form-grid">
-                {["nombre","email","celular"].map((f) => (
+                {["nombre", "email", "celular"].map((f) => (
                   <div className="cl-form-group" key={f}>
                     <label className="cl-label">{f.charAt(0).toUpperCase() + f.slice(1)}</label>
                     <input className="cl-input" value={form.contactos[area][f]}

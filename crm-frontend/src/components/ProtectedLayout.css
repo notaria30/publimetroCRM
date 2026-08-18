@@ -4,14 +4,19 @@
 .app-shell {
   display: flex;
   min-height: 100vh;
+  background: #f5f5f5; /* Match body background */
+}
+
+body.dark .app-shell {
+  background: #0f1117; /* Match dark mode body background */
 }
 
 /* SIDEBAR */
 .sidebar {
-  width: 220px;
-  min-width: 220px;
-  background: #ffffff;
-  border-right: 1px solid #e5e7eb;
+  width: 240px;
+  min-width: 240px;
+  background: #F5F5F7;
+  border-right: 1px solid #E5E5E7;
   display: flex;
   flex-direction: column;
   position: fixed;
@@ -19,17 +24,15 @@
   left: 0;
   height: 100vh;
   z-index: 100;
-  padding: 20px 12px 24px 12px;
+  padding: 24px 16px;
   overflow-y: auto;
-  /* ← permite scroll si el contenido es largo */
   overflow-x: hidden;
-  box-shadow: 2px 0 12px rgba(0, 0, 0, 0.06);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
 }
 
 .sidebar-logo {
-  padding: 4px 10px 20px;
-  border-bottom: 1px solid #f0f0f0;
-  margin-bottom: 16px;
+  padding: 4px 10px 24px;
+  margin-bottom: 8px;
 }
 
 /* Nav links */
@@ -37,34 +40,21 @@
   flex: 1;
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
   overflow-y: auto;
-  padding-bottom: 100px;
-  /* ← espacio para que el footer no tape los links */
+  padding-bottom: 40px;
 }
 
-/* Botón modo oscuro */
-.sidebar-theme-toggle {
-  width: 100%;
-  padding: 8px;
-  border-radius: 8px;
-  border: 1px solid #e5e7eb;
-  background: #f9fafb;
-  color: #374151;
-  font-size: 12px;
+.sidebar-section-divider {
+  margin: 16px 0 8px 12px;
+  font-size: 11px;
   font-weight: 600;
-  cursor: pointer;
-  font-family: 'Segoe UI', sans-serif;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background 0.15s;
-  margin-bottom: 4px;
+  color: #9ca3af;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
 }
 
-.sidebar-theme-toggle:hover {
-  background: #f3f4f6;
-}
+/* Removed sidebar-theme-toggle styles from here, moved to Topbar */
 
 
 /* ================================
@@ -81,7 +71,7 @@ body.dark .sidebar {
 }
 
 body.dark .sidebar-link {
-  color: #9ca3af;
+  color: #86868B;
 }
 
 body.dark .sidebar-link:hover {
@@ -101,13 +91,15 @@ body.dark .sidebar-user-name {
   color: #e5e7eb;
 }
 
-body.dark .sidebar-theme-toggle {
+body.dark .sidebar-theme-toggle,
+body.dark .topbar-icon-btn {
   background: #252836;
   border-color: #2d3148;
-  color: #9ca3af;
+  color: #86868B;
 }
 
-body.dark .sidebar-theme-toggle:hover {
+body.dark .sidebar-theme-toggle:hover,
+body.dark .topbar-icon-btn:hover {
   background: #2d3148;
 }
 
@@ -128,7 +120,7 @@ body.dark .db-metric-label,
 body.dark .db-metric-sub,
 body.dark .db-client-sub,
 body.dark .db-stat-label {
-  color: #6b7280;
+  color: #86868B;
 }
 
 body.dark .db-metric-value,
@@ -142,7 +134,7 @@ body.dark .db-client-name {
 body.dark .db-tab {
   background: #1a1d27;
   border-color: #2d3148;
-  color: #9ca3af;
+  color: #86868B;
 }
 
 body.dark .db-tab.active {
@@ -151,141 +143,155 @@ body.dark .db-tab.active {
 }
 
 body.dark .db-greeting-sub {
-  color: #6b7280;
+  color: #86868B;
 }
 
 .sidebar-link {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 9px 12px;
-  border-radius: 8px;
-  font-size: 13px;
+  gap: 12px;
+  padding: 10px 14px;
+  border-radius: 12px;
+  font-size: 14px;
   font-weight: 500;
-  color: #374151;
+  color: #4b5563;
   text-decoration: none;
-  transition: background 0.15s;
-  font-family: 'Segoe UI', sans-serif;
+  transition: all 0.2s ease;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
 }
 
 .sidebar-link:hover {
-  background: #f3f4f6;
+  background: #e5e5e7;
+  color: #111827;
 }
 
 .sidebar-link--active {
-  background: #f0fdf4;
-  color: #16a34a;
+  background: #E8F5EC;
+  color: #34A853;
   font-weight: 600;
 }
 
-.sidebar-link-dot {
-  width: 7px;
-  height: 7px;
-  border-radius: 50%;
-  background: currentColor;
-  opacity: 0.5;
-  flex-shrink: 0;
+.sidebar-link svg {
+  color: inherit;
+  transition: color 0.2s ease;
 }
 
-.sidebar-link--active .sidebar-link-dot {
-  opacity: 1;
-}
-
-/* Footer */
-.sidebar-footer {
-  position: fixed;
-  bottom: 0;
+/* TOPBAR */
+.topbar {
+  position: sticky;
+  top: 0;
   left: 0;
-  width: 220px;
-  background: #ffffff;
-  border-top: 1px solid #f0f0f0;
-  padding: 14px 12px 20px 12px;
+  right: 0;
+  height: 64px;
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid #E5E5E7;
   display: flex;
-  flex-direction: column;
-  gap: 10px;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 0 24px;
+  z-index: 90;
 }
 
-.sidebar-user {
+body.dark .topbar {
+  background: rgba(26, 29, 39, 0.85);
+  border-bottom-color: #2d3148;
+}
+
+.topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.topbar-icon-btn {
+  background: #F5F5F7;
+  border: 1px solid #E5E5E7;
+  color: #4b5563;
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.topbar-icon-btn:hover {
+  background: #e5e5e7;
+  color: #111827;
+}
+
+.topbar-user {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 4px 6px;
+  padding: 4px 10px 4px 4px;
+  border-radius: 24px;
+  border: 1px solid transparent;
+  cursor: pointer;
+  transition: all 0.2s ease;
 }
 
-.sidebar-avatar {
-  width: 34px;
-  height: 34px;
+.topbar-user:hover {
+  background: #F5F5F7;
+  border-color: #E5E5E7;
+}
+
+body.dark .topbar-user:hover {
+  background: #252836;
+  border-color: #2d3148;
+}
+
+.topbar-avatar {
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
-  background: #16a34a;
+  background: #34A853;
   color: white;
   font-size: 13px;
-  font-weight: 700;
+  font-weight: 600;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
 }
 
-.sidebar-user-name {
-  font-size: 13px;
-  font-weight: 600;
+.topbar-user-name {
+  font-size: 14px;
+  font-weight: 500;
   color: #111827;
   margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
 }
 
-.sidebar-user-role {
-  font-size: 11px;
-  color: #9ca3af;
-  margin: 0;
-}
-
-.sidebar-logout {
-  width: 100%;
-  padding: 8px;
-  border-radius: 8px;
-  border: 1px solid #fecaca;
-  background: #fff5f5;
-  color: #dc2626;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  font-family: 'Segoe UI', sans-serif;
-  transition: background 0.15s;
-}
-
-.sidebar-logout:hover {
-  background: #fee2e2;
+body.dark .topbar-user-name {
+  color: #f3f4f6;
 }
 
 /* MAIN CONTENT */
 .app-main {
-  margin-left: 220px;
+  margin-left: 240px;
   flex: 1;
-  background: #f4f5f7;
+  background: #ffffff;
   min-height: 100vh;
   min-width: 0;
+  display: flex;
+  flex-direction: column;
 }
 
 .app-content {
+  flex: 1;
   max-width: 100%;
   margin: 0 auto;
-  padding: 28px 32px;
+  padding: 28px 40px;
+  width: 100%;
+  box-sizing: border-box;
 }
 
-body.dark .sidebar-footer {
-  background: #1a1d27;
-  border-top-color: #2d3148;
-}
-
-body.dark .sidebar-logout {
-  background: #2d1a1a;
-  border-color: #7f1d1d;
-  color: #f87171;
-}
-
-body.dark .sidebar-logout:hover {
-  background: #3d1f1f;
-}
+/* Removed sidebar-footer dark mode styles */
 
 /* ================================
    SCROLLBARS MODO OSCURO
@@ -309,85 +315,108 @@ body.dark ::-webkit-scrollbar-thumb:hover {
 }
 
 /* ================================
-   NAVBAR — DROPDOWN
+   TOPBAR — DROPDOWN
    ================================ */
-.sidebar-dropdown {
+.topbar-dropdown {
   position: absolute;
-  bottom: calc(100% + 6px);
-  left: 0;
+  top: calc(100% + 8px);
   right: 0;
+  width: 220px;
   background: white;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  border: 1px solid #E5E5E7;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
   overflow: hidden;
   z-index: 200;
 }
 
-.sidebar-dropdown-header {
-  padding: 10px 14px 8px;
+.topbar-dropdown-header {
+  padding: 12px 16px 10px;
   border-bottom: 1px solid #f0f0f0;
 }
 
-.sidebar-dropdown-name {
+.topbar-dropdown-name {
   margin: 0;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: #111827;
-  font-family: 'Segoe UI', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
 }
 
-.sidebar-dropdown-role {
+.topbar-dropdown-role {
   margin: 0;
-  font-size: 11px;
-  color: #9ca3af;
-  font-family: 'Segoe UI', sans-serif;
+  font-size: 12px;
+  color: #6b7280;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
+  margin-top: 2px;
 }
 
-.sidebar-dropdown-btn {
+.topbar-dropdown-btn {
   width: 100%;
-  padding: 10px 14px;
+  padding: 10px 16px;
   background: none;
   border: none;
   cursor: pointer;
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   font-size: 13px;
-  color: #374151;
-  font-family: 'Segoe UI', sans-serif;
-  transition: background 0.12s;
+  font-weight: 500;
+  color: #4b5563;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
+  transition: all 0.2s ease;
   text-align: left;
 }
 
-.sidebar-dropdown-btn:hover {
-  background: #f9fafb;
+.topbar-dropdown-btn:hover {
+  background: #F5F5F7;
+  color: #111827;
+}
+
+.topbar-dropdown-btn.logout-btn {
+  color: #ef4444;
+  border-top: 1px solid #f0f0f0;
+}
+
+.topbar-dropdown-btn.logout-btn:hover {
+  background: #fef2f2;
 }
 
 /* Dark */
-body.dark .sidebar-dropdown {
+body.dark .topbar-dropdown {
   background: #1e293b;
   border-color: #334155;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }
 
-body.dark .sidebar-dropdown-header {
+body.dark .topbar-dropdown-header {
   border-bottom-color: #334155;
 }
 
-body.dark .sidebar-dropdown-name {
+body.dark .topbar-dropdown-name {
   color: #f1f5f9;
 }
 
-body.dark .sidebar-dropdown-role {
-  color: #64748b;
+body.dark .topbar-dropdown-role {
+  color: #94a3b8;
 }
 
-body.dark .sidebar-dropdown-btn {
+body.dark .topbar-dropdown-btn {
   color: #cbd5e1;
 }
 
-body.dark .sidebar-dropdown-btn:hover {
+body.dark .topbar-dropdown-btn:hover {
   background: #253347;
+  color: #f8fafc;
+}
+
+body.dark .topbar-dropdown-btn.logout-btn {
+  border-top-color: #334155;
+  color: #f87171;
+}
+
+body.dark .topbar-dropdown-btn.logout-btn:hover {
+  background: #3f1616;
 }
 
 /* ================================
@@ -410,7 +439,7 @@ body.dark .sidebar-dropdown-btn:hover {
   width: 100%;
   max-width: 420px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
-  font-family: 'Segoe UI', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
 }
 
 .cp-modal-header {
@@ -423,7 +452,7 @@ body.dark .sidebar-dropdown-btn:hover {
 .cp-modal-title {
   margin: 0;
   font-size: 18px;
-  font-weight: 700;
+  font-weight: 600;
   color: #111827;
 }
 
@@ -431,7 +460,7 @@ body.dark .sidebar-dropdown-btn:hover {
   background: none;
   border: none;
   cursor: pointer;
-  color: #6b7280;
+  color: #86868B;
   padding: 0;
   display: flex;
   align-items: center;
@@ -457,7 +486,7 @@ body.dark .sidebar-dropdown-btn:hover {
 .cp-label {
   font-size: 12px;
   font-weight: 600;
-  color: #6b7280;
+  color: #86868B;
   text-transform: uppercase;
   letter-spacing: 0.04em;
 }
@@ -474,7 +503,7 @@ body.dark .sidebar-dropdown-btn:hover {
   border: 1px solid #d1d5db;
   border-radius: 8px;
   font-size: 13px;
-  font-family: 'Segoe UI', sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
   color: #111827;
   background: white;
   outline: none;
@@ -483,7 +512,7 @@ body.dark .sidebar-dropdown-btn:hover {
 }
 
 .cp-input:focus {
-  border-color: #16a34a;
+  border-color: #1E7E39;
   box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.10);
 }
 
@@ -493,7 +522,7 @@ body.dark .sidebar-dropdown-btn:hover {
   background: none;
   border: none;
   cursor: pointer;
-  color: #9ca3af;
+  color: #86868B;
   padding: 0;
   display: flex;
   align-items: center;
@@ -501,7 +530,7 @@ body.dark .sidebar-dropdown-btn:hover {
 }
 
 .cp-eye-btn:hover {
-  color: #16a34a;
+  color: #1E7E39;
 }
 
 .cp-error {
@@ -511,7 +540,7 @@ body.dark .sidebar-dropdown-btn:hover {
 }
 
 .cp-success {
-  color: #16a34a;
+  color: #1E7E39;
   font-size: 13px;
   margin: 0;
 }
@@ -552,7 +581,7 @@ body.dark .cp-input {
 }
 
 body.dark .cp-input:focus {
-  border-color: #16a34a;
+  border-color: #1E7E39;
 }
 
 body.dark .cp-eye-btn {

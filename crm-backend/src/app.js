@@ -12,6 +12,7 @@ const dashboardRoutes = require("./routes/dashboard.routes");
 const pdfRoutes = require("./routes/pdf.routes");
 const campaignRoutes = require("./routes/campaign.routes");
 const goalsRoutes = require("./routes/goals.routes");
+const { startStatusCron } = require("./jobs/statusCron");
 const app = express();
 
 app.use(cors());
@@ -32,5 +33,8 @@ app.use("/api/reports", reportRoutes);
 app.use("/api/dashboard", dashboardRoutes);
 app.use("/api/pdf", pdfRoutes);
 app.use("/api/goals", goalsRoutes);
+
+// Iniciar job cron de estatus automático de clientes (02:00 AM diario)
+startStatusCron();
 
 module.exports = app;

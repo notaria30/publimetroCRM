@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { getOpportunityById, updateOpportunityStage, convertOpportunityToSale, deleteOpportunity } from "../../services/opportunityService";
+import { useAuth } from "../../context/AuthContext";
 import { LoadingPage } from "../../components/LoadingPage";
 import "../sales/sales.css"; // Reuse sales css for detail page styles
 
@@ -21,6 +22,7 @@ function InfoItem({ label, value }) {
 export default function OpportunityDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { canConvert } = useAuth();
   const [opp, setOpp] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showConvertModal, setShowConvertModal] = useState(false);
@@ -118,7 +120,7 @@ export default function OpportunityDetail() {
               )}
             </div>
           ) : (
-            opp.stage !== "cerrado_ganado" && (
+            opp.stage !== "cerrado_ganado" && canConvert && (
               <button
                 className="sl-btn-save"
                 onClick={handleConvert}

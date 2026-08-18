@@ -85,6 +85,20 @@ const invoiceSchema = new mongoose.Schema(
       required: false,
     },
 
+    // INTERCAMBIO
+    tieneIntercambio: {
+      type: Boolean,
+      default: false,
+    },
+    importeIntercambio: {
+      type: Number,
+      default: 0,
+    },
+    porcentajeEfectivoAplicado: {
+      type: Number,
+      default: 100,
+    },
+
   },
   { timestamps: true }
 );

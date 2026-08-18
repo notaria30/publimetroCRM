@@ -46,6 +46,7 @@ export default function SalesMonthlyReport() {
     clientId: "all",
     tipoCliente: "all",
     statusPago: "all",
+    tipoVenta: "all",
   });
 
   const dark = useApexTheme();
@@ -222,11 +223,13 @@ export default function SalesMonthlyReport() {
   const handleExport = () => {
     exportToExcel(data.map((row) => ({
       "Fecha": row.fecha,
-      "Monto con IVA": row.totalVentas,
+      "Facturado (s/IVA)": row.totalFacturado,
+      "Intercambio (s/IVA)": row.totalIntercambio,
+      "Total Ventas (s/IVA)": row.totalVentas,
       "Meta": row.meta,
       "Diferencia": row.diferencia,
       "% Cumplimiento": Number(row.pctDec.toFixed(2)),
-      "Total Pagado": row.totalPagado,
+      "Total Pagado (s/IVA)": row.totalPagado,
     })), "ventas_mensuales");
   };
 
@@ -275,6 +278,15 @@ export default function SalesMonthlyReport() {
               <option value="all">Todos</option>
               <option value="pagadas">Pagadas</option>
               <option value="pendiente">Pendiente</option>
+            </select>
+          </div>
+          <div className="rp-filter-group rp-filter-group--sm">
+            <label className="sl-label">Tipo Venta</label>
+            <select className="sl-select-full" value={filters.tipoVenta}
+              onChange={(e) => setFilters({ ...filters, tipoVenta: e.target.value })}>
+              <option value="all">Todas</option>
+              <option value="facturada">Facturada (Efectivo)</option>
+              <option value="intercambio">Intercambio (Especie)</option>
             </select>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
@@ -363,7 +375,9 @@ export default function SalesMonthlyReport() {
               <thead>
                 <tr>
                   <th>Fecha</th>
-                  <th style={{ textAlign: "right" }}>Monto (c/IVA)</th>
+                  <th style={{ textAlign: "right" }}>Facturado (s/IVA)</th>
+                  <th style={{ textAlign: "right" }}>Intercambio (s/IVA)</th>
+                  <th style={{ textAlign: "right" }}>Total Ventas (s/IVA)</th>
                   <th style={{ textAlign: "right" }}>Meta</th>
                   <th style={{ textAlign: "right" }}>Diferencia</th>
                   <th style={{ textAlign: "center" }}>% Cumplimiento</th>
@@ -374,7 +388,9 @@ export default function SalesMonthlyReport() {
                 {data.map((row, i) => (
                   <tr key={i}>
                     <td>{row.fecha}</td>
-                    <td style={{ textAlign: "right" }}>{fmtMoney(row.totalVentas)}</td>
+                    <td style={{ textAlign: "right", color: "#16a34a" }}>{fmtMoney(row.totalFacturado)}</td>
+                    <td style={{ textAlign: "right", color: "#3b82f6" }}>{fmtMoney(row.totalIntercambio)}</td>
+                    <td style={{ textAlign: "right", fontWeight: "bold" }}>{fmtMoney(row.totalVentas)}</td>
                     <td style={{ textAlign: "right" }}>{fmtMoney(row.meta)}</td>
                     <td style={{ textAlign: "right", color: row.diferencia >= 0 ? "#16a34a" : "#ef4444", fontWeight: 600 }}>
                       {fmtMoney(row.diferencia)}

@@ -6,53 +6,113 @@ const Sale = require("../models/Sale");
 const Client = require("../models/Client");
 const SalesGoal = require("../models/SalesGoal");
 const User = require("../models/User");
+const Quote = require("../models/Quote");
+
+async function getFinancialEvents({ startDate, endDate, clientId, executiveId, tipoCliente, tipoVenta, statusPago }) {
+  const events = [];
+
+  // 1. FACTURADAS (Efectivo)
+  if (!tipoVenta || tipoVenta === "all" || tipoVenta === "facturada") {
+    let invFilter = {};
+    if (startDate) invFilter.fechaFactura = { $gte: new Date(startDate) };
+    if (endDate) invFilter.fechaFactura = { ...invFilter.fechaFactura, $lte: new Date(endDate) };
+    if (statusPago === "pagadas") invFilter.pagado = true;
+    if (statusPago === "pendiente") invFilter.pagado = false;
+
+    let invoices = await Invoice.find(invFilter)
+      .populate("client", "nombreComercial tipoCliente")
+      .populate({ path: "sale", populate: { path: "assignedTo", select: "name" } })
+      .lean();
+
+    for (const inv of invoices) {
+      if (clientId && clientId !== "all" && String(inv.client?._id) !== clientId) continue;
+      if (tipoCliente && tipoCliente !== "all" && inv.client?.tipoCliente !== tipoCliente) continue;
+      
+      const assignedTo = inv.sale?.assignedTo?._id || inv.sale?.assignedTo;
+      if (executiveId && executiveId !== "all" && String(assignedTo) !== executiveId) continue;
+
+      const paidTotal = (inv.pagos || []).reduce((acc, p) => acc + (p.importe || 0), 0);
+      const pagadoSinIVA = paidTotal / 1.16;
+
+      events.push({
+        type: "facturada",
+        date: new Date(inv.fechaFactura),
+        amount: inv.importeSinIVA || 0,
+        paid: inv.pagado,
+        paidAmount: pagadoSinIVA,
+        client: inv.client,
+        ejecutivo: inv.sale?.assignedTo?.name || "No asignado",
+        ejecutivoId: assignedTo,
+      });
+    }
+  }
+
+  // 2. INTERCAMBIOS (Especie)
+  if (!tipoVenta || tipoVenta === "all" || tipoVenta === "intercambio") {
+    if (statusPago !== "pendiente") {
+      let quoteFilter = {
+        status: "aprobada",
+        "intercambio.activo": true,
+        "intercambio.porcentajeEspecie": { $gt: 0 },
+      };
+
+      if (startDate) quoteFilter.approvedAt = { $gte: new Date(startDate) };
+      if (endDate) quoteFilter.approvedAt = { ...quoteFilter.approvedAt, $lte: new Date(endDate) };
+
+      let quotes = await Quote.find(quoteFilter)
+        .populate("client", "nombreComercial tipoCliente")
+        .lean();
+
+      const quoteIds = quotes.map(q => q._id);
+      const sales = await Sale.find({ quote: { $in: quoteIds } })
+        .populate("assignedTo", "name")
+        .lean();
+      
+      const saleByQuote = {};
+      sales.forEach(s => saleByQuote[String(s.quote)] = s);
+
+      for (const q of quotes) {
+        if (clientId && clientId !== "all" && String(q.client?._id) !== clientId) continue;
+        if (tipoCliente && tipoCliente !== "all" && q.client?.tipoCliente !== tipoCliente) continue;
+        
+        const sale = saleByQuote[String(q._id)];
+        const assignedTo = sale?.assignedTo?._id || sale?.assignedTo;
+        if (executiveId && executiveId !== "all" && String(assignedTo) !== executiveId) continue;
+
+        const pEspecie = q.intercambio.porcentajeEspecie || 0;
+        const amountEspecie = Number(( (q.total || 0) * (pEspecie / 100) ).toFixed(2));
+        const dt = q.approvedAt ? new Date(q.approvedAt) : new Date(q.createdAt);
+
+        events.push({
+          type: "intercambio",
+          date: dt,
+          amount: amountEspecie,
+          paid: true,
+          paidAmount: amountEspecie,
+          client: q.client,
+          ejecutivo: sale?.assignedTo?.name || "No asignado",
+          ejecutivoId: assignedTo,
+        });
+      }
+    }
+  }
+
+  return events.sort((a, b) => b.date - a.date);
+}
 
 // ============================================
 // REPORTE 1: Ventas mensuales
 // ============================================
 router.get("/sales-monthly", auth, async (req, res) => {
   try {
-    const { startDate, endDate, clientId, tipoCliente, statusPago } = req.query;
+    const { startDate, endDate, clientId, tipoCliente, statusPago, tipoVenta } = req.query;
 
-    let invoiceFilter = {};
-
-    if (startDate) {
-      invoiceFilter.fechaFactura = { $gte: new Date(startDate) };
-    }
-    if (endDate) {
-      invoiceFilter.fechaFactura = {
-        ...invoiceFilter.fechaFactura,
-        $lte: new Date(endDate),
-      };
-    }
-
-    if (statusPago === "pagadas") {
-      invoiceFilter.pagado = true;
-    } else if (statusPago === "pendiente") {
-      invoiceFilter.pagado = false;
-    }
-
-    let invoices = await Invoice.find(invoiceFilter)
-      .populate("client", "nombreComercial tipoCliente")
-      .populate("quote", "total")
-      .lean();
-
-    if (clientId && clientId !== "all") {
-      invoices = invoices.filter((inv) => String(inv.client._id) === clientId);
-    }
-
-    if (tipoCliente && tipoCliente !== "all") {
-      invoices = invoices.filter(
-        (inv) => inv.client?.tipoCliente === tipoCliente
-      );
-    }
-
+    const events = await getFinancialEvents({ startDate, endDate, clientId, tipoCliente, statusPago, tipoVenta });
     const goals = await SalesGoal.find({});
-
     const monthlyData = {};
 
-    invoices.forEach((invoice) => {
-      const date = new Date(invoice.fechaFactura);
+    events.forEach((ev) => {
+      const date = ev.date;
       const monthKey = `${date.getFullYear()}-${date.getMonth() + 1}`;
       const year = date.getFullYear();
       const month = date.getMonth() + 1;
@@ -63,20 +123,23 @@ router.get("/sales-monthly", auth, async (req, res) => {
           month,
           monthName: date.toLocaleString("es-MX", { month: "long" }),
           totalVentas: 0,
+          totalFacturado: 0,
+          totalIntercambio: 0,
           totalPagado: 0,
-          facturas: [],
+          eventos: [],
         };
       }
 
-      monthlyData[monthKey].totalVentas += invoice.importeConIVA || 0;
+      monthlyData[monthKey].totalVentas += ev.amount;
+      monthlyData[monthKey].totalPagado += ev.paidAmount;
 
-      if (invoice.pagado && invoice.importePago) {
-        monthlyData[monthKey].totalPagado += invoice.importePago;
-      } else if (invoice.pagado) {
-        monthlyData[monthKey].totalPagado += invoice.importeConIVA || 0;
+      if (ev.type === "facturada") {
+        monthlyData[monthKey].totalFacturado += ev.amount;
+      } else {
+        monthlyData[monthKey].totalIntercambio += ev.amount;
       }
 
-      monthlyData[monthKey].facturas.push(invoice);
+      monthlyData[monthKey].eventos.push(ev);
     });
 
     const result = Object.values(monthlyData).map((month) => {
@@ -90,10 +153,12 @@ router.get("/sales-monthly", auth, async (req, res) => {
       return {
         fecha: `${month.monthName} ${month.year}`,
         totalVentas: month.totalVentas,
+        totalFacturado: month.totalFacturado,
+        totalIntercambio: month.totalIntercambio,
+        totalPagado: month.totalPagado,
         meta,
         diferencia,
         porcentajeCumplimiento: Math.round(porcentajeCumplimiento * 100) / 100,
-        totalPagado: month.totalPagado,
       };
     });
 
@@ -101,10 +166,7 @@ router.get("/sales-monthly", auth, async (req, res) => {
       const [aMonth, aYear] = a.fecha.split(" ");
       const [bMonth, bYear] = b.fecha.split(" ");
       if (aYear !== bYear) return bYear - aYear;
-      const months = [
-        "enero", "febrero", "marzo", "abril", "mayo", "junio",
-        "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre",
-      ];
+      const months = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
       return months.indexOf(bMonth) - months.indexOf(aMonth);
     });
 
@@ -120,61 +182,20 @@ router.get("/sales-monthly", auth, async (req, res) => {
 // ============================================
 router.get("/executive", auth, async (req, res) => {
   try {
-    const { startDate, endDate, clientId, executiveId } = req.query;
+    const { startDate, endDate, clientId, executiveId, tipoVenta } = req.query;
 
-    // Construir filtro para facturas
-    let invoiceFilter = {};
-
-    if (startDate) {
-      invoiceFilter.fechaFactura = { $gte: new Date(startDate) };
-    }
-    if (endDate) {
-      invoiceFilter.fechaFactura = {
-        ...invoiceFilter.fechaFactura,
-        $lte: new Date(endDate),
-      };
-    }
-
-    // Obtener facturas con datos de cliente y venta
-    let invoices = await Invoice.find(invoiceFilter)
-      .populate("client", "nombreComercial tipoCliente")
-      .populate("sale")
-      .populate({
-        path: "sale",
-        populate: {
-          path: "assignedTo",
-          select: "name email",
-        },
-      })
-      .populate("quote", "total")
-      .lean();
-
-    // Filtrar por cliente específico
-    if (clientId && clientId !== "all") {
-      invoices = invoices.filter((inv) => String(inv.client._id) === clientId);
-    }
-
-    // Filtrar por ejecutivo específico
-    if (executiveId && executiveId !== "all") {
-      invoices = invoices.filter((inv) => {
-        const assignedTo = inv.sale?.assignedTo?._id || inv.sale?.assignedTo;
-        return assignedTo && String(assignedTo) === executiveId;
-      });
-    }
-
-    // Obtener metas mensuales por ejecutivo (si existen)
+    const events = await getFinancialEvents({ startDate, endDate, clientId, executiveId, tipoVenta });
     const goals = await SalesGoal.find({});
-
-    // Agrupar por ejecutivo y fecha
+    
     const result = [];
 
-    invoices.forEach((invoice) => {
-      const fecha = new Date(invoice.fechaFactura);
+    events.forEach((ev) => {
+      const fecha = ev.date;
       const fechaStr = fecha.toLocaleDateString("es-MX");
-      const ejecutivo = invoice.sale?.assignedTo?.name || "No asignado";
-      const ejecutivoId = invoice.sale?.assignedTo?._id || null;
-      const cliente = invoice.client?.nombreComercial || "N/A";
-      const ventasSinIVA = invoice.importeSinIVA || 0;
+      const ejecutivo = ev.ejecutivo;
+      const ejecutivoId = ev.ejecutivoId;
+      const cliente = ev.client?.nombreComercial || "N/A";
+      const ventasSinIVA = ev.amount;
 
       // Buscar meta mensual para este ejecutivo
       const year = fecha.getFullYear();
@@ -190,6 +211,7 @@ router.get("/executive", auth, async (req, res) => {
         fecha: fechaStr,
         ejecutivo,
         cliente,
+        tipoVenta: ev.type,
         ventasSinIVA,
         meta,
         porcentajeCumplimiento: Math.round(porcentajeCumplimiento * 100) / 100,
@@ -220,36 +242,20 @@ router.get("/comparative", auth, async (req, res) => {
       periodoComparativo,
       tipoCliente,
       ejecutivoId,
-      // Nuevos parámetros para modo mes libre
-      mesBase,        // "1" a "12"
-      anioBase,       // ej. "2026"
-      mesComp,        // "1" a "12"
-      anioComp,       // ej. "2026"
+      tipoVenta,
+      mesBase,
+      anioBase,
+      mesComp,
+      anioComp,
     } = req.query;
 
-    let invoices = await Invoice.find({})
-      .populate("client", "nombreComercial tipoCliente")
-      .populate({
-        path: "sale",
-        populate: { path: "assignedTo", select: "name email" },
-      })
-      .lean();
-
-    if (tipoCliente && tipoCliente !== "all")
-      invoices = invoices.filter((inv) => inv.client?.tipoCliente === tipoCliente);
-
-    if (ejecutivoId && ejecutivoId !== "all")
-      invoices = invoices.filter((inv) => {
-        const at = inv.sale?.assignedTo?._id || inv.sale?.assignedTo;
-        return at && String(at) === ejecutivoId;
-      });
+    const events = await getFinancialEvents({ tipoCliente, executiveId: ejecutivoId, tipoVenta });
 
     // ── Determinar rango de cada período ──────────────────────────
     let labelBase, labelComp;
-    let isBase, isComp; // funciones (invoice) => boolean
+    let isBase, isComp;
 
     if (periodoBase === "mes-libre" || periodoComparativo === "mes-libre") {
-      // Modo: comparar un mes específico vs otro mes específico
       const yB = parseInt(anioBase);
       const mB = parseInt(mesBase);
       const yC = parseInt(anioComp);
@@ -259,16 +265,9 @@ router.get("/comparative", auth, async (req, res) => {
       labelBase = `${MESES[mB - 1]} ${yB}`;
       labelComp = `${MESES[mC - 1]} ${yC}`;
 
-      isBase = (inv) => {
-        const d = new Date(inv.fechaFactura);
-        return d.getFullYear() === yB && d.getMonth() + 1 === mB;
-      };
-      isComp = (inv) => {
-        const d = new Date(inv.fechaFactura);
-        return d.getFullYear() === yC && d.getMonth() + 1 === mC;
-      };
+      isBase = (ev) => ev.date.getFullYear() === yB && ev.date.getMonth() + 1 === mB;
+      isComp = (ev) => ev.date.getFullYear() === yC && ev.date.getMonth() + 1 === mC;
     } else if (periodoBase === "mensual" && periodoComparativo === "mensual") {
-      // Modo original: mismo mes, año anterior vs año actual
       const now = new Date();
       const yC = now.getFullYear();
       const yB = yC - 1;
@@ -277,41 +276,34 @@ router.get("/comparative", auth, async (req, res) => {
       labelBase = `${MESES[m - 1]} ${yB}`;
       labelComp = `${MESES[m - 1]} ${yC}`;
 
-      isBase = (inv) => {
-        const d = new Date(inv.fechaFactura);
-        return d.getFullYear() === yB && d.getMonth() + 1 === m;
-      };
-      isComp = (inv) => {
-        const d = new Date(inv.fechaFactura);
-        return d.getFullYear() === yC && d.getMonth() + 1 === m;
-      };
+      isBase = (ev) => ev.date.getFullYear() === yB && ev.date.getMonth() + 1 === m;
+      isComp = (ev) => ev.date.getFullYear() === yC && ev.date.getMonth() + 1 === m;
     } else {
-      // Modo original: anual (dos últimos años con datos)
-      const years = [...new Set(invoices.map(inv => new Date(inv.fechaFactura).getFullYear()))].sort();
+      const years = [...new Set(events.map(ev => ev.date.getFullYear()))].sort();
       const yC = years.length >= 1 ? years[years.length - 1] : new Date().getFullYear();
       const yB = years.length >= 2 ? years[years.length - 2] : yC - 1;
       labelBase = String(yB);
       labelComp = String(yC);
 
-      isBase = (inv) => new Date(inv.fechaFactura).getFullYear() === yB;
-      isComp = (inv) => new Date(inv.fechaFactura).getFullYear() === yC;
+      isBase = (ev) => ev.date.getFullYear() === yB;
+      isComp = (ev) => ev.date.getFullYear() === yC;
     }
 
     // ── Agrupar por cliente ────────────────────────────────────────
     const salesByClient = new Map();
 
-    invoices.forEach((invoice) => {
-      const cliente   = invoice.client?.nombreComercial || "N/A";
-      const ejecutivo = invoice.sale?.assignedTo?.name  || "No asignado";
-      const monto     = invoice.importeConIVA || 0;
+    events.forEach((ev) => {
+      const cliente   = ev.client?.nombreComercial || "N/A";
+      const ejecutivo = ev.ejecutivo  || "No asignado";
+      const monto     = ev.amount || 0;
       const key       = `${cliente}|${ejecutivo}`;
 
       if (!salesByClient.has(key))
         salesByClient.set(key, { cliente, ejecutivo, base: 0, comp: 0 });
 
       const row = salesByClient.get(key);
-      if (isBase(invoice)) row.base += monto;
-      if (isComp(invoice)) row.comp += monto;
+      if (isBase(ev)) row.base += monto;
+      if (isComp(ev)) row.comp += monto;
     });
 
     // ── Construir resultado ────────────────────────────────────────
