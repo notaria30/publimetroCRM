@@ -3,7 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { getCampaigns } from "../../services/campaignService";
 import { Plus } from "lucide-react";
 import "../clients/clients.css";
-import { LoadingPage } from "../../components/LoadingPage";
+import { TableSkeleton } from "../../components/skeletons/TableSkeleton";
 
 const STATUS_CAMP = {
   planificada: { bg: "#eff6ff", text: "#1d4ed8", border: "#bfdbfe", label: "Planificada" },
@@ -24,7 +24,14 @@ export default function CampaignListPage() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <LoadingPage />;
+  if (loading) return (
+    <TableSkeleton
+      pageClass="cl-page" headerClass="cl-header"
+      hasSearch={false} actions={1}
+      tableWrapClass="cl-table-wrap" tableClass="cl-table"
+      columns={6} rows={6}
+    />
+  );
 
   return (
     <div className="cl-page">

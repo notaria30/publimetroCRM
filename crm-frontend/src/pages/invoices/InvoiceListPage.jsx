@@ -5,7 +5,7 @@ import { useAuth } from "../../context/AuthContext";
 import { Search, Plus } from "lucide-react";
 import "./invoices.css";
 import "../sales/sales.css";
-import { LoadingPage } from "../../components/LoadingPage";
+import { TableSkeleton } from "../../components/skeletons/TableSkeleton";
 
 const fmtMoney = (n) =>
   n != null ? `$${Number(n).toLocaleString("es-MX", { minimumFractionDigits: 2 })}` : "—";
@@ -40,7 +40,14 @@ export default function InvoiceListPage() {
     loadData();
   }, []);
 
-  if (loading) return <LoadingPage />;
+  if (loading) return (
+    <TableSkeleton
+      pageClass="sl-page" headerClass="sl-header"
+      hasSearch actions={1}
+      tableWrapClass="sl-table-wrap" tableClass="sl-table"
+      columns={8} rows={7}
+    />
+  );
 
   const filtered = invoices.filter((inv) => {
     const q = search.toLowerCase().trim();

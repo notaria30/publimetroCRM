@@ -3,6 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { getInvoiceById, updateInvoice } from "../../services/invoiceService";
 import { useAuth } from "../../context/AuthContext";
 import { ArrowLeft, Plus } from "lucide-react";
+import { DetailSkeleton } from "../../components/skeletons/DetailSkeleton";
 import "./invoices.css";
 import "../sales/sales.css";
 
@@ -76,7 +77,15 @@ export default function InvoiceDetailPage() {
     }
   };
 
-  if (loading) return <div className="sl-status">Cargando factura...</div>;
+  if (loading) return (
+    <DetailSkeleton
+      pageClass="sl-page" headerClass="sl-header" actions={1} titleWidth={200}
+      cards={[
+        { cardClass: "sl-card", headerClass: "sl-card-header", bodyClass: "sl-card-body", gridClass: "sl-info-grid", lines: 6 },
+        { cardClass: "sl-card", headerClass: "sl-card-header", bodyClass: "sl-card-body", cols: 3, lines: 3 },
+      ]}
+    />
+  );
   if (!invoice) return <div className="sl-status">No se encontró la factura.</div>;
 
   const pagos          = invoice.pagos || [];

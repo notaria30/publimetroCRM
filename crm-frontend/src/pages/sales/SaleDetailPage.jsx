@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { getSaleById, updateSale, addSaleNote, addSaleTask, completeSaleTask } from "../../services/salesService";
 import { ArrowLeft } from "lucide-react";
+import { DetailSkeleton } from "../../components/skeletons/DetailSkeleton";
 import "./sales.css";
 
 const STAGES = ["validacion", "diseno", "programado", "publicado", "testigos_enviados"];
@@ -75,7 +76,15 @@ export default function SaleDetailPage() {
     } catch { alert("Error al completar tarea"); }
   };
 
-  if (loading) return <div className="sl-status">Cargando venta...</div>;
+  if (loading) return (
+    <DetailSkeleton
+      pageClass="sl-page" headerClass="sl-header" actions={2} titleWidth={190}
+      cards={[
+        { cardClass: "sl-card", headerClass: "sl-card-header", bodyClass: "sl-card-body", gridClass: "sl-info-grid", lines: 7 },
+      ]}
+      statsGridClass="sl-stats-grid" statBoxClass="sl-stat-box" statCount={3}
+    />
+  );
   if (!sale)   return <div className="sl-status">No se encontró la venta.</div>;
 
   const currentIdx = STAGES.indexOf(sale.executionStage);

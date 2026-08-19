@@ -17,6 +17,7 @@ const saleSchema = new mongoose.Schema(
     quote: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Quote",
+      index: true,
     },
 
     assignedTo: {

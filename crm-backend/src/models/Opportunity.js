@@ -15,6 +15,7 @@ const opportunitySchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
     stage: {
       type: String,
@@ -27,6 +28,7 @@ const opportunitySchema = new mongoose.Schema(
         "cerrado_perdido",
       ],
       default: "prospeccion",
+      index: true,
     },
     estimatedValue: {
       type: Number,

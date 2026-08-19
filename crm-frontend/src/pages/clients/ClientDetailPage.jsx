@@ -4,6 +4,7 @@ import { getClientById, updateClient, deleteClient } from "../../services/client
 import { getUsers } from "../../services/userService";
 import { useAuth } from "../../context/AuthContext";
 import { ArrowLeft, Pencil, Trash2, X, Check } from "lucide-react";
+import { DetailSkeleton } from "../../components/skeletons/DetailSkeleton";
 import "./clients.css";
 
 const REGIMENES = [
@@ -82,7 +83,15 @@ export default function ClientDetailPage() {
     } catch { setToast({ msg: "Error al eliminar el cliente", type: "error" }); }
   };
 
-  if (loading || !client) return <div className="cl-status">Cargando...</div>;
+  if (loading || !client) return (
+    <DetailSkeleton
+      pageClass="cl-page" headerClass="cl-header-row" actions={3} titleWidth={200}
+      cards={[
+        { cardClass: "cl-card", gridClass: "cl-form-grid", lines: 6 },
+        { cardClass: "cl-card", gridClass: "cl-form-grid", lines: 4 },
+      ]}
+    />
+  );
 
   return (
     <div className="cl-page">

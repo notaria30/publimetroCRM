@@ -4,7 +4,7 @@ import { getClients } from "../../services/clientService";
 import { useAuth } from "../../context/AuthContext";
 import { Search, UserPlus } from "lucide-react";
 import "./ClientsPage.css";
-import { LoadingPage } from "../../components/LoadingPage";
+import { TableSkeleton } from "../../components/skeletons/TableSkeleton";
 
 const STATUS_COLORS = {
   prospeccion: { bg: "#fff7ed", text: "#c2410c", border: "#fed7aa" },
@@ -55,7 +55,14 @@ export default function ClientsPage() {
     );
   }, [clients, search]);
 
-if (loading) return <LoadingPage />;
+if (loading) return (
+    <TableSkeleton
+      pageClass="cl-page" headerClass="cl-header"
+      hasSearch actions={1}
+      tableWrapClass="cl-table-wrap" tableClass="cl-table"
+      columns={6} rows={7}
+    />
+  );
 
   return (
     <div className="cl-page">

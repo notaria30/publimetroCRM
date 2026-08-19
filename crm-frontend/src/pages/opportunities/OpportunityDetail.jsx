@@ -3,7 +3,7 @@ import { useParams, useNavigate, Link } from "react-router-dom";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import { getOpportunityById, updateOpportunityStage, convertOpportunityToSale, deleteOpportunity } from "../../services/opportunityService";
 import { useAuth } from "../../context/AuthContext";
-import { LoadingPage } from "../../components/LoadingPage";
+import { DetailSkeleton } from "../../components/skeletons/DetailSkeleton";
 import "../sales/sales.css"; // Reuse sales css for detail page styles
 
 const STAGES = [
@@ -84,7 +84,14 @@ export default function OpportunityDetail() {
     }
   };
 
-  if (loading) return <LoadingPage />;
+  if (loading) return (
+    <DetailSkeleton
+      pageClass="sl-page" headerClass="sl-header" actions={3} titleWidth={230}
+      cards={[
+        { cardClass: "sl-card", headerClass: "sl-card-header", bodyClass: "sl-card-body", cols: 2, lines: 4 },
+      ]}
+    />
+  );
   if (!opp) return <div>Oportunidad no encontrada</div>;
 
   return (

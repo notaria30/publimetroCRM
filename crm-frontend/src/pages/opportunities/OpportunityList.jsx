@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { Plus, History } from "lucide-react";
 import { getOpportunities, updateOpportunityStage, createOpportunity } from "../../services/opportunityService";
 import { getClients } from "../../services/clientService"; // I guess this exists
-import { LoadingPage } from "../../components/LoadingPage";
+import { OpportunityBoardSkeleton } from "../../components/skeletons/OpportunityBoardSkeleton";
 import "../sales/sales.css";
 import "./opportunities.css";
 
@@ -114,7 +114,7 @@ export default function OpportunityList() {
     }
   };
 
-  if (loading) return <LoadingPage />;
+  if (loading) return <OpportunityBoardSkeleton />;
 
   return (
     <div className="sl-page">

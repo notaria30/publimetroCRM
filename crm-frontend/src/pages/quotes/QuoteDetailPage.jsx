@@ -4,6 +4,7 @@ import { getQuoteById, deleteQuote } from "../../services/quoteService";
 import { useAuth } from "../../context/AuthContext";
 import api from "../../services/api";
 import { ArrowLeft, Printer, Pencil, Trash2, ShoppingCart } from "lucide-react";
+import { DetailSkeleton } from "../../components/skeletons/DetailSkeleton";
 import "./quotes.css";
 
 const STATUS = {
@@ -98,7 +99,15 @@ export default function QuoteDetailPage() {
     } finally { setPdfLoading(false); }
   };
 
-  if (loading) return <div className="qt-status">Cargando cotización...</div>;
+  if (loading) return (
+    <DetailSkeleton
+      pageClass="qt-page" headerClass="qt-detail-header" actions={4} titleWidth={200}
+      cards={[
+        { cardClass: "qt-card", headerClass: "qt-card-header", bodyClass: "qt-card-body", cols: 2, lines: 4 },
+        { cardClass: "qt-card", headerClass: "qt-card-header", bodyClass: "qt-card-body", cols: 3, lines: 6 },
+      ]}
+    />
+  );
   if (!quote) return <div className="qt-status">No se encontró la cotización.</div>;
 
   const s = STATUS[quote.status] || { label: quote.status, cls: "" };

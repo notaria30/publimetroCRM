@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { getPostSaleById, updatePostSale } from "../../services/postSaleService";
 import { ArrowLeft } from "lucide-react";
+import { DetailSkeleton } from "../../components/skeletons/DetailSkeleton";
 import "./postsale.css";
 import "../sales/sales.css";
 
@@ -34,7 +35,15 @@ export default function PostSaleDetailPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  if (loading) return <div className="sl-status">Cargando post-venta...</div>;
+  if (loading) return (
+    <DetailSkeleton
+      pageClass="sl-page" headerClass="sl-header" actions={1} titleWidth={220}
+      cards={[
+        { cardClass: "sl-card", headerClass: "sl-card-header", bodyClass: "sl-card-body", cols: 2, lines: 3 },
+        { cardClass: "sl-card", headerClass: "sl-card-header", bodyClass: "sl-card-body", cols: 1, lines: 1 },
+      ]}
+    />
+  );
   if (!record)  return <div className="sl-status">No se encontró el registro.</div>;
 
   const updateField = async (field, value) => {

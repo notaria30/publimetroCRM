@@ -2,14 +2,13 @@
 
 .db-page {
   padding: 28px 32px;
-  background: #F5F5F7;
   min-height: 100vh;
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-family: var(--font-sans);
 }
 
 .db-status {
   padding: 32px;
-  font-size: 15px;
+  font-size: 16px;
   color: #374151;
 }
 
@@ -26,13 +25,13 @@
 }
 
 .db-greeting-sub {
-  font-size: 12px;
+  font-size: 13px;
   color: #86868B;
   margin-bottom: 2px;
 }
 
 .db-greeting {
-  font-size: 24px;
+  font-size: 25px;
   font-weight: 600;
   color: #111827;
   margin: 0;
@@ -50,7 +49,7 @@
   border-radius: 8px;
   border: 1px solid #e5e7eb;
   background: white;
-  font-size: 13px;
+  font-size: 14px;
   cursor: pointer;
   color: #374151;
   font-family: inherit;
@@ -92,7 +91,7 @@
 }
 
 .db-metric-label {
-  font-size: 11px;
+  font-size: 12px;
   color: #86868B;
   margin: 0 0 8px;
   text-transform: uppercase;
@@ -100,14 +99,14 @@
 }
 
 .db-metric-value {
-  font-size: 22px;
+  font-size: 23px;
   font-weight: 600;
   color: #111827;
   margin: 0;
 }
 
 .db-metric-sub {
-  font-size: 11px;
+  font-size: 12px;
   color: #86868B;
   margin: 4px 0 0;
 }
@@ -122,7 +121,7 @@
 }
 
 .db-card-title {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: #111827;
   margin: 0 0 16px;
@@ -183,13 +182,13 @@
 }
 
 .db-billing-label {
-  font-size: 13px;
+  font-size: 14px;
   color: #86868B;
   flex: 1;
 }
 
 .db-billing-val {
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
 }
 
@@ -231,13 +230,13 @@
 }
 
 .db-stat-label {
-  font-size: 12px;
+  font-size: 13px;
   color: #86868B;
   margin: 0 0 8px;
 }
 
 .db-stat-val {
-  font-size: 28px;
+  font-size: 29px;
   font-weight: 600;
   color: #111827;
   margin: 0;
@@ -261,7 +260,7 @@
 }
 
 .db-clients-section-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   margin-bottom: 12px;
   text-transform: uppercase;
@@ -299,7 +298,7 @@
   border-radius: 50%;
   background: #34A853;
   color: white;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -318,7 +317,7 @@
 }
 
 .db-client-name {
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   color: #111827;
   margin: 0;
@@ -328,13 +327,13 @@
 }
 
 .db-client-sub {
-  font-size: 11px;
+  font-size: 12px;
   color: #86868B;
   margin: 2px 0 0;
 }
 
 .db-client-amount {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: #34A853;
   white-space: nowrap;
@@ -346,10 +345,6 @@
 }
 
 /* ===== DARK MODE ===== */
-
-body.dark .db-page {
-  background: #0f172a;
-}
 
 body.dark .db-metric-card,
 body.dark .db-card {

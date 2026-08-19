@@ -4,7 +4,7 @@ import { getPostSales } from "../../services/postSaleService";
 import { Search, Plus } from "lucide-react";
 import "./postsale.css";
 import "../sales/sales.css";
-import { LoadingPage } from "../../components/LoadingPage";
+import { PostSaleListSkeleton } from "../../components/skeletons/PostSaleListSkeleton";
 
 const STAGE_META = {
   servicio_post_venta:   { label: "Servicio Post-Venta",       cls: "ps-badge--info" },
@@ -47,7 +47,7 @@ export default function PostSaleListPage() {
     );
   }, [list, search]);
 
-if (loading) return <LoadingPage />;
+if (loading) return <PostSaleListSkeleton />;
 
   return (
     <div className="sl-page">

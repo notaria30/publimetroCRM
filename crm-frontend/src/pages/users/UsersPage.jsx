@@ -3,7 +3,7 @@ import { useAuth } from "../../context/AuthContext";
 import { getUsers, createWorker, updateUser, deleteUser } from "../../services/userService";
 import { UserPlus, X } from "lucide-react";
 import "../../pages/sales/sales.css";
-import { LoadingPage } from "../../components/LoadingPage";
+import { TableSkeleton } from "../../components/skeletons/TableSkeleton";
 import { Navigate } from "react-router-dom";
 
 const EMPTY_FORM = { name: "", email: "", password: "", role: "WORKER" };
@@ -77,7 +77,15 @@ export default function UsersPage() {
     }
   };
 
-  if (loading) return <LoadingPage />;
+  if (loading) return (
+    <TableSkeleton
+      pageClass="sl-page" headerClass="sl-header"
+      hasSearch={false} actions={1}
+      statsGridClass="sl-stats-grid" statBoxClass="sl-stat-box" statCount={3}
+      tableWrapClass="sl-table-wrap" tableClass="sl-table"
+      columns={4} rows={5}
+    />
+  );
 
   return (
     <div className="sl-page">
@@ -153,14 +161,14 @@ export default function UsersPage() {
 
       {/* MODAL */}
       {modal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.4)", display: "flex", alignItems: "center", justifyContent: "center", zIndex: 1000 }}>
-          <div style={{ background: "white", borderRadius: 14, padding: 28, width: "100%", maxWidth: 460, boxShadow: "0 8px 32px rgba(0,0,0,0.18)" }}>
+        <div className="sl-modal-overlay">
+          <div className="sl-modal">
 
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 20 }}>
-              <h2 style={{ margin: 0, fontSize: 18, fontWeight: 700, color: "#111827" }}>
+            <div className="sl-modal-header">
+              <h2 className="sl-modal-title">
                 {modal === "create" ? "Nuevo usuario" : "Editar usuario"}
               </h2>
-              <button onClick={closeModal} style={{ background: "none", border: "none", cursor: "pointer", color: "#6b7280" }}>
+              <button className="sl-modal-close" onClick={closeModal}>
                 <X size={20} />
               </button>
             </div>

@@ -112,9 +112,14 @@ const clientSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
 
   },
   { timestamps: true }
 );
+
+clientSchema.index({ clienteActivo: 1 });
+clientSchema.index({ createdAt: 1 });
+
 module.exports = mongoose.model("Client", clientSchema);

@@ -32,20 +32,20 @@ body {
 }
 
 .login-title {
-  font-size: 46px;
+  font-size: 47px;
   font-weight: 600;
   color: #ffffff;
   margin: 0 0 16px;
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-family: var(--font-sans);
   line-height: 1.15;
 }
 
 .login-subtitle {
   max-width: 400px;
-  font-size: 16px;
+  font-size: 17px;
   line-height: 1.6;
   color: #d1fae5;
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-family: var(--font-sans);
   margin: 0;
 }
 
@@ -70,18 +70,18 @@ body {
 }
 
 .login-card-title {
-  font-size: 26px;
+  font-size: 27px;
   font-weight: 600;
   color: #111827;
   margin: 0 0 6px;
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-family: var(--font-sans);
 }
 
 .login-card-sub {
-  font-size: 13px;
+  font-size: 14px;
   color: #86868B;
   margin: 0 0 28px;
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-family: var(--font-sans);
 }
 
 /* Form */
@@ -93,20 +93,20 @@ body {
 }
 
 .login-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: #86868B;
   text-transform: uppercase;
   letter-spacing: 0.04em;
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-family: var(--font-sans);
 }
 
 .login-input {
   padding: 10px 12px;
   border: 1px solid #d1d5db;
   border-radius: 8px;
-  font-size: 14px;
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-size: 15px;
+  font-family: var(--font-sans);
   color: #111827;
   background: #f9fafb;
   outline: none;
@@ -126,9 +126,9 @@ body {
   display: flex;
   align-items: center;
   gap: 7px;
-  font-size: 13px;
+  font-size: 14px;
   color: #86868B;
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-family: var(--font-sans);
   margin-bottom: 20px;
   accent-color: #34A853;
 }
@@ -140,8 +140,8 @@ body {
   border-radius: 8px;
   padding: 9px 12px;
   color: #dc2626;
-  font-size: 13px;
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-size: 14px;
+  font-family: var(--font-sans);
   margin-bottom: 16px;
 }
 
@@ -153,10 +153,10 @@ body {
   color: white;
   border: none;
   border-radius: 8px;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-family: var(--font-sans);
   transition: background 0.15s;
   letter-spacing: 0.01em;
 }
@@ -179,10 +179,10 @@ body {
 
 /* Footer */
 .login-footer {
-  font-size: 12px;
+  font-size: 13px;
   text-align: center;
   color: #86868B;
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-family: var(--font-sans);
 }
 
 /* Animación */

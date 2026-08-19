@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { getCampaignById } from "../../services/campaignService";
 import { ArrowLeft, Pencil } from "lucide-react";
 import "../clients/clients.css";
-import { LoadingPage } from "../../components/LoadingPage";
+import { DetailSkeleton } from "../../components/skeletons/DetailSkeleton";
 
 const STATUS_CAMP = {
   planificada: { bg: "#eff6ff", text: "#1d4ed8", border: "#bfdbfe", label: "Planificada" },
@@ -30,7 +30,14 @@ export default function CampaignDetailPage() {
       .finally(() => setLoading(false));
   }, [campId]);
 
-  if (loading) return <LoadingPage />;
+  if (loading) return (
+    <DetailSkeleton
+      pageClass="cl-page" headerClass="cl-header-row" actions={2} titleWidth={210}
+      cards={[
+        { cardClass: "cl-card", gridClass: "cl-form-grid", lines: 6 },
+      ]}
+    />
+  );
   if (error || !campaign)
     return (
       <div className="cl-page">

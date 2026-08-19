@@ -469,12 +469,13 @@ router.get("/active-clients", auth, async (req, res) => {
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
-    // Obtener todas las facturas de los últimos 90 días
-    const invoices = await Invoice.find({
-      fechaFactura: { $gte: ninetyDaysAgo },
-    })
-      .populate("client", "nombreComercial tipoCliente rfc")
-      .lean();
+    // Obtener facturas recientes y clientes en paralelo (consultas independientes)
+    const [invoices, allClients] = await Promise.all([
+      Invoice.find({ fechaFactura: { $gte: ninetyDaysAgo } })
+        .populate("client", "nombreComercial tipoCliente rfc")
+        .lean(),
+      Client.find({}, "nombreComercial tipoCliente rfc").lean(),
+    ]);
 
     // Agrupar por cliente
     const clientActivity = new Map();
@@ -511,10 +512,7 @@ router.get("/active-clients", auth, async (req, res) => {
       client.cantidadVentas += 1;
     });
 
-    // Obtener todos los clientes (incluyendo los que no tienen ventas)
-    const allClients = await Client.find({}, "nombreComercial tipoCliente rfc").lean();
-
-    // Combinar resultados
+    // Combinar resultados (allClients ya incluye a los que no tienen ventas)
     const result = allClients.map((client) => {
       const clientId = String(client._id);
       const activity = clientActivity.get(clientId);

@@ -3,7 +3,7 @@ import { Link, useNavigate } from "react-router-dom";
 import { getSales } from "../../services/salesService";
 import { Search, Receipt } from "lucide-react";
 import "./sales.css";
-import { LoadingPage } from "../../components/LoadingPage";
+import { TableSkeleton } from "../../components/skeletons/TableSkeleton";
 
 const PIPELINE_LABELS = {
   prospeccion: "Prospección",
@@ -50,7 +50,14 @@ export default function SalesListPage() {
     ].filter(Boolean).join(" ").toLowerCase().includes(q);
   });
 
-if (loading) return <LoadingPage />;
+if (loading) return (
+    <TableSkeleton
+      pageClass="sl-page" headerClass="sl-header"
+      hasSearch actions={1}
+      tableWrapClass="sl-table-wrap" tableClass="sl-table"
+      columns={6} rows={7}
+    />
+  );
 
   return (
     <div className="sl-page">

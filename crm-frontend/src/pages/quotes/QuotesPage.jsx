@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { getQuotes, approveQuote, rejectQuote } from "../../services/quoteService";
 import { useAuth } from "../../context/AuthContext";
 import { Search, Plus } from "lucide-react";
-import { LoadingPage } from "../../components/LoadingPage";
+import { TableSkeleton } from "../../components/skeletons/TableSkeleton";
 import "./quotes.css";
 
 const STATUS = {
@@ -65,7 +65,14 @@ export default function QuotesPage() {
 
   const count = (s) => quotes.filter((q) => q.status === s).length;
 
-  if (loading) return <LoadingPage />;
+  if (loading) return (
+    <TableSkeleton
+      pageClass="qt-page" headerClass="qt-header"
+      hasSearch actions={1} tabs={4}
+      tableWrapClass="qt-table-wrap" tableClass="qt-table"
+      columns={6} rows={6}
+    />
+  );
 
   return (
     <div className="qt-page">

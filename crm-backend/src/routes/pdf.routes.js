@@ -12,21 +12,76 @@ const C = {
   verde: "#0A6A44",   // verde corporativo principal
   verdeLight: "#12A067",   // verde claro para acentos
   verdePale: "#E8F5EE",   // fondo muy suave verde
-  dark: "#0D1F17",   // sidebar oscuro
-  darkMid: "#163829",   // sidebar secundario
+  dark: "#0D1F17",   // texto/oscuro
+  darkMid: "#163829",
   grisOscuro: "#2D2D2D",   // texto principal
   grisMedio: "#6B7280",   // etiquetas / secundario
-  grisClaro: "#F3F4F6",   // fondos alternos tabla
-  grisLinea: "#E5E7EB",   // separadores
+  grisClaro: "#F3F4F6",   // fondos alternos tabla / etiquetas de celda
+  grisLinea: "#E5E7EB",   // separadores / bordes
   blanco: "#FFFFFF",
   negro: "#111111",
   acento: "#4ADE80",   // verde neón para highlights
 };
 
+// ─────────────────────────────────────────────────────────────
+// NÚMERO A LETRAS (pesos MXN)
+// ─────────────────────────────────────────────────────────────
+const UNIDADES = ["", "UNO", "DOS", "TRES", "CUATRO", "CINCO", "SEIS", "SIETE", "OCHO", "NUEVE"];
+const DIECIS = ["DIEZ", "ONCE", "DOCE", "TRECE", "CATORCE", "QUINCE", "DIECISÉIS", "DIECISIETE", "DIECIOCHO", "DIECINUEVE"];
+const VEINTIS = { 0: "VEINTE", 1: "VEINTIUNO", 2: "VEINTIDÓS", 3: "VEINTITRÉS", 4: "VEINTICUATRO", 5: "VEINTICINCO", 6: "VEINTISÉIS", 7: "VEINTISIETE", 8: "VEINTIOCHO", 9: "VEINTINUEVE" };
+const DECENAS = ["", "", "VEINTE", "TREINTA", "CUARENTA", "CINCUENTA", "SESENTA", "SETENTA", "OCHENTA", "NOVENTA"];
+const CENTENAS = ["", "CIENTO", "DOSCIENTOS", "TRESCIENTOS", "CUATROCIENTOS", "QUINIENTOS", "SEISCIENTOS", "SETECIENTOS", "OCHOCIENTOS", "NOVECIENTOS"];
+
+function convertirGrupo(n) {
+  if (n === 100) return "CIEN";
+  let str = "";
+  const c = Math.floor(n / 100);
+  const resto = n % 100;
+  if (c > 0) str += CENTENAS[c] + " ";
+  if (resto > 0) {
+    if (resto < 10) str += UNIDADES[resto];
+    else if (resto < 20) str += DIECIS[resto - 10];
+    else {
+      const d = Math.floor(resto / 10);
+      const u = resto % 10;
+      if (d === 2) str += VEINTIS[u];
+      else {
+        str += DECENAS[d];
+        if (u > 0) str += " Y " + UNIDADES[u];
+      }
+    }
+  }
+  return str.trim();
+}
+
+function convertirNumero(n) {
+  n = Math.floor(n);
+  if (n === 0) return "CERO";
+  if (n < 1000) return convertirGrupo(n);
+
+  let str = "";
+  const millones = Math.floor(n / 1000000);
+  const miles = Math.floor((n % 1000000) / 1000);
+  const resto = n % 1000;
+
+  if (millones > 0) str += millones === 1 ? "UN MILLÓN " : convertirGrupo(millones) + " MILLONES ";
+  if (miles > 0) str += miles === 1 ? "MIL " : convertirGrupo(miles) + " MIL ";
+  if (resto > 0) str += convertirGrupo(resto);
+
+  return str.trim();
+}
+
+function totalEnLetras(amount) {
+  const val = Number(amount) || 0;
+  const pesosInt = Math.floor(val + 1e-6);
+  const centavos = Math.round((val - pesosInt) * 100);
+  return `${convertirNumero(pesosInt)} PESOS ${String(centavos).padStart(2, "0")}/100 M.N.`;
+}
+
 router.get("/quote/:id", auth, async (req, res) => {
   try {
     const quote = await Quote.findById(req.params.id)
-      .populate("client", "nombreComercial razonSocial rfc")
+      .populate("client", "nombreComercial razonSocial rfc direccion")
       .populate("createdBy", "name email role");
 
     if (!quote) return res.status(404).send("Cotización no encontrada");
@@ -37,7 +92,7 @@ router.get("/quote/:id", auth, async (req, res) => {
       }
     }
 
-    const doc = new PDFDocument({ margin: 0, size: "LETTER" });
+    const doc = new PDFDocument({ margin: 0, size: "LETTER", bufferPages: true });
 
     res.setHeader("Content-Type", "application/pdf");
     res.setHeader(
@@ -51,10 +106,12 @@ router.get("/quote/:id", auth, async (req, res) => {
     // ─────────────────────────────────────────────────────────
     const PW = doc.page.width;   // 612
     const PH = doc.page.height;  // 792
-    const SIDEBAR_W = 185;
-    const CONTENT_X = SIDEBAR_W + 28;
-    const CONTENT_W = PW - CONTENT_X - 28;
-    const MARGIN_BOTTOM = 80;
+    const MARGIN = 32;
+    const CONTENT_X = MARGIN;
+    const CONTENT_W = PW - MARGIN * 2;
+    const MARGIN_BOTTOM = 64;
+    const logoPath = path.join(__dirname, "../../public/logopublimetro.png");
+    const folioStr = `#${String(quote.folio || "—").padStart(4, "0")}`;
 
     const money = (n) =>
       (Number(n) || 0).toLocaleString("es-MX", { style: "currency", currency: "MXN" });
@@ -67,7 +124,8 @@ router.get("/quote/:id", auth, async (req, res) => {
 
     const fmtDur = (d) => {
       const n = Number(d) || 0;
-      return n ? `${n} ${n === 1 ? "mes" : "meses"}` : "—";
+      if (n) return `${n} ${n === 1 ? "mes" : "meses"}`;
+      return d || "—";
     };
 
     const getCostosActivacion = (act) => ({
@@ -75,112 +133,128 @@ router.get("/quote/:id", auth, async (req, res) => {
       costoImpresion: Number(act?.costoImpresion ?? 0) || 0,
     });
 
-    // Verifica espacio y agrega página si es necesario
-    // También redibuja sidebar en nueva página
-    const ensureSpace = (needed = 90) => {
-      if (doc.y + needed > PH - MARGIN_BOTTOM) {
-        doc.addPage();
-        drawSidebar();           // redibuja sidebar en la nueva página
-        doc.y = 48;
-        doc.x = CONTENT_X;
-      }
+    const clientDireccion = (c) => {
+      const d = c?.direccion || {};
+      const parts = [d.calleNumero, d.colonia, d.ciudad, d.estado, d.cp ? `C.P. ${d.cp}` : null].filter(Boolean);
+      return parts.length ? parts.join(", ") : "—";
     };
 
-    // Resetea X al margen de contenido
     const resetX = () => { doc.x = CONTENT_X; };
 
     // ─────────────────────────────────────────────────────────
-    // SIDEBAR — se llama en cada página nueva
+    // FOOTER (se dibuja al final de cada página)
     // ─────────────────────────────────────────────────────────
-    const drawSidebar = () => {
-      // Fondo principal del sidebar
-      doc.rect(0, 0, SIDEBAR_W, PH).fill(C.dark);
+    const drawFooter = () => {
+      const footerY = PH - 46;
+      doc.rect(0, PH - 6, PW, 6).fill(C.verde);
+      doc.moveTo(CONTENT_X, footerY).lineTo(PW - MARGIN, footerY)
+        .strokeColor(C.grisLinea).lineWidth(0.8).stroke();
 
-      // Banda verde superior del sidebar
-      doc.rect(0, 0, SIDEBAR_W, 110).fill(C.verde);
-
-      // Línea decorativa lateral interna
-      doc.rect(SIDEBAR_W - 3, 0, 3, PH).fill(C.verdeLight);
-
-      // Logo textual dentro del sidebar
-      const logoPath = path.join(__dirname, "../../public/logopublimetro.png");
-      try {
-        doc.image(logoPath, 16, 14, { width: 130, opacity: 1 });
-      } catch {
-        // Si no encuentra el logo dibuja texto
-        doc.fontSize(16).fillColor(C.blanco).font("Helvetica-Bold")
-          .text("PUBLIMETRO", 16, 20, { width: 155 });
-        doc.fontSize(8).fillColor(C.acento)
-          .text("QUERÉTARO", 16, 40);
-      }
-
-      // Línea divisoria bajo el logo
-      doc.moveTo(16, 104).lineTo(SIDEBAR_W - 16, 104)
-        .strokeColor(C.acento).lineWidth(1.5).stroke();
-
-      // ── Folio / badge ──
-      doc.roundedRect(16, 114, SIDEBAR_W - 32, 32, 6)
-        .fill(C.darkMid);
-      doc.fontSize(7).fillColor(C.acento).font("Helvetica-Bold")
-        .text("COTIZACIÓN", 24, 120, { width: SIDEBAR_W - 40 });
-      doc.fontSize(13).fillColor(C.blanco)
-        .text(`#${String(quote.folio || "—").padStart(4, "0")}`, 24, 130, { width: SIDEBAR_W - 40 });
-
-      // ── Items del sidebar ──
-      const items = [
-        { label: "Fecha de emisión", value: new Date().toLocaleDateString("es-MX") },
-        { label: "Vigencia", value: "15 días naturales" },
-        { label: "Cliente", value: quote.client?.nombreComercial || "N/A" },
-        { label: "Vendedor", value: quote.createdBy?.name || "—" },
-        { label: "Email", value: quote.createdBy?.email || "—" },
-        { label: "Forma de pago", value: quote.formaPago || "—" },
-        { label: "Método de pago", value: quote.metodoPago || "—" },
-        { label: "Duración", value: fmtDur(quote.duracion) },
-        { label: "Estado de fact.", value: quote.facturacionEstado === "facturado" ? "Facturado" : "Por facturar" },
-      ];
-
-      let sy = 158;
-      items.forEach(({ label, value }) => {
-        if (sy + 36 > PH - 90) return; // no sale del sidebar
-
-        doc.fontSize(6.5).fillColor(C.acento).font("Helvetica-Bold")
-          .text(label.toUpperCase(), 16, sy, { width: SIDEBAR_W - 28, lineBreak: false, ellipsis: true });
-
-        sy += 11;
-
-        // Ajustar tamaño si el valor es largo
-        const fs = value.length > 24 ? 7.5 : 9;
-        doc.fontSize(fs).fillColor(C.blanco).font("Helvetica")
-          .text(value, 16, sy, { width: SIDEBAR_W - 28, lineBreak: false, ellipsis: true });
-
-        sy += 13;
-
-        // Separador
-        doc.moveTo(16, sy).lineTo(SIDEBAR_W - 16, sy)
-          .strokeColor(C.darkMid).lineWidth(0.5).stroke();
-        sy += 8;
-      });
-
-      // ── Dirección al pie ──
-      doc.fontSize(6.5).fillColor(C.grisMedio).font("Helvetica")
+      doc.fontSize(7).fillColor(C.grisMedio).font("Helvetica")
         .text(
-          "Av. de la Salvación 791-desp. 103\nBalcones Coloniales\n76147 Querétaro, Qro. México",
-          10, PH - 50,
-          { width: SIDEBAR_W - 18, lineBreak: true }
+          "Esta cotización es confidencial y para uso exclusivo del cliente destinatario. Los precios están sujetos a cambios sin previo aviso.",
+          CONTENT_X, footerY + 8,
+          { width: CONTENT_W - 130, lineBreak: true }
         );
+
+      doc.fontSize(7).fillColor(C.verde).font("Helvetica-Bold")
+        .text(`Cotización ${folioStr}`, CONTENT_X, footerY + 8, { width: CONTENT_W, align: "right" });
     };
 
     // ─────────────────────────────────────────────────────────
-    // SECTION TITLE
+    // ENCABEZADO DE PÁGINAS DE CONTINUACIÓN
+    // ─────────────────────────────────────────────────────────
+    const drawContinuationHeader = () => {
+      doc.rect(0, 0, PW, 44).fill(C.verde);
+      try {
+        doc.image(logoPath, MARGIN, 8, { width: 92 });
+      } catch {
+        doc.fontSize(13).fillColor(C.blanco).font("Helvetica-Bold").text("PUBLIMETRO", MARGIN, 14);
+      }
+      doc.fontSize(9).fillColor(C.blanco).font("Helvetica-Bold")
+        .text(`Cotización ${folioStr} — continuación`, MARGIN, 17, { width: CONTENT_W, align: "right" });
+
+      doc.y = 60;
+      resetX();
+    };
+
+    // Verifica espacio y agrega página si es necesario
+    const ensureSpace = (needed = 90) => {
+      if (doc.y + needed > PH - MARGIN_BOTTOM) {
+        drawFooter();
+        doc.addPage();
+        drawContinuationHeader();
+      }
+    };
+
+    // ─────────────────────────────────────────────────────────
+    // ENCABEZADO PRINCIPAL (solo primera página)
+    // ─────────────────────────────────────────────────────────
+    const drawMainHeader = () => {
+      try {
+        doc.image(logoPath, CONTENT_X, 26, { width: 150 });
+      } catch {
+        doc.roundedRect(CONTENT_X, 26, 150, 46, 4).fill(C.verde);
+        doc.fontSize(17).fillColor(C.blanco).font("Helvetica-Bold")
+          .text("PUBLIMETRO", CONTENT_X + 10, 42, { width: 130, lineBreak: false });
+      }
+
+      const rightX = CONTENT_X + 210;
+      const rightW = PW - MARGIN - rightX;
+
+      doc.fontSize(22).fillColor(C.verde).font("Helvetica-Bold")
+        .text("Cotización", rightX, 26, { width: rightW, align: "right", lineBreak: false });
+
+      doc.fontSize(8.5).fillColor(C.grisOscuro).font("Helvetica-Bold")
+        .text("Publimetro Querétaro", rightX, 52, { width: rightW, align: "right", lineBreak: false });
+
+      doc.fontSize(7.5).fillColor(C.grisMedio).font("Helvetica")
+        .text("Av. de la Salvación 791-desp. 103, Balcones Coloniales\n76147 Querétaro, Qro. México",
+          rightX, 63, { width: rightW, align: "right" });
+
+      // ── Badge folio / fecha ──
+      const badgeY = 98;
+      const badgeW = 240;
+      const badgeX = PW - MARGIN - badgeW;
+      const badgeH = 40;
+      const halfW = badgeW / 2;
+
+      doc.rect(badgeX, badgeY, halfW, badgeH).fill(C.grisClaro);
+      doc.rect(badgeX + halfW, badgeY, halfW, badgeH).fill(C.verdePale);
+      doc.rect(badgeX, badgeY, badgeW, badgeH).strokeColor(C.grisLinea).lineWidth(0.8).stroke();
+      doc.moveTo(badgeX + halfW, badgeY).lineTo(badgeX + halfW, badgeY + badgeH)
+        .strokeColor(C.grisLinea).lineWidth(0.8).stroke();
+
+      doc.fontSize(6.5).fillColor(C.grisMedio).font("Helvetica-Bold")
+        .text("NÚMERO DE COTIZACIÓN", badgeX + 10, badgeY + 7, { width: halfW - 20, lineBreak: false });
+      doc.fontSize(14).fillColor(C.negro).font("Helvetica-Bold")
+        .text(folioStr, badgeX + 10, badgeY + 18, { width: halfW - 20, lineBreak: false });
+
+      doc.fontSize(6.5).fillColor(C.verde).font("Helvetica-Bold")
+        .text("FECHA DE EMISIÓN", badgeX + halfW + 10, badgeY + 7, { width: halfW - 20, lineBreak: false });
+      doc.fontSize(10.5).fillColor(C.negro).font("Helvetica-Bold")
+        .text(new Date().toLocaleDateString("es-MX"), badgeX + halfW + 10, badgeY + 20, { width: halfW - 20, lineBreak: false });
+
+      doc.y = badgeY + badgeH + 16;
+      resetX();
+
+      doc.moveTo(CONTENT_X, doc.y).lineTo(PW - MARGIN, doc.y)
+        .strokeColor(C.verde).lineWidth(1.5).stroke();
+      doc.circle(CONTENT_X, doc.y, 3).fill(C.verde);
+
+      doc.y += 14;
+      resetX();
+    };
+
+    // ─────────────────────────────────────────────────────────
+    // SECTION TITLE (pill)
     // ─────────────────────────────────────────────────────────
     const sectionTitle = (title) => {
       ensureSpace(50);
-      doc.moveDown(0.5);
+      doc.moveDown(0.4);
 
       const ty = doc.y;
-      // Fondo pill
       doc.roundedRect(CONTENT_X, ty, CONTENT_W, 24, 4).fill(C.verdePale);
-      // Acento izquierdo
       doc.rect(CONTENT_X, ty, 4, 24).fill(C.verde);
 
       doc.fontSize(11).fillColor(C.verde).font("Helvetica-Bold")
@@ -191,37 +265,42 @@ router.get("/quote/:id", auth, async (req, res) => {
     };
 
     // ─────────────────────────────────────────────────────────
-    // KEY-VALUE ROW
+    // FORM ROW — celdas con etiqueta arriba / valor abajo (estilo formulario)
     // ─────────────────────────────────────────────────────────
-    const keyValue = (label, value, opts = {}) => {
-      const fs = opts.fontSize ?? 9.5;
-      const labelW = opts.labelW ?? 155;
-      const gap = 8;
-      const valueW = CONTENT_W - labelW - gap;
-      const lineGap = 1.5;
+    const formRow = (cells) => {
+      const labelFS = 6.5;
+      const valueFS = 8.5;
+      const totalWeight = cells.reduce((s, c) => s + (c.weight || 1), 0);
+      const widths = cells.map((c) => (CONTENT_W * (c.weight || 1)) / totalWeight);
+
+      let rowH = 36;
+      cells.forEach((c, i) => {
+        const val = c.value === null || c.value === undefined || c.value === "" ? "—" : String(c.value);
+        const h = doc.fontSize(valueFS).heightOfString(val, { width: widths[i] - 12 });
+        rowH = Math.max(rowH, h + 24);
+      });
+
+      ensureSpace(rowH + 4);
       const y = doc.y;
+      let x = CONTENT_X;
 
-      const safe = (value === null || value === undefined || value === "") ? "—" : String(value);
-      const lh = doc.heightOfString(label, { width: labelW, lineGap });
-      const vh = doc.heightOfString(safe, { width: valueW, lineGap });
-      const rowH = Math.max(lh, vh);
+      cells.forEach((c, i) => {
+        const w = widths[i];
+        doc.rect(x, y, w, rowH).strokeColor(C.grisLinea).lineWidth(0.6).stroke();
+        doc.rect(x, y, w, 14).fill(C.grisClaro);
 
-      ensureSpace(rowH + 10);
+        doc.fontSize(labelFS).fillColor(C.grisMedio).font("Helvetica-Bold")
+          .text(String(c.label).toUpperCase(), x + 7, y + 4, { width: w - 14, lineBreak: false, ellipsis: true });
 
-      const currentY = doc.y;
+        const val = c.value === null || c.value === undefined || c.value === "" ? "—" : String(c.value);
+        doc.fontSize(valueFS).fillColor(C.negro).font("Helvetica-Bold")
+          .text(val, x + 7, y + 20, { width: w - 14, lineBreak: true });
 
-      doc.fontSize(fs).fillColor(C.grisMedio).font("Helvetica")
-        .text(label, CONTENT_X, currentY, { width: labelW, lineGap });
+        x += w;
+      });
 
-      doc.fontSize(fs).fillColor(C.negro).font("Helvetica-Bold")
-        .text(safe, CONTENT_X + labelW + gap, currentY, { width: valueW, lineGap, lineBreak: true });
-
-      doc.y = currentY + rowH + 7;
+      doc.y = y + rowH;
       resetX();
-
-      // Separador suave
-      doc.moveTo(CONTENT_X, doc.y - 3).lineTo(CONTENT_X + CONTENT_W, doc.y - 3)
-        .strokeColor(C.grisLinea).lineWidth(0.4).stroke();
     };
 
     // ─────────────────────────────────────────────────────────
@@ -245,9 +324,7 @@ router.get("/quote/:id", auth, async (req, res) => {
       const startX = CONTENT_X;
 
       const drawHeader = (ty) => {
-        // Header con bordes redondeados superiores
         doc.roundedRect(startX, ty, totalW, headerH, 5).fill(headerBg);
-        // Rectángulo inferior para "aplanar" las esquinas de abajo del rounded
         doc.rect(startX, ty + headerH / 2, totalW, headerH / 2).fill(headerBg);
 
         doc.fontSize(headerFontSize).fillColor(headerColor).font("Helvetica-Bold");
@@ -264,37 +341,30 @@ router.get("/quote/:id", auth, async (req, res) => {
         return ty + headerH;
       };
 
-      // Primera vez: asegura espacio para header + 1 fila
       ensureSpace(headerH + minRowH + 10);
       let y = drawHeader(doc.y);
 
       doc.fontSize(bodyFontSize).fillColor(C.negro).font("Helvetica");
 
       rows.forEach((row, ri) => {
-        // Calcular altura real de la fila
         let rowH = minRowH;
         row.forEach((cell, ci) => {
           const txt = cell == null || cell === "" ? "—" : String(cell);
-          const h = doc.heightOfString(txt, {
-            width: colWidths[ci] - cellPadding * 2,
-          });
+          const h = doc.heightOfString(txt, { width: colWidths[ci] - cellPadding * 2 });
           rowH = Math.max(rowH, h + cellPadding * 2);
         });
 
-        // ¿Necesita nueva página?
         if (y + rowH > PH - MARGIN_BOTTOM) {
+          drawFooter();
           doc.addPage();
-          drawSidebar();
-          doc.y = 48;
+          drawContinuationHeader();
           y = drawHeader(doc.y);
         }
 
-        // Fondo alterno
         if (ri % 2 === 1) {
           doc.rect(startX, y, totalW, rowH).fill(altRowBg);
         }
 
-        // Texto de cada celda
         doc.fontSize(bodyFontSize).fillColor(C.negro).font("Helvetica");
         let cx = startX;
         row.forEach((cell, ci) => {
@@ -307,14 +377,11 @@ router.get("/quote/:id", auth, async (req, res) => {
           cx += colWidths[ci];
         });
 
-        // Borde inferior de fila
         y += rowH;
         doc.moveTo(startX, y).lineTo(startX + totalW, y)
           .strokeColor(lineColor).lineWidth(0.5).stroke();
       });
 
-      // Borde exterior de la tabla completa
-      const tableTop = doc.y; // aproximado — solo borde visual si quieres
       doc.y = y + 8;
       resetX();
     };
@@ -322,36 +389,7 @@ router.get("/quote/:id", auth, async (req, res) => {
     // ─────────────────────────────────────────────────────────
     // ── INICIO DEL DOCUMENTO ─────────────────────────────────
     // ─────────────────────────────────────────────────────────
-    drawSidebar();
-
-    // ── Encabezado de contenido ──────────────────────────────
-    const hdrY = 28;
-
-    // Título grande
-    doc.fontSize(22).fillColor(C.verde).font("Helvetica-Bold")
-      .text("Cotización", CONTENT_X, hdrY, { lineBreak: false });
-
-    // Subtítulo / cliente
-    const clientLabel = quote.client?.nombreComercial || "Cliente";
-    doc.fontSize(10).fillColor(C.grisMedio).font("Helvetica")
-      .text(`Para: ${clientLabel}`, CONTENT_X, hdrY + 30, { lineBreak: false });
-
-    // Fecha alineada a la derecha del contenido
-    const dateStr = new Date().toLocaleDateString("es-MX", {
-      year: "numeric", month: "long", day: "numeric",
-    });
-    doc.fontSize(8).fillColor(C.grisMedio).font("Helvetica")
-      .text(dateStr, CONTENT_X, hdrY + 46, { width: CONTENT_W, align: "right" });
-
-    // Línea decorativa bajo el título
-    const lineY = hdrY + 64;
-    doc.moveTo(CONTENT_X, lineY).lineTo(CONTENT_X + CONTENT_W, lineY)
-      .strokeColor(C.verdeLight).lineWidth(1.5).stroke();
-    // Puntito verde
-    doc.circle(CONTENT_X, lineY, 3).fill(C.verde);
-
-    doc.y = lineY + 16;
-    resetX();
+    drawMainHeader();
 
     // ── Carta de presentación ────────────────────────────────
     const dirigidoA = (req.query.dirigidoA || "").trim();
@@ -377,47 +415,46 @@ router.get("/quote/:id", auth, async (req, res) => {
 
     doc.fontSize(8.5).fillColor(C.grisMedio).font("Helvetica-Oblique")
       .text("Atentamente, el equipo de Publimetro Querétaro.", CONTENT_X, doc.y);
-    doc.moveDown(1);
+    doc.moveDown(0.8);
     resetX();
 
-    // ── Detalles generales ───────────────────────────────────
-    sectionTitle("Detalles de la Cotización");
-
-    keyValue("Folio:", quote.folio || "—");
-    keyValue("Cliente:", quote.client?.nombreComercial || "—");
-    if (quote.client?.razonSocial) keyValue("Razón social:", quote.client.razonSocial);
-    if (quote.client?.rfc) keyValue("RFC:", quote.client.rfc);
-    if (quote.createdBy?.name) keyValue("Creada por:", quote.createdBy.name);
-    if (quote.createdBy?.email) keyValue("Email:", quote.createdBy.email);
-
-    // ── Datos de facturación ─────────────────────────────────
-    const hasPagoInfo = !!quote.formaPago || !!quote.metodoPago || !!quote.usoCFDI || !!quote.facturacionEstado;
-    if (hasPagoInfo) {
-      sectionTitle("Datos de Facturación");
-      if (quote.formaPago) keyValue("Forma de pago:", quote.formaPago);
-      if (quote.metodoPago) keyValue("Método de pago:", quote.metodoPago);
-      if (quote.usoCFDI) keyValue("Uso CFDI:", quote.usoCFDI);
-      if (quote.facturacionEstado) keyValue("Estado de facturación:",
-        quote.facturacionEstado === "facturado" ? "Facturado ✓" : "Por facturar");
-      if (quote.duracion) keyValue("Duración:", fmtDur(quote.duracion));
-    } else if (quote.duracion) {
-      keyValue("Duración:", fmtDur(quote.duracion));
-    }
+    // ── Ficha del cliente (estilo formulario) ────────────────
+    formRow([{ label: "Cliente (Nombre Comercial):", value: quote.client?.nombreComercial, weight: 1 }]);
+    formRow([
+      { label: "Razón Social:", value: quote.client?.razonSocial, weight: 1 },
+      { label: "RFC:", value: quote.client?.rfc, weight: 1 },
+      { label: "Domicilio Comercial:", value: clientDireccion(quote.client), weight: 2 },
+    ]);
+    formRow([
+      { label: "Teléfono:", value: quote.client?.direccion?.telefono, weight: 1 },
+      { label: "Forma de Pago:", value: quote.formaPago, weight: 1 },
+      { label: "Método de Pago:", value: quote.metodoPago, weight: 1 },
+      { label: "Duración:", value: fmtDur(quote.duracion), weight: 1 },
+    ]);
+    formRow([
+      { label: "Vendedor:", value: quote.createdBy?.name, weight: 1 },
+      { label: "Correo de contacto:", value: quote.createdBy?.email, weight: 1.3 },
+      { label: "Uso de CFDI:", value: quote.usoCFDI, weight: 0.8 },
+      { label: "Estado de Facturación:", value: quote.facturacionEstado === "facturado" ? "Facturado" : "Por facturar", weight: 1 },
+    ]);
+    doc.moveDown(0.6);
+    resetX();
 
     // ── Tabla de tarifas ─────────────────────────────────────
     sectionTitle("Cotización de Servicios — Tarifas");
 
     const tarifas = quote.tarifas || [];
     if (tarifas.length) {
-      const headers = ["Formato", "Periodicidad", "Costo", "Fechas", "Total"];
-      const colWidths = [72, 80, 62, 120, 72];
+      const headers = ["Cant.", "Formato", "Periodicidad", "Fechas de publicación", "Precio Unitario", "Subtotal"];
+      const colWidths = [40, 110, 90, 160, 74, 74];
 
       const rows = tarifas.map((t) => [
+        "1",
         t.formato || "—",
         t.periodicidad || "—",
-        `$${t.costo ?? 0}`,
         (t.fechas || []).map((f) => new Date(f).toLocaleDateString("es-MX")).join(", ") || "—",
-        `$${t.totalLinea ?? 0}`,
+        money(t.costo),
+        money(t.totalLinea),
       ]);
 
       drawTable(headers, rows, colWidths);
@@ -463,7 +500,7 @@ router.get("/quote/:id", auth, async (req, res) => {
             fechasAct || "—",
             act?.puntosDistribucion || "—",
           ]],
-          [52, 32, 52, 62, 62, 64, 82],
+          [70, 45, 65, 80, 80, 90, 118],
           { headerFontSize: 7, bodyFontSize: 7.5, cellPadding: 5, minRowH: 20 }
         );
         doc.moveDown(0.5);
@@ -479,7 +516,7 @@ router.get("/quote/:id", auth, async (req, res) => {
           quote.desarrolloInformativo?.fecha ? fmtDate(quote.desarrolloInformativo.fecha) : "—",
           quote.desarrolloInformativo?.formato || "—",
         ]],
-        [160, 246]
+        [200, 348]
       );
     }
 
@@ -490,7 +527,7 @@ router.get("/quote/:id", auth, async (req, res) => {
       drawTable(
         ["Cantidad", "Fechas"],
         [[String(quote.posteoRedesSociales?.cantidad ?? 0), fechasPost || "—"]],
-        [100, 306]
+        [140, 408]
       );
     }
 
@@ -500,7 +537,7 @@ router.get("/quote/:id", auth, async (req, res) => {
       drawTable(
         ["% Efectivo", "% Especie"],
         [[`${quote.intercambio?.porcentajeEfectivo ?? 0}%`, `${quote.intercambio?.porcentajeEspecie ?? 0}%`]],
-        [153, 253]
+        [220, 328]
       );
 
       if (quote.intercambio?.ofrecemos) {
@@ -524,7 +561,7 @@ router.get("/quote/:id", auth, async (req, res) => {
       drawTable(
         ["Cantidad", "Formato", "Fechas"],
         [[String(quote.cortesias?.cantidad ?? 0), quote.cortesias?.formato || "—", fechasCor || "—"]],
-        [90, 130, 186]
+        [120, 180, 248]
       );
     }
 
@@ -539,31 +576,88 @@ router.get("/quote/:id", auth, async (req, res) => {
       drawTable(
         ["Tipo de acción", "% Ajuste", "Valor ajuste"],
         [[aj.tipoAccion || "—", `${aj.porcentajeAjuste || 0}%`, money(aj.valorAjuste || 0)]],
-        [180, 110, 116]
+        [220, 150, 178]
       );
     }
 
-    // ── Bloque TOTAL destacado ───────────────────────────────
-    ensureSpace(70);
-    doc.moveDown(0.5);
-    const totalBoxY = doc.y;
-    const totalBoxW = CONTENT_W;
+    // ── Observaciones ─────────────────────────────────────────
+    if (quote.presentation && quote.presentation.trim()) {
+      sectionTitle("Observaciones");
+      const obsH = doc.fontSize(8.5).heightOfString(quote.presentation, { width: CONTENT_W - 24 }) + 20;
+      ensureSpace(obsH + 10);
+      const oy = doc.y;
+      doc.rect(CONTENT_X, oy, CONTENT_W, obsH).strokeColor(C.grisLinea).lineWidth(0.6).stroke();
+      doc.fontSize(8.5).fillColor(C.grisOscuro).font("Helvetica")
+        .text(quote.presentation, CONTENT_X + 12, oy + 10, { width: CONTENT_W - 24 });
+      doc.y = oy + obsH + 12;
+      resetX();
+    }
 
-    doc.roundedRect(CONTENT_X, totalBoxY, totalBoxW, 52, 8).fill(C.verde);
-    doc.rect(CONTENT_X, totalBoxY + 26, totalBoxW, 26).fill(C.verde);   // aplana bordes inf
+    // ─────────────────────────────────────────────────────────
+    // RESUMEN FINANCIERO
+    // ─────────────────────────────────────────────────────────
+    const subtotalTarifas = tarifas.reduce((s, t) => s + (Number(t.totalLinea) || 0), 0);
+    const subtotalActivaciones = activas.reduce((s, a) => s + (Number(a.total) || 0), 0);
+    const subtotalGeneral = subtotalTarifas + subtotalActivaciones;
 
-    doc.fontSize(9).fillColor(C.verdePale).font("Helvetica")
-      .text("TOTAL DE LA COTIZACIÓN", CONTENT_X + 16, totalBoxY + 9, { width: totalBoxW - 32, align: "left" });
+    const summaryW = 260;
+    const summaryX = PW - MARGIN - summaryW;
+    const rowH = 20;
+    const bigRowH = 40;
+    const boxH = 8 + rowH + (tieneAjustes ? rowH : 0) + 12 + bigRowH + 8;
 
-    doc.fontSize(20).fillColor(C.blanco).font("Helvetica-Bold")
-      .text(money(quote.total || 0), CONTENT_X + 16, totalBoxY + 22, { width: totalBoxW - 32, align: "right" });
+    ensureSpace(boxH + 20);
+    doc.moveDown(0.4);
 
-    doc.fontSize(7.5).fillColor(C.acento).font("Helvetica")
-      .text("Precios en MXN • Sin IVA", CONTENT_X + 16, totalBoxY + 42, { width: totalBoxW - 32, align: "right" });
+    let sy = doc.y;
+    const boxTop = sy;
 
-    doc.y = totalBoxY + 62;
+    const summaryRow = (label, value, opts = {}) => {
+      const { big = false, bg = null } = opts;
+      const h = big ? bigRowH : rowH;
+      if (bg) doc.rect(summaryX, sy, summaryW, h).fill(bg);
+
+      doc.fontSize(big ? 8.5 : 8.5).fillColor(bg ? C.verdePale : C.grisMedio).font("Helvetica-Bold")
+        .text(label, summaryX + 12, sy + (big ? 8 : 5), { width: summaryW - 24, align: "left", lineBreak: false });
+
+      doc.fontSize(big ? 17 : 9.5).fillColor(bg ? C.blanco : C.negro).font("Helvetica-Bold")
+        .text(money(value), summaryX + 12, sy + (big ? 17 : 5), { width: summaryW - 24, align: "right", lineBreak: false });
+
+      sy += h;
+    };
+
+    sy += 8;
+    summaryRow("Subtotal", subtotalGeneral);
+    if (tieneAjustes) {
+      summaryRow(aj.tipoAccion === "Reducir" ? "Ajuste (descuento)" : "Ajuste", aj.valorAjuste || 0);
+    }
+    sy += 4;
+    doc.moveTo(summaryX + 12, sy).lineTo(summaryX + summaryW - 12, sy)
+      .strokeColor(C.grisLinea).lineWidth(0.6).stroke();
+    sy += 8;
+    summaryRow("TOTAL", quote.total || 0, { big: true, bg: C.verde });
+
+    doc.roundedRect(summaryX, boxTop, summaryW, boxH, 6)
+      .strokeColor(C.grisLinea).lineWidth(0.8).stroke();
+
+    doc.y = boxTop + boxH + 10;
     resetX();
+
+    // Total con letra
+    ensureSpace(40);
+    const letraY = doc.y;
+    doc.rect(CONTENT_X, letraY, CONTENT_W, 30).fill(C.grisClaro);
+    doc.fontSize(6.5).fillColor(C.grisMedio).font("Helvetica-Bold")
+      .text("TOTAL CON LETRA", CONTENT_X + 10, letraY + 5, { width: CONTENT_W - 20 });
+    doc.fontSize(8.5).fillColor(C.negro).font("Helvetica-Bold")
+      .text(totalEnLetras(quote.total || 0), CONTENT_X + 10, letraY + 15, { width: CONTENT_W - 20, lineBreak: false });
+    doc.y = letraY + 40;
+    resetX();
+
+    doc.fontSize(7.5).fillColor(C.grisMedio).font("Helvetica-Oblique")
+      .text("Precios en MXN. Sujetos a disponibilidad de espacio.", CONTENT_X, doc.y);
     doc.moveDown(1);
+    resetX();
 
     // ─────────────────────────────────────────────────────────
     // TÉRMINOS Y CONDICIONES
@@ -589,88 +683,42 @@ router.get("/quote/:id", auth, async (req, res) => {
     });
 
     // ─────────────────────────────────────────────────────────
-    // SECCIÓN DE FIRMAS
+    // SECCIÓN DE FIRMAS — estilo línea + leyenda
     // ─────────────────────────────────────────────────────────
-    ensureSpace(200);
-    doc.moveDown(1);
+    ensureSpace(90);
+    doc.moveDown(0.8);
 
     sectionTitle("Autorización y Firmas");
-    doc.moveDown(0.5);
+    doc.moveDown(1.2);
 
-    const firmaBoxW = (CONTENT_W - 20) / 2;
-    const firmaBoxH = 90;
-    const firmaY = doc.y;
+    const firmas = [
+      { titulo: "Cliente / Conducto", sub: "Nombre completo y firma" },
+      { titulo: "Vendedor", sub: "Nombre y firma" },
+      { titulo: "Gerente de Ventas", sub: "" },
+      { titulo: "Crédito y Cobranza", sub: "" },
+    ];
 
-    // Caja izquierda — Publimetro
-    doc.roundedRect(CONTENT_X, firmaY, firmaBoxW, firmaBoxH, 6)
-      .strokeColor(C.grisLinea).lineWidth(1).stroke();
-    doc.roundedRect(CONTENT_X, firmaY, firmaBoxW, 20, 6).fill(C.verde);
-    doc.rect(CONTENT_X, firmaY + 10, firmaBoxW, 10).fill(C.verde);   // aplana parte baja del header
+    const firmaColW = CONTENT_W / firmas.length;
+    const firmaLineY = doc.y;
 
-    doc.fontSize(7.5).fillColor(C.blanco).font("Helvetica-Bold")
-      .text("PUBLIMETRO QUERÉTARO", CONTENT_X + 8, firmaY + 5, { width: firmaBoxW - 16 });
+    firmas.forEach((f, i) => {
+      const fx = CONTENT_X + i * firmaColW;
+      doc.moveTo(fx + 8, firmaLineY).lineTo(fx + firmaColW - 8, firmaLineY)
+        .strokeColor(C.grisOscuro).lineWidth(0.8).stroke();
 
-    doc.fontSize(7.5).fillColor(C.grisMedio).font("Helvetica")
-      .text("Nombre:", CONTENT_X + 8, firmaY + 28, { width: firmaBoxW - 16 });
-    doc.moveTo(CONTENT_X + 55, firmaY + 38).lineTo(CONTENT_X + firmaBoxW - 12, firmaY + 38)
-      .strokeColor(C.grisLinea).lineWidth(0.8).stroke();
+      doc.fontSize(8).fillColor(C.negro).font("Helvetica-Bold")
+        .text(f.titulo, fx, firmaLineY + 6, { width: firmaColW, align: "center" });
 
-    doc.fontSize(7.5).fillColor(C.grisMedio)
-      .text("Firma:", CONTENT_X + 8, firmaY + 55, { width: firmaBoxW - 16 });
-    doc.moveTo(CONTENT_X + 55, firmaY + 78).lineTo(CONTENT_X + firmaBoxW - 12, firmaY + 78)
-      .strokeColor(C.grisLinea).lineWidth(0.8).stroke();
+      if (f.sub) {
+        doc.fontSize(6.5).fillColor(C.grisMedio).font("Helvetica")
+          .text(f.sub, fx, firmaLineY + 18, { width: firmaColW, align: "center" });
+      }
+    });
 
-    // Caja derecha — Cliente
-    const firmaRX = CONTENT_X + firmaBoxW + 20;
-    doc.roundedRect(firmaRX, firmaY, firmaBoxW, firmaBoxH, 6)
-      .strokeColor(C.grisLinea).lineWidth(1).stroke();
-    doc.roundedRect(firmaRX, firmaY, firmaBoxW, 20, 6).fill(C.verde);
-    doc.rect(firmaRX, firmaY + 10, firmaBoxW, 10).fill(C.verde);
-
-    const clientName2 = quote.client?.nombreComercial || "CLIENTE";
-    doc.fontSize(7.5).fillColor(C.blanco).font("Helvetica-Bold")
-      .text(clientName2.toUpperCase().substring(0, 30), firmaRX + 8, firmaY + 5, { width: firmaBoxW - 16 });
-
-    doc.fontSize(7.5).fillColor(C.grisMedio).font("Helvetica")
-      .text("Nombre:", firmaRX + 8, firmaY + 28, { width: firmaBoxW - 16 });
-    doc.moveTo(firmaRX + 55, firmaY + 38).lineTo(firmaRX + firmaBoxW - 12, firmaY + 38)
-      .strokeColor(C.grisLinea).lineWidth(0.8).stroke();
-
-    doc.fontSize(7.5).fillColor(C.grisMedio)
-      .text("Firma:", firmaRX + 8, firmaY + 55, { width: firmaBoxW - 16 });
-    doc.moveTo(firmaRX + 55, firmaY + 78).lineTo(firmaRX + firmaBoxW - 12, firmaY + 78)
-      .strokeColor(C.grisLinea).lineWidth(0.8).stroke();
-
-    doc.y = firmaY + firmaBoxH + 20;
+    doc.y = firmaLineY + 34;
     resetX();
 
-    // ─────────────────────────────────────────────────────────
-    // FOOTER DE TODAS LAS PÁGINAS (se dibuja al finalizar)
-    // ─────────────────────────────────────────────────────────
-    const pageCount = doc.bufferedPageRange ? doc.bufferedPageRange().count : 1;
-    const drawFooter = () => {
-      const footerY = PH - 58;
-      // Línea superior del footer
-      doc.moveTo(CONTENT_X, footerY)
-        .lineTo(PW - 28, footerY)
-        .strokeColor(C.grisLinea).lineWidth(0.8).stroke();
-
-      doc.fontSize(7).fillColor(C.grisMedio).font("Helvetica")
-        .text(
-          "Esta cotización es confidencial y para uso exclusivo del cliente destinatario. Los precios están sujetos a cambios sin previo aviso.",
-          CONTENT_X, footerY + 8,
-          { width: CONTENT_W - 60, lineBreak: true }
-        );
-
-      // Número de página
-      doc.fontSize(7).fillColor(C.verde).font("Helvetica-Bold")
-        .text(`Cotización #${String(quote.folio || "—").padStart(4, "0")}`,
-          CONTENT_X, footerY + 8,
-          { width: CONTENT_W, align: "right" }
-        );
-    };
-
-    // Dibuja footer en la página actual antes de cerrar
+    // Footer de la última página
     drawFooter();
 
     doc.end();

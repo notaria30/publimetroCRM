@@ -23,24 +23,25 @@ router.get("/overview", auth, async (req, res) => {
       quoteFiltro.createdBy = req.user._id;
     }
 
-    const totalClientes = await Client.countDocuments(clienteFiltro);
-
-    const ventasCerradas = await Opportunity.countDocuments({
-      ...ventaFiltro,
-      stage: "cerrado_ganado",
-    });
-
-    const facturasPagadas = await Invoice.aggregate([
-      { $match: { pagado: true, ...facturaFiltro } },
-      { $group: { _id: null, total: { $sum: "$importeConIVA" } } },
+    const [
+      totalClientes,
+      ventasCerradas,
+      facturasPagadas,
+      facturasPendientes,
+      totalCotizaciones,
+    ] = await Promise.all([
+      Client.countDocuments(clienteFiltro),
+      Opportunity.countDocuments({ ...ventaFiltro, stage: "cerrado_ganado" }),
+      Invoice.aggregate([
+        { $match: { pagado: true, ...facturaFiltro } },
+        { $group: { _id: null, total: { $sum: "$importeConIVA" } } },
+      ]),
+      Invoice.aggregate([
+        { $match: { pagado: false, ...facturaFiltro } },
+        { $group: { _id: null, total: { $sum: "$importeConIVA" } } },
+      ]),
+      Quote.countDocuments(quoteFiltro),
     ]);
-
-    const facturasPendientes = await Invoice.aggregate([
-      { $match: { pagado: false, ...facturaFiltro } },
-      { $group: { _id: null, total: { $sum: "$importeConIVA" } } },
-    ]);
-
-    const totalCotizaciones = await Quote.countDocuments(quoteFiltro);
 
     res.json({
       totalClientes,
@@ -59,24 +60,18 @@ router.get("/overview", auth, async (req, res) => {
 router.get("/pipeline", auth, async (req, res) => {
   try {
     const etapas = ["prospeccion", "calificacion", "propuesta", "negociacion"]; // No contamos los cerrados aquí
+    const vendedorFiltro = req.user.role === "WORKER" ? { vendedorId: req.user._id } : {};
+
+    const [conteos, cierre] = await Promise.all([
+      Promise.all(etapas.map((etapa) =>
+        Opportunity.countDocuments({ stage: etapa, ...vendedorFiltro })
+      )),
+      Opportunity.countDocuments({ stage: "cerrado_ganado", ...vendedorFiltro }),
+    ]);
+
     const pipelineData = {};
-
-    for (const etapa of etapas) {
-      const filtro = { stage: etapa };
-
-      if (req.user.role === "WORKER") {
-        filtro.vendedorId = req.user._id;
-      }
-
-      pipelineData[etapa] = await Opportunity.countDocuments(filtro);
-    }
-
-    // Además podemos añadir cerrado ganado si el frontend lo requiere para pintar la barra, 
-    // pero user solicitó el pipeline del prospecto a ganador
-    pipelineData["cierre"] = await Opportunity.countDocuments({
-      stage: "cerrado_ganado",
-      ...(req.user.role === "WORKER" ? { vendedorId: req.user._id } : {})
-    });
+    etapas.forEach((etapa, i) => { pipelineData[etapa] = conteos[i]; });
+    pipelineData["cierre"] = cierre;
 
     res.json({
         prospeccion: pipelineData["prospeccion"] || 0,
@@ -99,14 +94,15 @@ router.get("/billing", auth, async (req, res) => {
       filtro.createdBy = req.user._id;
     }
 
-    const pagado = await Invoice.aggregate([
-      { $match: { pagado: true, ...filtro } },
-      { $group: { _id: null, total: { $sum: "$importeConIVA" } } },
-    ]);
-
-    const pendiente = await Invoice.aggregate([
-      { $match: { pagado: false, ...filtro } },
-      { $group: { _id: null, total: { $sum: "$importeConIVA" } } },
+    const [pagado, pendiente] = await Promise.all([
+      Invoice.aggregate([
+        { $match: { pagado: true, ...filtro } },
+        { $group: { _id: null, total: { $sum: "$importeConIVA" } } },
+      ]),
+      Invoice.aggregate([
+        { $match: { pagado: false, ...filtro } },
+        { $group: { _id: null, total: { $sum: "$importeConIVA" } } },
+      ]),
     ]);
 
     res.json({
@@ -136,8 +132,10 @@ router.get("/clients", auth, async (req, res) => {
       filtrosNuevosMes.assignedTo = req.user._id;
     }
 
-    const activos = await Client.countDocuments(filtrosActivos);
-    const nuevosMes = await Client.countDocuments(filtrosNuevosMes);
+    const [activos, nuevosMes] = await Promise.all([
+      Client.countDocuments(filtrosActivos),
+      Client.countDocuments(filtrosNuevosMes),
+    ]);
 
     res.json({
       activos,

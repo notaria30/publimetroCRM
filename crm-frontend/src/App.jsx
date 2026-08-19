@@ -49,10 +49,18 @@ import ClientCampaignsPage from "./pages/clients/ClientCampaignsPage";
 
 import UsersPage from "./pages/users/UsersPage";
 
+function AuthLoading() {
+  return (
+    <div className="auth-loading">
+      <div className="auth-loading-spinner" />
+    </div>
+  );
+}
+
 function PrivateRoute({ children }) {
   const { user, loading } = useAuth();
 
-  if (loading) return <div>Cargando...</div>;
+  if (loading) return <AuthLoading />;
   if (!user) return <Navigate to="/login" replace />;
 
   return children;
@@ -62,7 +70,7 @@ function PrivateRoute({ children }) {
 function OwnerRoute({ children }) {
   const { user, loading, isOwner } = useAuth();
 
-  if (loading) return <div>Cargando...</div>;
+  if (loading) return <AuthLoading />;
   if (!user) return <Navigate to="/login" replace />;
   if (!isOwner) return <Navigate to="/reports" replace />;
 

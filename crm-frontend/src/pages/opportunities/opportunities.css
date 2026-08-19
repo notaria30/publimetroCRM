@@ -23,7 +23,7 @@ body.dark .opp-kanban-col { background: #0f172a; border-color: #334155; }
   color: white;
   padding: 12px 16px;
   font-weight: 700;
-  font-size: 14px;
+  font-size: 15px;
   display: flex;
   justify-content: space-between;
   border-top-left-radius: 11px;
@@ -60,14 +60,14 @@ body.dark .opp-card:hover { box-shadow: 0 6px 14px rgba(0,0,0,0.3); }
 
 .opp-card-title {
   font-weight: 600;
-  font-size: 14px;
+  font-size: 15px;
   margin: 0 0 6px 0;
   color: #111827;
 }
 body.dark .opp-card-title { color: #f1f5f9; }
 
 .opp-card-client {
-  font-size: 12px;
+  font-size: 13px;
   color: #6b7280;
   margin: 0 0 12px 0;
 }
@@ -77,7 +77,7 @@ body.dark .opp-card-client { color: #94a3b8; }
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: #374151;
 }
@@ -120,7 +120,7 @@ body.dark .opp-col-body.drag-over { background: #1e293b; }
 body.dark .opp-modal { background: #1e293b; border-color: #334155; }
 
 .opp-modal-header {
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 700;
   color: #111827;
   margin-top: 0; /* Asegurarse de que el margen top sea 0 para match con form */

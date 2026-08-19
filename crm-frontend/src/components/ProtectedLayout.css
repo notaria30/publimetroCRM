@@ -27,12 +27,21 @@ body.dark .app-shell {
   padding: 24px 16px;
   overflow-y: auto;
   overflow-x: hidden;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
+  font-family: var(--font-sans);
 }
 
 .sidebar-logo {
-  padding: 4px 10px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 0 24px;
   margin-bottom: 8px;
+}
+
+.sidebar-logo img {
+  width: 100%;
+  max-width: 176px;
+  height: auto;
 }
 
 /* Nav links */
@@ -47,7 +56,7 @@ body.dark .app-shell {
 
 .sidebar-section-divider {
   margin: 16px 0 8px 12px;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   color: #9ca3af;
   text-transform: uppercase;
@@ -152,12 +161,12 @@ body.dark .db-greeting-sub {
   gap: 12px;
   padding: 10px 14px;
   border-radius: 12px;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
   color: #4b5563;
   text-decoration: none;
   transition: all 0.2s ease;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
+  font-family: var(--font-sans);
 }
 
 .sidebar-link:hover {
@@ -251,7 +260,7 @@ body.dark .topbar-user:hover {
   border-radius: 50%;
   background: #34A853;
   color: white;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -260,11 +269,11 @@ body.dark .topbar-user:hover {
 }
 
 .topbar-user-name {
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 500;
   color: #111827;
   margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
+  font-family: var(--font-sans);
 }
 
 body.dark .topbar-user-name {
@@ -337,17 +346,17 @@ body.dark ::-webkit-scrollbar-thumb:hover {
 
 .topbar-dropdown-name {
   margin: 0;
-  font-size: 14px;
+  font-size: 15px;
   font-weight: 600;
   color: #111827;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
+  font-family: var(--font-sans);
 }
 
 .topbar-dropdown-role {
   margin: 0;
-  font-size: 12px;
+  font-size: 13px;
   color: #6b7280;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
+  font-family: var(--font-sans);
   margin-top: 2px;
 }
 
@@ -360,10 +369,10 @@ body.dark ::-webkit-scrollbar-thumb:hover {
   display: flex;
   align-items: center;
   gap: 10px;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 500;
   color: #4b5563;
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Inter", sans-serif;
+  font-family: var(--font-sans);
   transition: all 0.2s ease;
   text-align: left;
 }
@@ -439,7 +448,7 @@ body.dark .topbar-dropdown-btn.logout-btn:hover {
   width: 100%;
   max-width: 420px;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-family: var(--font-sans);
 }
 
 .cp-modal-header {
@@ -451,7 +460,7 @@ body.dark .topbar-dropdown-btn.logout-btn:hover {
 
 .cp-modal-title {
   margin: 0;
-  font-size: 18px;
+  font-size: 19px;
   font-weight: 600;
   color: #111827;
 }
@@ -484,7 +493,7 @@ body.dark .topbar-dropdown-btn.logout-btn:hover {
 }
 
 .cp-label {
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
   color: #86868B;
   text-transform: uppercase;
@@ -502,8 +511,8 @@ body.dark .topbar-dropdown-btn.logout-btn:hover {
   padding: 9px 36px 9px 12px;
   border: 1px solid #d1d5db;
   border-radius: 8px;
-  font-size: 13px;
-  font-family: -apple-system, BlinkMacSystemFont, "Inter", sans-serif;
+  font-size: 14px;
+  font-family: var(--font-sans);
   color: #111827;
   background: white;
   outline: none;
@@ -535,13 +544,13 @@ body.dark .topbar-dropdown-btn.logout-btn:hover {
 
 .cp-error {
   color: #dc2626;
-  font-size: 13px;
+  font-size: 14px;
   margin: 0;
 }
 
 .cp-success {
   color: #1E7E39;
-  font-size: 13px;
+  font-size: 14px;
   margin: 0;
 }
 

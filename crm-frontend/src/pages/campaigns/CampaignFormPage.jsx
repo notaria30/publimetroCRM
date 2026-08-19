@@ -4,7 +4,7 @@ import { createCampaign, updateCampaign, getCampaignById } from "../../services/
 import { getClients } from "../../services/clientService";
 import { ArrowLeft, Save } from "lucide-react";
 import "../clients/clients.css";
-import { LoadingPage } from "../../components/LoadingPage";
+import { DetailSkeleton } from "../../components/skeletons/DetailSkeleton";
 
 export default function CampaignFormPage() {
   const { clientId, campId } = useParams();
@@ -62,7 +62,14 @@ export default function CampaignFormPage() {
     } finally { setSaving(false); }
   };
 
-  if (loading) return <LoadingPage />;
+  if (loading) return (
+    <DetailSkeleton
+      pageClass="cl-page" headerClass="cl-header-row" actions={2} titleWidth={190}
+      cards={[
+        { cardClass: "cl-card", gridClass: "cl-form-grid", lines: 8 },
+      ]}
+    />
+  );
 
   return (
     <div className="cl-page">

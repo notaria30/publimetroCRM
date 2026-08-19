@@ -20,6 +20,7 @@ const invoiceSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Quote",
       required: true,
+      index: true,
     },
 
     // NUMERO DE FACTURA
@@ -33,6 +34,7 @@ const invoiceSchema = new mongoose.Schema(
     fechaFactura: {
       type: Date,
       required: true,
+      index: true,
     },
 
     // IMPORTES
@@ -70,7 +72,7 @@ const invoiceSchema = new mongoose.Schema(
     ],
 
     // campo calculado automático
-    pagado: { type: Boolean, default: false },
+    pagado: { type: Boolean, default: false, index: true },
     saldoPendiente: { type: Number, default: 0 },
 
     // Usuario que generó la factura
@@ -78,11 +80,13 @@ const invoiceSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       required: true,
+      index: true,
     },
     sale: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Sale",
       required: false,
+      index: true,
     },
 
     // INTERCAMBIO
