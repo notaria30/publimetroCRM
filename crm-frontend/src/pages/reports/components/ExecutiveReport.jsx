@@ -8,7 +8,11 @@ import DateInput from "../../../components/DateInput";
 
 const fmtMoney = (v) =>
   new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(v || 0);
+const fmtMoney2 = (v) =>
+  new Intl.NumberFormat("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(v || 0);
 const fmtPct = (v) => `${(v || 0).toFixed(2)}%`;
+const fmtFecha = (v) =>
+  v ? new Date(v).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }) : "—";
 const cumplColor = (p) => (p >= 100 ? "sl-badge--success" : p >= 80 ? "sl-badge--warning" : "sl-badge--error");
 function useApexTheme() {
   const [dark, setDark] = useState(() => document.body.classList.contains("dark"));
@@ -26,6 +30,7 @@ export default function ExecutiveReport() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [data, setData] = useState([]);
+  const [grupos, setGrupos] = useState([]);
   const [clients, setClients] = useState([]);
   const [executives, setExecutives] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
@@ -33,9 +38,12 @@ export default function ExecutiveReport() {
   const [filters, setFilters] = useState({
     startDate: new Date(new Date().getFullYear(), 0, 1).toISOString(),
     endDate: new Date().toISOString(),
+    startDatePago: "",
+    endDatePago: "",
     clientId: "all",
     executiveId: "all",
     tipoVenta: "all",
+    pagado: "all",
   });
 
   useEffect(() => {
@@ -56,10 +64,11 @@ export default function ExecutiveReport() {
 
       const res = await getExecutiveReport(filters);
       const rawData = res.data.data;
+      setGrupos(res.data.grupos || []);
       const grouped = {};
 
       rawData.forEach((item) => {
-        const [d, m, y] = item.fecha.split("/");
+        const [, m, y] = item.fecha.split("/");
         const year = parseInt(y); const month = parseInt(m);
         const monthName = new Date(year, month - 1).toLocaleString("es-MX", { month: "long" });
         const key = `${year}-${month}-${item.ejecutivo}`;
@@ -207,7 +216,47 @@ export default function ExecutiveReport() {
       "Meta Mensual": row.meta,
       "% Cumplimiento": Number(row.pctDec.toFixed(2)),
       "Número de Ventas": row.cantidadVentas,
-    })), "ventas_por_ejecutivo");
+    })), "ventas_por_ejecutivo_resumen");
+  };
+
+  const handleExportDetalle = () => {
+    const rows = [];
+    grupos.forEach((g) => {
+      g.facturadas.forEach((r) => rows.push({
+        "Ejecutivo": g.ejecutivo,
+        "Tipo de venta": "Facturada",
+        "Cliente": r.cliente,
+        "Factura": r.factura ?? "",
+        "Cotización": "",
+        "Fecha": fmtFecha(r.fecha),
+        "Importe (s/IVA)": Number((r.importe || 0).toFixed(2)),
+        "Importe pago (s/IVA)": r.importePago ? Number(r.importePago.toFixed(2)) : "",
+        "Fecha pago": r.fechaPago ? fmtFecha(r.fechaPago) : "",
+      }));
+      g.intercambios.forEach((r) => rows.push({
+        "Ejecutivo": g.ejecutivo,
+        "Tipo de venta": "Intercambio",
+        "Cliente": r.cliente,
+        "Factura": "",
+        "Cotización": r.cotizacion ?? "",
+        "Fecha": fmtFecha(r.fecha),
+        "Importe (s/IVA)": Number((r.importe || 0).toFixed(2)),
+        "Importe pago (s/IVA)": "",
+        "Fecha pago": "",
+      }));
+      rows.push({
+        "Ejecutivo": g.ejecutivo,
+        "Tipo de venta": "TOTAL EJECUTIVO",
+        "Cliente": "",
+        "Factura": "",
+        "Cotización": "",
+        "Fecha": "",
+        "Importe (s/IVA)": Number((g.totalVentas || 0).toFixed(2)),
+        "Importe pago (s/IVA)": "",
+        "Fecha pago": `Meta ${fmtMoney2(g.meta)} · Cumplimiento ${fmtPct(g.porcentajeCumplimiento)}`,
+      });
+    });
+    exportToExcel(rows, "ventas_por_ejecutivo_detalle");
   };
 
   return (
@@ -217,25 +266,39 @@ export default function ExecutiveReport() {
         <p className="rp-filter-title">Filtros de búsqueda</p>
         <div className="rp-filter-row">
           <div className="rp-filter-group rp-filter-group--sm">
-            <label className="sl-label">Fecha inicio</label>
+            <label className="sl-label">Fecha inicio (factura / cotización)</label>
             <DateInput
               value={filters.startDate.slice(0, 10)}
               onChange={(val) => setFilters({ ...filters, startDate: new Date(val).toISOString() })}
             />
           </div>
           <div className="rp-filter-group rp-filter-group--sm">
-            <label className="sl-label">Fecha fin</label>
+            <label className="sl-label">Fecha fin (factura / cotización)</label>
             <DateInput
               value={filters.endDate.slice(0, 10)}
               onChange={(val) => setFilters({ ...filters, endDate: new Date(val).toISOString() })}
             />
           </div>
+          <div className="rp-filter-group rp-filter-group--sm">
+            <label className="sl-label">Fecha inicio (pago)</label>
+            <DateInput
+              value={filters.startDatePago}
+              onChange={(val) => setFilters({ ...filters, startDatePago: val })}
+            />
+          </div>
+          <div className="rp-filter-group rp-filter-group--sm">
+            <label className="sl-label">Fecha fin (pago)</label>
+            <DateInput
+              value={filters.endDatePago}
+              onChange={(val) => setFilters({ ...filters, endDatePago: val })}
+            />
+          </div>
           <div className="rp-filter-group">
-            <label className="sl-label">Cliente</label>
+            <label className="sl-label">Cliente (Razón social)</label>
             <select className="sl-select-full" value={filters.clientId}
               onChange={(e) => setFilters({ ...filters, clientId: e.target.value })}>
               <option value="all">Todos</option>
-              {clients.map((c) => <option key={c._id} value={c._id}>{c.nombreComercial}</option>)}
+              {clients.map((c) => <option key={c._id} value={c._id}>{c.razonSocial || c.nombreComercial}</option>)}
             </select>
           </div>
           <div className="rp-filter-group rp-filter-group--sm">
@@ -244,6 +307,15 @@ export default function ExecutiveReport() {
               onChange={(e) => setFilters({ ...filters, executiveId: e.target.value })}>
               <option value="all">Todos</option>
               {executives.map((e) => <option key={e._id} value={e._id}>{e.name}</option>)}
+            </select>
+          </div>
+          <div className="rp-filter-group rp-filter-group--sm">
+            <label className="sl-label">Pagado</label>
+            <select className="sl-select-full" value={filters.pagado}
+              onChange={(e) => setFilters({ ...filters, pagado: e.target.value })}>
+              <option value="all">Todos</option>
+              <option value="si">Sí</option>
+              <option value="no">No</option>
             </select>
           </div>
           <div className="rp-filter-group rp-filter-group--sm">
@@ -256,13 +328,14 @@ export default function ExecutiveReport() {
             </select>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
-            <button className="sl-btn-primary" onClick={handleSearch} disabled={loading}>
+            <button className="sl-btn-primary" onClick={handleSearch} disabled={loading} style={{ whiteSpace: "nowrap" }}>
               {loading ? "Cargando…" : "Generar reporte"}
             </button>
             {data.length > 0 && (
-              <button className="sl-btn-secondary" onClick={handleExport}>
-                ↓ Exportar Excel
-              </button>
+              <button className="sl-btn-secondary" onClick={handleExport}>↓ Resumen</button>
+            )}
+            {grupos.length > 0 && (
+              <button className="sl-btn-secondary" onClick={handleExportDetalle}>↓ Detalle</button>
             )}
           </div>
         </div>
@@ -371,6 +444,114 @@ export default function ExecutiveReport() {
                 ))}
               </tbody>
             </table>
+          </div>
+
+          {/* ── DETALLE POR EJECUTIVO (según especificación) ── */}
+          <div style={{ marginTop: 28 }}>
+            <p className="rp-chart-title" style={{ marginBottom: 4 }}>Detalle por ejecutivo</p>
+            <p className="rp-chart-subtitle" style={{ margin: "0 0 14px" }}>
+              Montos sin IVA. La fecha es la de la factura (facturada) o la de la cotización (intercambio).
+              La meta corresponde al mes de la fecha de inicio.
+            </p>
+
+            {grupos.map((g) => (
+              <div key={g.ejecutivoId || g.ejecutivo} className="rp-chart-card" style={{ marginBottom: 20 }}>
+                <div className="rp-exec-header">
+                  <span className="rp-exec-name">{g.ejecutivo}</span>
+                </div>
+
+                <div style={{ padding: 16 }}>
+                  {g.facturadas.length > 0 && (
+                    <>
+                      <p className="rp-chart-subtitle" style={{ margin: "0 0 6px", fontWeight: 700, color: "#16a34a" }}>Facturadas</p>
+                      <div className="sl-table-wrap" style={{ marginBottom: 16 }}>
+                        <table className="sl-table">
+                          <thead><tr>
+                            <th>Cliente</th>
+                            <th style={{ textAlign: "center" }}>Factura</th>
+                            <th>Fecha</th>
+                            <th style={{ textAlign: "right" }}>Importe factura</th>
+                            <th style={{ textAlign: "right" }}>Importe pago</th>
+                            <th>Fecha pago</th>
+                          </tr></thead>
+                          <tbody>
+                            {g.facturadas.map((r, i) => (
+                              <tr key={i}>
+                                <td>{r.cliente}</td>
+                                <td style={{ textAlign: "center" }}>{r.factura ?? "—"}</td>
+                                <td>{fmtFecha(r.fecha)}</td>
+                                <td style={{ textAlign: "right", fontWeight: 600 }}>{fmtMoney2(r.importe)}</td>
+                                <td style={{ textAlign: "right", color: r.importePago ? "#15803d" : "#9ca3af" }}>
+                                  {r.importePago ? fmtMoney2(r.importePago) : "—"}
+                                </td>
+                                <td>{r.fechaPago ? fmtFecha(r.fechaPago) : "—"}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr style={{ fontWeight: 700 }}>
+                              <td colSpan={3} style={{ textAlign: "right", padding: "10px 16px" }}>Subtotal</td>
+                              <td style={{ textAlign: "right", padding: "10px 16px" }}>{fmtMoney2(g.totalFacturado)}</td>
+                              <td style={{ textAlign: "right", padding: "10px 16px", color: "#15803d" }}>{fmtMoney2(g.totalFacturadoPago)}</td>
+                              <td style={{ padding: "10px 16px" }} />
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    </>
+                  )}
+
+                  {g.intercambios.length > 0 && (
+                    <>
+                      <p className="rp-chart-subtitle" style={{ margin: "0 0 6px", fontWeight: 700, color: "#6d28d9" }}>Intercambios</p>
+                      <div className="sl-table-wrap" style={{ marginBottom: 16 }}>
+                        <table className="sl-table">
+                          <thead><tr>
+                            <th>Cliente</th>
+                            <th style={{ textAlign: "center" }}>Cotización</th>
+                            <th>Fecha</th>
+                            <th style={{ textAlign: "right" }}>Importe</th>
+                          </tr></thead>
+                          <tbody>
+                            {g.intercambios.map((r, i) => (
+                              <tr key={i}>
+                                <td>{r.cliente}</td>
+                                <td style={{ textAlign: "center" }}>{r.cotizacion ?? "—"}</td>
+                                <td>{fmtFecha(r.fecha)}</td>
+                                <td style={{ textAlign: "right", fontWeight: 600 }}>{fmtMoney2(r.importe)}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                          <tfoot>
+                            <tr style={{ fontWeight: 700 }}>
+                              <td colSpan={3} style={{ textAlign: "right", padding: "10px 16px" }}>Subtotal</td>
+                              <td style={{ textAlign: "right", padding: "10px 16px" }}>{fmtMoney2(g.totalIntercambio)}</td>
+                            </tr>
+                          </tfoot>
+                        </table>
+                      </div>
+                    </>
+                  )}
+
+                  <div className="rp-kpi-grid" style={{ marginBottom: 0, gridTemplateColumns: "repeat(3, 1fr)" }}>
+                    <div className="rp-kpi rp-kpi--green">
+                      <p className="rp-kpi-label">Total ventas</p>
+                      <p className="rp-kpi-value">{fmtMoney2(g.totalVentas)}</p>
+                    </div>
+                    <div className="rp-kpi rp-kpi--purple">
+                      <p className="rp-kpi-label">Meta</p>
+                      <p className="rp-kpi-value">{fmtMoney2(g.meta)}</p>
+                    </div>
+                    <div className="rp-kpi rp-kpi--orange">
+                      <p className="rp-kpi-label">% Cumplimiento</p>
+                      <p className="rp-kpi-value">
+                        <span className={`sl-badge ${cumplColor(g.porcentajeCumplimiento)}`}>{fmtPct(g.porcentajeCumplimiento)}</span>
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
           </div>
         </>
       )}

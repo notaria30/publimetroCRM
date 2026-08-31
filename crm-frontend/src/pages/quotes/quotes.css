@@ -449,6 +449,18 @@
   color: #374151;
 }
 
+.qt-inner-table tfoot td {
+  padding: 10px 14px;
+  color: #111827;
+  background: #f0fdf4;
+  border-top: 2px solid #166534;
+}
+body.dark .qt-inner-table tfoot td {
+  color: #f1f5f9;
+  background: #14291a;
+  border-top-color: #4ade80;
+}
+
 /* DIALOG */
 .qt-dialog-overlay {
   position: fixed;

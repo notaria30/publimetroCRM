@@ -1,5 +1,6 @@
 import "./quotes.css";
 import DateInput from "../../components/DateInput";
+import SelectConOtro from "../../components/SelectConOtro";
 
 const FORMATOS_CORTESIA = [
   "1/4 plana",
@@ -95,21 +96,16 @@ export default function QuoteCortesiasSection({ form, setForm }) {
             {/* Formato */}
             <div>
               <label className="qt-input-label">Formato</label>
-              <select
-                className="qt-input"
+              <SelectConOtro
                 value={form.cortesias.formato || ""}
-                onChange={(e) =>
+                onChange={(v) =>
                   setForm((prev) => ({
                     ...prev,
-                    cortesias: { ...prev.cortesias, formato: e.target.value },
+                    cortesias: { ...prev.cortesias, formato: v },
                   }))
                 }
-              >
-                <option value="">Seleccione...</option>
-                {FORMATOS_CORTESIA.map((f) => (
-                  <option key={f} value={f}>{f}</option>
-                ))}
-              </select>
+                options={FORMATOS_CORTESIA}
+              />
             </div>
           </div>
 

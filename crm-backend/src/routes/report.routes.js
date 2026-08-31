@@ -20,19 +20,27 @@ async function getFinancialEvents({ startDate, endDate, clientId, executiveId, t
     if (statusPago === "pendiente") invFilter.pagado = false;
 
     let invoices = await Invoice.find(invFilter)
-      .populate("client", "nombreComercial tipoCliente")
+      .populate("client", "nombreComercial razonSocial tipoCliente")
+      .populate("quote", "folio total")
       .populate({ path: "sale", populate: { path: "assignedTo", select: "name" } })
       .lean();
 
     for (const inv of invoices) {
       if (clientId && clientId !== "all" && String(inv.client?._id) !== clientId) continue;
       if (tipoCliente && tipoCliente !== "all" && inv.client?.tipoCliente !== tipoCliente) continue;
-      
+
       const assignedTo = inv.sale?.assignedTo?._id || inv.sale?.assignedTo;
       if (executiveId && executiveId !== "all" && String(assignedTo) !== executiveId) continue;
 
       const paidTotal = (inv.pagos || []).reduce((acc, p) => acc + (p.importe || 0), 0);
-      const pagadoSinIVA = paidTotal / 1.16;
+      const pagadoSinIVA = Number((paidTotal / 1.16).toFixed(2));
+
+      // Fecha de pago = fecha del último abono registrado
+      const fechasPago = (inv.pagos || [])
+        .filter((p) => p.fecha)
+        .map((p) => new Date(p.fecha))
+        .sort((a, b) => b - a);
+      const fechaPago = fechasPago[0] || null;
 
       events.push({
         type: "facturada",
@@ -40,7 +48,13 @@ async function getFinancialEvents({ startDate, endDate, clientId, executiveId, t
         amount: inv.importeSinIVA || 0,
         paid: inv.pagado,
         paidAmount: pagadoSinIVA,
+        fechaPago,
         client: inv.client,
+        razonSocial: inv.client?.razonSocial || inv.client?.nombreComercial || "N/A",
+        tipoCliente: inv.client?.tipoCliente || null,
+        cotizacion: inv.quote?.folio ?? null,
+        cotizacionTotal: inv.quote?.total ?? null, // total cotizado (base para comparativo)
+        factura: inv.numeroFactura || null,
         ejecutivo: inv.sale?.assignedTo?.name || "No asignado",
         ejecutivoId: assignedTo,
       });
@@ -60,7 +74,7 @@ async function getFinancialEvents({ startDate, endDate, clientId, executiveId, t
       if (endDate) quoteFilter.approvedAt = { ...quoteFilter.approvedAt, $lte: new Date(endDate) };
 
       let quotes = await Quote.find(quoteFilter)
-        .populate("client", "nombreComercial tipoCliente")
+        .populate("client", "nombreComercial razonSocial tipoCliente")
         .lean();
 
       const quoteIds = quotes.map(q => q._id);
@@ -87,9 +101,16 @@ async function getFinancialEvents({ startDate, endDate, clientId, executiveId, t
           type: "intercambio",
           date: dt,
           amount: amountEspecie,
-          paid: true,
-          paidAmount: amountEspecie,
+          // El intercambio es en especie: no genera cobro en efectivo
+          paid: false,
+          paidAmount: 0,
+          fechaPago: null,
           client: q.client,
+          razonSocial: q.client?.razonSocial || q.client?.nombreComercial || "N/A",
+          tipoCliente: q.client?.tipoCliente || null,
+          cotizacion: q.folio ?? null,
+          cotizacionTotal: q.total ?? 0, // total cotizado (base para comparativo)
+          factura: null,
           ejecutivo: sale?.assignedTo?.name || "No asignado",
           ejecutivoId: assignedTo,
         });
@@ -105,9 +126,17 @@ async function getFinancialEvents({ startDate, endDate, clientId, executiveId, t
 // ============================================
 router.get("/sales-monthly", auth, async (req, res) => {
   try {
-    const { startDate, endDate, clientId, tipoCliente, statusPago, tipoVenta } = req.query;
+    const { startDate, endDate, clientId, tipoCliente, tipoVenta } = req.query;
+    // Filtro "Pagado": all | si | no  (se acepta también el legacy statusPago)
+    let pagado = req.query.pagado || "all";
+    if (pagado === "all" && req.query.statusPago === "pagadas") pagado = "si";
+    if (pagado === "all" && req.query.statusPago === "pendiente") pagado = "no";
 
-    const events = await getFinancialEvents({ startDate, endDate, clientId, tipoCliente, statusPago, tipoVenta });
+    let events = await getFinancialEvents({ startDate, endDate, clientId, tipoCliente, tipoVenta });
+
+    if (pagado === "si") events = events.filter((e) => e.paid);
+    else if (pagado === "no") events = events.filter((e) => !e.paid);
+
     const goals = await SalesGoal.find({});
     const monthlyData = {};
 
@@ -170,7 +199,28 @@ router.get("/sales-monthly", auth, async (req, res) => {
       return months.indexOf(bMonth) - months.indexOf(aMonth);
     });
 
-    res.json({ success: true, data: result });
+    // ── DETALLE: una fila por venta (facturada / intercambio) ──
+    // events ya viene ordenado por fecha descendente desde getFinancialEvents
+    const detalle = events.map((ev) => ({
+      tipoVenta: ev.type, // "facturada" | "intercambio"
+      tipoCliente: ev.tipoCliente || null,
+      cliente: ev.razonSocial || "N/A",
+      cotizacion: ev.cotizacion ?? null,
+      factura: ev.factura || null,
+      fecha: ev.date,
+      importe: ev.amount || 0,
+      importePago: ev.type === "facturada" ? (ev.paidAmount || 0) : null,
+      fechaPago: ev.fechaPago || null,
+      pagado: !!ev.paid,
+    }));
+
+    const totales = {
+      importe: detalle.reduce((s, r) => s + (r.importe || 0), 0),
+      importePago: detalle.reduce((s, r) => s + (r.importePago || 0), 0),
+      registros: detalle.length,
+    };
+
+    res.json({ success: true, data: result, detalle, totales });
   } catch (error) {
     console.error("Error en reporte ventas mensuales:", error);
     res.status(500).json({ message: "Error interno del servidor" });
@@ -183,49 +233,127 @@ router.get("/sales-monthly", auth, async (req, res) => {
 router.get("/executive", auth, async (req, res) => {
   try {
     const { startDate, endDate, clientId, executiveId, tipoVenta } = req.query;
+    // Segundo filtro de fecha: por fecha de pago (opcional, independiente)
+    const { startDatePago, endDatePago } = req.query;
+    // Filtro "Pagado": all | si | no
+    let pagado = req.query.pagado || "all";
+    if (pagado === "all" && req.query.statusPago === "pagadas") pagado = "si";
+    if (pagado === "all" && req.query.statusPago === "pendiente") pagado = "no";
 
-    const events = await getFinancialEvents({ startDate, endDate, clientId, executiveId, tipoVenta });
+    let events = await getFinancialEvents({ startDate, endDate, clientId, executiveId, tipoVenta });
+
+    if (pagado === "si") events = events.filter((e) => e.paid);
+    else if (pagado === "no") events = events.filter((e) => !e.paid);
+
+    // Filtro por fecha de pago
+    if (startDatePago || endDatePago) {
+      const desde = startDatePago ? new Date(startDatePago) : null;
+      const hasta = endDatePago ? new Date(endDatePago) : null;
+      events = events.filter((e) => {
+        if (!e.fechaPago) return false;
+        const fp = new Date(e.fechaPago);
+        if (desde && fp < desde) return false;
+        if (hasta && fp > hasta) return false;
+        return true;
+      });
+    }
+
     const goals = await SalesGoal.find({});
-    
-    const result = [];
 
+    // ── data plana (compatibilidad con gráficas y tabla mensual) ──
+    const result = [];
     events.forEach((ev) => {
       const fecha = ev.date;
-      const fechaStr = fecha.toLocaleDateString("es-MX");
-      const ejecutivo = ev.ejecutivo;
-      const ejecutivoId = ev.ejecutivoId;
-      const cliente = ev.client?.nombreComercial || "N/A";
-      const ventasSinIVA = ev.amount;
-
-      // Buscar meta mensual para este ejecutivo
       const year = fecha.getFullYear();
       const month = fecha.getMonth() + 1;
       const goal = goals.find(
-        (g) => g.year === year && g.month === month && String(g.assignedTo) === String(ejecutivoId)
+        (g) => g.year === year && g.month === month && String(g.assignedTo) === String(ev.ejecutivoId)
       );
       const meta = goal?.goalAmount || 0;
-
-      const porcentajeCumplimiento = meta > 0 ? (ventasSinIVA / meta) * 100 : 0;
-
       result.push({
-        fecha: fechaStr,
-        ejecutivo,
-        cliente,
+        fecha: fecha.toLocaleDateString("es-MX"),
+        ejecutivo: ev.ejecutivo,
+        cliente: ev.client?.nombreComercial || "N/A",
         tipoVenta: ev.type,
-        ventasSinIVA,
+        ventasSinIVA: ev.amount,
         meta,
-        porcentajeCumplimiento: Math.round(porcentajeCumplimiento * 100) / 100,
+        porcentajeCumplimiento: meta > 0 ? Math.round((ev.amount / meta) * 10000) / 100 : 0,
       });
     });
-
-    // Ordenar por fecha descendente
     result.sort((a, b) => {
       const dateA = new Date(a.fecha.split("/").reverse().join("-"));
       const dateB = new Date(b.fecha.split("/").reverse().join("-"));
       return dateB - dateA;
     });
 
-    res.json({ data: result });
+    // ── grupos: detalle agrupado por ejecutivo (según especificación) ──
+    // Meta = meta del ejecutivo para el mes de la fecha inicio (o mes actual).
+    // Se lee la parte de fecha del string para no depender de la zona horaria.
+    let metaYear, metaMonth;
+    const mDate = String(startDate || "").match(/^(\d{4})-(\d{2})/);
+    if (mDate) {
+      metaYear = Number(mDate[1]);
+      metaMonth = Number(mDate[2]);
+    } else {
+      const now = new Date();
+      metaYear = now.getFullYear();
+      metaMonth = now.getMonth() + 1;
+    }
+
+    const grupoMap = new Map();
+    for (const ev of events) {
+      const key = ev.ejecutivoId ? String(ev.ejecutivoId) : "sin-asignar";
+      if (!grupoMap.has(key)) {
+        grupoMap.set(key, {
+          ejecutivoId: ev.ejecutivoId ? String(ev.ejecutivoId) : null,
+          ejecutivo: ev.ejecutivo || "No asignado",
+          facturadas: [],
+          intercambios: [],
+        });
+      }
+      const g = grupoMap.get(key);
+      if (ev.type === "facturada") {
+        g.facturadas.push({
+          cliente: ev.razonSocial,
+          factura: ev.factura,
+          fecha: ev.date,
+          importe: ev.amount || 0,
+          importePago: ev.paidAmount || 0,
+          fechaPago: ev.fechaPago || null,
+          pagado: !!ev.paid,
+        });
+      } else {
+        g.intercambios.push({
+          cliente: ev.razonSocial,
+          cotizacion: ev.cotizacion,
+          fecha: ev.date,
+          importe: ev.amount || 0,
+        });
+      }
+    }
+
+    const grupos = [...grupoMap.values()].map((g) => {
+      const totalFacturado = g.facturadas.reduce((s, r) => s + r.importe, 0);
+      const totalFacturadoPago = g.facturadas.reduce((s, r) => s + r.importePago, 0);
+      const totalIntercambio = g.intercambios.reduce((s, r) => s + r.importe, 0);
+      const totalVentas = totalFacturado + totalIntercambio;
+      const goal = goals.find(
+        (gl) => gl.year === metaYear && gl.month === metaMonth && String(gl.assignedTo) === String(g.ejecutivoId)
+      );
+      const meta = goal?.goalAmount || 0;
+      return {
+        ...g,
+        totalFacturado,
+        totalFacturadoPago,
+        totalIntercambio,
+        totalVentas,
+        meta,
+        porcentajeCumplimiento: meta > 0 ? Math.round((totalVentas / meta) * 10000) / 100 : 0,
+      };
+    });
+    grupos.sort((a, b) => a.ejecutivo.localeCompare(b.ejecutivo, "es"));
+
+    res.json({ data: result, grupos });
   } catch (error) {
     console.error("Error en reporte ejecutivo:", error);
     res.status(500).json({ message: "Error interno del servidor" });
@@ -237,103 +365,56 @@ router.get("/executive", auth, async (req, res) => {
 // ============================================
 router.get("/comparative", auth, async (req, res) => {
   try {
-    const {
-      periodoBase,
-      periodoComparativo,
-      tipoCliente,
-      ejecutivoId,
-      tipoVenta,
-      mesBase,
-      anioBase,
-      mesComp,
-      anioComp,
-    } = req.query;
+    const { startDate, endDate, clientId, tipoCliente, tipoVenta } = req.query;
+    let pagado = req.query.pagado || "all";
+    if (pagado === "all" && req.query.statusPago === "pagadas") pagado = "si";
+    if (pagado === "all" && req.query.statusPago === "pendiente") pagado = "no";
 
-    const events = await getFinancialEvents({ tipoCliente, executiveId: ejecutivoId, tipoVenta });
+    let events = await getFinancialEvents({ startDate, endDate, clientId, tipoCliente, tipoVenta });
 
-    // ── Determinar rango de cada período ──────────────────────────
-    let labelBase, labelComp;
-    let isBase, isComp;
+    if (pagado === "si") events = events.filter((e) => e.paid);
+    else if (pagado === "no") events = events.filter((e) => !e.paid);
 
-    if (periodoBase === "mes-libre" || periodoComparativo === "mes-libre") {
-      const yB = parseInt(anioBase);
-      const mB = parseInt(mesBase);
-      const yC = parseInt(anioComp);
-      const mC = parseInt(mesComp);
-
-      const MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-      labelBase = `${MESES[mB - 1]} ${yB}`;
-      labelComp = `${MESES[mC - 1]} ${yC}`;
-
-      isBase = (ev) => ev.date.getFullYear() === yB && ev.date.getMonth() + 1 === mB;
-      isComp = (ev) => ev.date.getFullYear() === yC && ev.date.getMonth() + 1 === mC;
-    } else if (periodoBase === "mensual" && periodoComparativo === "mensual") {
-      const now = new Date();
-      const yC = now.getFullYear();
-      const yB = yC - 1;
-      const m  = now.getMonth() + 1;
-      const MESES = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
-      labelBase = `${MESES[m - 1]} ${yB}`;
-      labelComp = `${MESES[m - 1]} ${yC}`;
-
-      isBase = (ev) => ev.date.getFullYear() === yB && ev.date.getMonth() + 1 === m;
-      isComp = (ev) => ev.date.getFullYear() === yC && ev.date.getMonth() + 1 === m;
-    } else {
-      const years = [...new Set(events.map(ev => ev.date.getFullYear()))].sort();
-      const yC = years.length >= 1 ? years[years.length - 1] : new Date().getFullYear();
-      const yB = years.length >= 2 ? years[years.length - 2] : yC - 1;
-      labelBase = String(yB);
-      labelComp = String(yC);
-
-      isBase = (ev) => ev.date.getFullYear() === yB;
-      isComp = (ev) => ev.date.getFullYear() === yC;
-    }
-
-    // ── Agrupar por cliente ────────────────────────────────────────
-    const salesByClient = new Map();
-
-    events.forEach((ev) => {
-      const cliente   = ev.client?.nombreComercial || "N/A";
-      const ejecutivo = ev.ejecutivo  || "No asignado";
-      const monto     = ev.amount || 0;
-      const key       = `${cliente}|${ejecutivo}`;
-
-      if (!salesByClient.has(key))
-        salesByClient.set(key, { cliente, ejecutivo, base: 0, comp: 0 });
-
-      const row = salesByClient.get(key);
-      if (isBase(ev)) row.base += monto;
-      if (isComp(ev)) row.comp += monto;
-    });
-
-    // ── Construir resultado ────────────────────────────────────────
-    const result = [];
-    for (const [, c] of salesByClient) {
-      if (c.base === 0 && c.comp === 0) continue;
-
-      const variacionMonto = c.comp - c.base;
+    // Detalle: una fila por venta. Base = total cotizado; Final = venta real (facturada
+    // sin IVA / monto en especie). Variación = Final − Base.
+    const detalle = events.map((ev) => {
+      const importeBase = ev.cotizacionTotal || 0;
+      const importeFinal = ev.amount || 0;
+      const variacionMonto = Number((importeFinal - importeBase).toFixed(2));
       const variacionPorcentaje =
-        c.base === 0 && c.comp > 0 ? 1
-        : c.base > 0 ? Math.round((variacionMonto / c.base) * 100) / 100
-        : 0;
-
-      result.push({
-        fecha: `${labelBase} vs ${labelComp}`,
-        cliente: c.cliente,
-        periodoBase: c.base,
-        periodoComparativo: c.comp,
+        importeBase > 0
+          ? Math.round((variacionMonto / importeBase) * 10000) / 100
+          : importeFinal > 0 ? 100 : 0;
+      return {
+        tipoVenta: ev.type,
+        tipoCliente: ev.tipoCliente || null,
+        cliente: ev.razonSocial || "N/A",
+        cotizacion: ev.cotizacion ?? null,
+        factura: ev.factura || null,
+        fecha: ev.date,
+        importeBase,
+        importeFinal,
         variacionMonto,
         variacionPorcentaje,
-        ejecutivo: c.ejecutivo,
-      });
-    }
+        importePago: ev.type === "facturada" ? (ev.paidAmount || 0) : null,
+        fechaPago: ev.fechaPago || null,
+        pagado: !!ev.paid,
+      };
+    });
 
-    if (result.length === 0)
-      return res.json({ data: [], message: "No hay datos para los filtros seleccionados" });
+    const totBase = detalle.reduce((s, r) => s + r.importeBase, 0);
+    const totFinal = detalle.reduce((s, r) => s + r.importeFinal, 0);
+    const totVar = Number((totFinal - totBase).toFixed(2));
+    const totales = {
+      importeBase: totBase,
+      importeFinal: totFinal,
+      variacionMonto: totVar,
+      variacionPorcentaje: totBase > 0 ? Math.round((totVar / totBase) * 10000) / 100 : 0,
+      importePago: detalle.reduce((s, r) => s + (r.importePago || 0), 0),
+      registros: detalle.length,
+    };
 
-    result.sort((a, b) => b.variacionPorcentaje - a.variacionPorcentaje);
-    res.json({ data: result });
-
+    res.json({ data: detalle, totales });
   } catch (error) {
     console.error("Error en reporte comparativo:", error);
     res.status(500).json({ message: "Error interno del servidor" });
@@ -558,7 +639,7 @@ router.get("/active-clients", auth, async (req, res) => {
 // ============================================
 router.get("/clients", auth, async (req, res) => {
   try {
-    const clients = await Client.find({}, "nombreComercial tipoCliente");
+    const clients = await Client.find({}, "nombreComercial razonSocial tipoCliente").sort({ razonSocial: 1 });
     res.json(clients);
   } catch (error) {
     console.error(error);

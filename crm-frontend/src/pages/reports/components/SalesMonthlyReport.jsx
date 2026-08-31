@@ -16,7 +16,25 @@ const fmtMoney = (v) =>
     minimumFractionDigits: 0, maximumFractionDigits: 0,
   }).format(v || 0);
 
+const fmtMoney2 = (v) =>
+  new Intl.NumberFormat("es-MX", {
+    style: "currency", currency: "MXN",
+    minimumFractionDigits: 2, maximumFractionDigits: 2,
+  }).format(v || 0);
+
 const fmtPct = (v) => `${(v || 0).toFixed(1)}%`;
+
+const fmtFecha = (v) =>
+  v ? new Date(v).toLocaleDateString("es-MX", { day: "2-digit", month: "short", year: "numeric" }) : "—";
+
+const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+
+const TIPO_CLIENTE_ABBR = {
+  "iniciativa privada": "IP",
+  "gobierno": "GOB",
+  "corporativo": "COR",
+};
+const tipoClienteAbbr = (t) => TIPO_CLIENTE_ABBR[t] || "—";
 
 const cumplColor = (p) =>
   p >= 100 ? "sl-badge--success" : p >= 80 ? "sl-badge--warning" : "sl-badge--error";
@@ -38,6 +56,8 @@ export default function SalesMonthlyReport() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const [data, setData] = useState([]);
+  const [detalle, setDetalle] = useState([]);
+  const [totales, setTotales] = useState({ importe: 0, importePago: 0, registros: 0 });
   const [clients, setClients] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [filters, setFilters] = useState({
@@ -45,7 +65,7 @@ export default function SalesMonthlyReport() {
     endDate: new Date().toISOString(),
     clientId: "all",
     tipoCliente: "all",
-    statusPago: "all",
+    pagado: "all",
     tipoVenta: "all",
   });
 
@@ -79,6 +99,8 @@ export default function SalesMonthlyReport() {
         return { ...item, meta, diferencia: item.totalVentas - meta, pctDec, pctChart: Math.round(Math.min(pctDec, 100)) };
       });
       setData(enriched);
+      setDetalle(res.data.detalle || []);
+      setTotales(res.data.totales || { importe: 0, importePago: 0, registros: 0 });
     } catch (err) {
       setError(err.response?.data?.message || "Error al cargar el reporte");
     } finally { setLoading(false); }
@@ -92,7 +114,6 @@ export default function SalesMonthlyReport() {
       cumplimiento: d.pctChart,
     })), [data]);
 
-  const totalVentas = data.reduce((s, d) => s + d.totalVentas, 0);
   const totalMeta = data.reduce((s, d) => s + d.meta, 0);
   const promCumpl = data.length ? data.reduce((s, d) => s + d.pctDec, 0) / data.length : 0;
   const mesesConMeta = data.filter((d) => d.meta > 0).length;
@@ -230,7 +251,21 @@ export default function SalesMonthlyReport() {
       "Diferencia": row.diferencia,
       "% Cumplimiento": Number(row.pctDec.toFixed(2)),
       "Total Pagado (s/IVA)": row.totalPagado,
-    })), "ventas_mensuales");
+    })), "ventas_mensuales_resumen");
+  };
+
+  const handleExportDetalle = () => {
+    exportToExcel(detalle.map((r) => ({
+      "Tipo de venta": cap(r.tipoVenta),
+      "Tipo de cliente": tipoClienteAbbr(r.tipoCliente),
+      "Cliente": r.cliente,
+      "Cotización": r.cotizacion ?? "",
+      "Factura": r.factura ?? "",
+      "Fecha": fmtFecha(r.fecha),
+      "Importe (s/IVA)": Number((r.importe || 0).toFixed(2)),
+      "Importe pago (s/IVA)": r.importePago == null ? "" : Number(r.importePago.toFixed(2)),
+      "Fecha pago": r.fechaPago ? fmtFecha(r.fechaPago) : "",
+    })), "ventas_mensuales_detalle");
   };
 
   return (
@@ -254,48 +289,47 @@ export default function SalesMonthlyReport() {
             />
           </div>
           <div className="rp-filter-group">
-            <label className="sl-label">Cliente</label>
+            <label className="sl-label">Cliente (Razón social)</label>
             <select className="sl-select-full" value={filters.clientId}
               onChange={(e) => setFilters({ ...filters, clientId: e.target.value })}>
               <option value="all">Todos</option>
-              {clients.map((c) => <option key={c._id} value={c._id}>{c.nombreComercial}</option>)}
+              {clients.map((c) => (
+                <option key={c._id} value={c._id}>{c.razonSocial || c.nombreComercial}</option>
+              ))}
             </select>
           </div>
           <div className="rp-filter-group rp-filter-group--sm">
-            <label className="sl-label">Tipo cliente</label>
+            <label className="sl-label">Tipo de cliente</label>
             <select className="sl-select-full" value={filters.tipoCliente}
               onChange={(e) => setFilters({ ...filters, tipoCliente: e.target.value })}>
-              <option value="all">Todas</option>
-              <option value="iniciativa privada">IP</option>
-              <option value="gobierno">Gobierno</option>
-              <option value="corporativo">Corporativo</option>
-            </select>
-          </div>
-          <div className="rp-filter-group rp-filter-group--sm">
-            <label className="sl-label">Status pago</label>
-            <select className="sl-select-full" value={filters.statusPago}
-              onChange={(e) => setFilters({ ...filters, statusPago: e.target.value })}>
               <option value="all">Todos</option>
-              <option value="pagadas">Pagadas</option>
-              <option value="pendiente">Pendiente</option>
+              <option value="corporativo">COR</option>
+              <option value="iniciativa privada">IP</option>
+              <option value="gobierno">GOB</option>
             </select>
           </div>
           <div className="rp-filter-group rp-filter-group--sm">
-            <label className="sl-label">Tipo Venta</label>
+            <label className="sl-label">Tipo de venta</label>
             <select className="sl-select-full" value={filters.tipoVenta}
               onChange={(e) => setFilters({ ...filters, tipoVenta: e.target.value })}>
               <option value="all">Todas</option>
-              <option value="facturada">Facturada (Efectivo)</option>
-              <option value="intercambio">Intercambio (Especie)</option>
+              <option value="facturada">Facturada</option>
+              <option value="intercambio">Intercambio</option>
+            </select>
+          </div>
+          <div className="rp-filter-group rp-filter-group--sm">
+            <label className="sl-label">Pagado</label>
+            <select className="sl-select-full" value={filters.pagado}
+              onChange={(e) => setFilters({ ...filters, pagado: e.target.value })}>
+              <option value="all">Todos</option>
+              <option value="si">Sí</option>
+              <option value="no">No</option>
             </select>
           </div>
           <div style={{ display: "flex", gap: 10, alignItems: "flex-end" }}>
             <button className="sl-btn-primary" onClick={handleSearch} disabled={loading} style={{ whiteSpace: "nowrap" }}>
               {loading ? "Cargando…" : "Generar reporte"}
             </button>
-            {data.length > 0 && (
-              <button className="sl-btn-secondary" onClick={handleExport}>↓ Exportar Excel</button>
-            )}
           </div>
         </div>
       </div>
@@ -306,102 +340,179 @@ export default function SalesMonthlyReport() {
         <div className="rp-placeholder"><p>Selecciona los filtros y haz clic en "Generar reporte"</p></div>
       )}
 
-      {hasSearched && !loading && data.length === 0 && !error && (
+      {hasSearched && !loading && detalle.length === 0 && data.length === 0 && !error && (
         <div className="rp-placeholder"><p>No hay datos para los filtros seleccionados</p></div>
       )}
 
-      {hasSearched && !loading && data.length > 0 && (
+      {hasSearched && !loading && (detalle.length > 0 || data.length > 0) && (
         <>
           {/* ── KPIs ── */}
           <div className="rp-kpi-grid">
             <div className="rp-kpi rp-kpi--blue">
-              <p className="rp-kpi-label">Total Ventas</p>
-              <p className="rp-kpi-value">{fmtMoney(totalVentas)}</p>
+              <p className="rp-kpi-label">Total Importe (s/IVA)</p>
+              <p className="rp-kpi-value">{fmtMoney(totales.importe)}</p>
+            </div>
+            <div className="rp-kpi rp-kpi--green">
+              <p className="rp-kpi-label">Total Importe pagado (s/IVA)</p>
+              <p className="rp-kpi-value">{fmtMoney(totales.importePago)}</p>
             </div>
             <div className="rp-kpi rp-kpi--purple">
               <p className="rp-kpi-label">Total Meta</p>
               <p className="rp-kpi-value">{fmtMoney(totalMeta)}</p>
             </div>
-            <div className="rp-kpi rp-kpi--green">
+            <div className="rp-kpi rp-kpi--orange">
               <p className="rp-kpi-label">Promedio Cumplimiento</p>
               <p className={`rp-kpi-value ${promCumpl >= 80 ? "rp-kpi-value--green" : "rp-kpi-value--orange"}`}>
                 {fmtPct(promCumpl)}
+                <span className="rp-kpi-sub" style={{ display: "block", fontWeight: 500 }}>
+                  {mesesCumplidos}/{mesesConMeta} meses · {totales.registros} registros
+                </span>
               </p>
-            </div>
-            <div className="rp-kpi rp-kpi--orange">
-              <p className="rp-kpi-label">Meses meta cumplida</p>
-              <p className="rp-kpi-value">{mesesCumplidos} / {mesesConMeta}</p>
             </div>
           </div>
 
           {/* ── GRÁFICAS ── */}
-          <div className="rp-charts-grid">
-            <div className="rp-chart-card">
-              <div className="rp-chart-header">
-                <p className="rp-chart-title">Ventas vs Meta mensual</p>
-                <p className="rp-chart-subtitle">Comparación de ventas reales contra meta establecida</p>
+          {data.length > 0 && (
+            <div className="rp-charts-grid">
+              <div className="rp-chart-card">
+                <div className="rp-chart-header">
+                  <p className="rp-chart-title">Ventas vs Meta mensual</p>
+                  <p className="rp-chart-subtitle">Comparación de ventas reales contra meta establecida</p>
+                </div>
+                <div className="rp-chart-body">
+                  <ReactApexChart
+                    key={`bar-${dark}`}
+                    type="bar"
+                    options={barOptions}
+                    series={barSeries}
+                    height={280}
+                  />
+                </div>
               </div>
-              <div className="rp-chart-body">
-                <ReactApexChart
-                  key={`bar-${dark}`}
-                  type="bar"
-                  options={barOptions}
-                  series={barSeries}
-                  height={280}
-                />
-              </div>
-            </div>
 
-            <div className="rp-chart-card">
-              <div className="rp-chart-header">
-                <p className="rp-chart-title">% Cumplimiento mensual</p>
-                <p className="rp-chart-subtitle">Porcentaje de meta alcanzada por mes</p>
-              </div>
-              <div className="rp-chart-body">
-                <ReactApexChart
-                  key={`line-${dark}`}
-                  type="area"
-                  options={lineOptions}
-                  series={lineSeries}
-                  height={280}
-                />
+              <div className="rp-chart-card">
+                <div className="rp-chart-header">
+                  <p className="rp-chart-title">% Cumplimiento mensual</p>
+                  <p className="rp-chart-subtitle">Porcentaje de meta alcanzada por mes</p>
+                </div>
+                <div className="rp-chart-body">
+                  <ReactApexChart
+                    key={`line-${dark}`}
+                    type="area"
+                    options={lineOptions}
+                    series={lineSeries}
+                    height={280}
+                  />
+                </div>
               </div>
             </div>
+          )}
+
+          {/* ── RESUMEN MENSUAL ── */}
+          {data.length > 0 && (
+            <>
+              <div className="rp-chart-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 0, margin: "4px 0 10px" }}>
+                <p className="rp-chart-title" style={{ margin: 0 }}>Resumen mensual</p>
+                <button className="sl-btn-secondary" onClick={handleExport}>↓ Exportar resumen</button>
+              </div>
+              <div className="sl-table-wrap" style={{ marginBottom: 24 }}>
+                <table className="sl-table">
+                  <thead>
+                    <tr>
+                      <th>Fecha</th>
+                      <th style={{ textAlign: "right" }}>Facturado (s/IVA)</th>
+                      <th style={{ textAlign: "right" }}>Intercambio (s/IVA)</th>
+                      <th style={{ textAlign: "right" }}>Total Ventas (s/IVA)</th>
+                      <th style={{ textAlign: "right" }}>Meta</th>
+                      <th style={{ textAlign: "right" }}>Diferencia</th>
+                      <th style={{ textAlign: "center" }}>% Cumplimiento</th>
+                      <th style={{ textAlign: "right" }}>Pagado</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {data.map((row, i) => (
+                      <tr key={i}>
+                        <td>{row.fecha}</td>
+                        <td style={{ textAlign: "right", color: "#16a34a" }}>{fmtMoney(row.totalFacturado)}</td>
+                        <td style={{ textAlign: "right", color: "#3b82f6" }}>{fmtMoney(row.totalIntercambio)}</td>
+                        <td style={{ textAlign: "right", fontWeight: "bold" }}>{fmtMoney(row.totalVentas)}</td>
+                        <td style={{ textAlign: "right" }}>{fmtMoney(row.meta)}</td>
+                        <td style={{ textAlign: "right", color: row.diferencia >= 0 ? "#16a34a" : "#ef4444", fontWeight: 600 }}>
+                          {fmtMoney(row.diferencia)}
+                        </td>
+                        <td style={{ textAlign: "center" }}>
+                          <span className={`sl-badge ${cumplColor(row.pctDec)}`}>{fmtPct(row.pctDec)}</span>
+                        </td>
+                        <td style={{ textAlign: "right" }}>{fmtMoney(row.totalPagado)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
+
+          {/* ── DETALLE DE VENTAS (según especificación) ── */}
+          <div className="rp-chart-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", padding: 0, margin: "4px 0 4px" }}>
+            <p className="rp-chart-title" style={{ margin: 0 }}>Detalle de ventas</p>
+            {detalle.length > 0 && (
+              <button className="sl-btn-secondary" onClick={handleExportDetalle}>↓ Exportar detalle</button>
+            )}
           </div>
+          <p className="rp-chart-subtitle" style={{ margin: "0 0 10px" }}>
+            Montos sin IVA. La fecha corresponde a la fecha de factura (facturada) o a la fecha de cotización (intercambio).
+          </p>
 
-          {/* ── TABLA ── */}
           <div className="sl-table-wrap">
             <table className="sl-table">
               <thead>
                 <tr>
+                  <th>Tipo de venta</th>
+                  <th>Tipo de cliente</th>
+                  <th>Cliente</th>
+                  <th style={{ textAlign: "center" }}>Cotización</th>
+                  <th style={{ textAlign: "center" }}>Factura</th>
                   <th>Fecha</th>
-                  <th style={{ textAlign: "right" }}>Facturado (s/IVA)</th>
-                  <th style={{ textAlign: "right" }}>Intercambio (s/IVA)</th>
-                  <th style={{ textAlign: "right" }}>Total Ventas (s/IVA)</th>
-                  <th style={{ textAlign: "right" }}>Meta</th>
-                  <th style={{ textAlign: "right" }}>Diferencia</th>
-                  <th style={{ textAlign: "center" }}>% Cumplimiento</th>
-                  <th style={{ textAlign: "right" }}>Pagado</th>
+                  <th style={{ textAlign: "right" }}>Importe</th>
+                  <th style={{ textAlign: "right" }}>Importe pago</th>
+                  <th>Fecha pago</th>
                 </tr>
               </thead>
               <tbody>
-                {data.map((row, i) => (
-                  <tr key={i}>
-                    <td>{row.fecha}</td>
-                    <td style={{ textAlign: "right", color: "#16a34a" }}>{fmtMoney(row.totalFacturado)}</td>
-                    <td style={{ textAlign: "right", color: "#3b82f6" }}>{fmtMoney(row.totalIntercambio)}</td>
-                    <td style={{ textAlign: "right", fontWeight: "bold" }}>{fmtMoney(row.totalVentas)}</td>
-                    <td style={{ textAlign: "right" }}>{fmtMoney(row.meta)}</td>
-                    <td style={{ textAlign: "right", color: row.diferencia >= 0 ? "#16a34a" : "#ef4444", fontWeight: 600 }}>
-                      {fmtMoney(row.diferencia)}
-                    </td>
-                    <td style={{ textAlign: "center" }}>
-                      <span className={`sl-badge ${cumplColor(row.pctDec)}`}>{fmtPct(row.pctDec)}</span>
-                    </td>
-                    <td style={{ textAlign: "right" }}>{fmtMoney(row.totalPagado)}</td>
-                  </tr>
-                ))}
+                {detalle.length === 0 ? (
+                  <tr><td colSpan={9} className="sl-empty">No hay ventas para los filtros seleccionados</td></tr>
+                ) : (
+                  detalle.map((r, i) => (
+                    <tr key={i}>
+                      <td>
+                        <span className={`sl-badge ${r.tipoVenta === "facturada" ? "sl-badge--success" : "sl-badge--purple"}`}>
+                          {cap(r.tipoVenta)}
+                        </span>
+                      </td>
+                      <td>{tipoClienteAbbr(r.tipoCliente)}</td>
+                      <td>{r.cliente}</td>
+                      <td style={{ textAlign: "center" }}>{r.cotizacion ?? "—"}</td>
+                      <td style={{ textAlign: "center" }}>{r.factura ?? "—"}</td>
+                      <td>{fmtFecha(r.fecha)}</td>
+                      <td style={{ textAlign: "right", fontWeight: 600 }}>{fmtMoney2(r.importe)}</td>
+                      <td style={{ textAlign: "right", color: r.importePago ? "#16a34a" : "#9ca3af" }}>
+                        {r.importePago == null ? "—" : fmtMoney2(r.importePago)}
+                      </td>
+                      <td>{r.fechaPago ? fmtFecha(r.fechaPago) : "—"}</td>
+                    </tr>
+                  ))
+                )}
               </tbody>
+              {detalle.length > 0 && (
+                <tfoot>
+                  <tr style={{ fontWeight: 700 }}>
+                    <td colSpan={6} style={{ textAlign: "right", padding: "12px 16px" }}>Totales</td>
+                    <td style={{ textAlign: "right", padding: "12px 16px" }}>{fmtMoney2(totales.importe)}</td>
+                    <td style={{ textAlign: "right", padding: "12px 16px", color: "#15803d" }}>{fmtMoney2(totales.importePago)}</td>
+                    <td style={{ padding: "12px 16px" }} />
+                  </tr>
+                </tfoot>
+              )}
             </table>
           </div>
         </>

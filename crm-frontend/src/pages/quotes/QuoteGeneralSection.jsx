@@ -1,7 +1,8 @@
 import "./quotes.css";
+import SelectConOtro from "../../components/SelectConOtro";
 
 const METODOS_PAGO  = ["PPD", "PUE"];
-const FORMAS_PAGO   = ["Transferencia", "Efectivo", "Tarjeta", "Cheque", "Otro"];
+const FORMAS_PAGO   = ["Transferencia", "Efectivo", "Tarjeta", "Cheque"];
 const USOS_CFDI     = [
   { value: "G01", label: "G01 - Adquisición de mercancías" },
   { value: "G03", label: "G03 - Gastos en general" },
@@ -75,27 +76,23 @@ export default function QuoteGeneralSection({ clients, opportunities, form, setF
           {/* Forma de pago */}
           <div>
             <label className="qt-input-label">Forma de pago</label>
-            <select
-              className="qt-input"
+            <SelectConOtro
               value={form.formaPago}
-              onChange={(e) => set("formaPago", e.target.value)}
-            >
-              <option value="">Seleccione...</option>
-              {FORMAS_PAGO.map((f) => <option key={f} value={f}>{f}</option>)}
-            </select>
+              onChange={(v) => set("formaPago", v)}
+              options={FORMAS_PAGO}
+            />
           </div>
 
           {/* Uso de CFDI */}
           <div style={{ gridColumn: "span 2" }}>
             <label className="qt-input-label">Uso de CFDI</label>
-            <select
-              className="qt-input"
+            <SelectConOtro
               value={form.usoCFDI}
-              onChange={(e) => set("usoCFDI", e.target.value)}
-            >
-              <option value="">Seleccione...</option>
-              {USOS_CFDI.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
-            </select>
+              onChange={(v) => set("usoCFDI", v)}
+              options={USOS_CFDI}
+              otherLabel="Otro código SAT…"
+              otherPlaceholder="Ej. I08, D01, S01…"
+            />
           </div>
 
           {/* Estado de facturación */}

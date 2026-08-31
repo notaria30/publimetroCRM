@@ -19,6 +19,41 @@ const fmt = (n) =>
 const fmtDate = (d) =>
   d ? new Date(d).toLocaleDateString("es-MX", { year: "numeric", month: "short", day: "numeric" }) : "—";
 
+// ── Fechas de publicación: parseo UTC para evitar corrimiento de zona horaria ──
+const DIAS_SEMANA = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+const parseFechaUTC = (d) => {
+  if (!d) return null;
+  const m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})/);
+  if (m) return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+  const dt = new Date(d);
+  return Number.isNaN(dt.getTime()) ? null : dt;
+};
+const fmtDiaSemana = (d) => {
+  const dt = parseFechaUTC(d);
+  return dt ? DIAS_SEMANA[dt.getUTCDay()] : "—";
+};
+const fmtFechaCorta = (d) => {
+  const dt = parseFechaUTC(d);
+  return dt
+    ? dt.toLocaleDateString("es-MX", { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "numeric" })
+    : "—";
+};
+
+// Explota cada línea de tarifa en una fila por publicación (fecha)
+function explodeTarifas(tarifas = []) {
+  const rows = [];
+  tarifas.forEach((t) => {
+    const costo = Number(t.costo) || 0;
+    const fechas = (t.fechas || []).filter(Boolean);
+    const periodicidad = Number(t.periodicidad) || 0;
+    const qty = periodicidad > 0 ? periodicidad : Math.max(1, fechas.length);
+    for (let i = 0; i < qty; i++) {
+      rows.push({ formato: t.formato || "—", fecha: fechas[i] || null, precioUnitario: costo, subtotal: costo });
+    }
+  });
+  return rows;
+}
+
 function InfoItem({ label, value }) {
   return (
     <div className="qt-info-item">
@@ -115,6 +150,8 @@ export default function QuoteDetailPage() {
   const ajustes = quote.ajustesPrecios || {};
   const tieneAjustes = ajustes.tipoAccion && ajustes.tipoAccion !== "Ninguno" &&
     ((ajustes.porcentajeAjuste || 0) !== 0 || (ajustes.valorAjuste || 0) !== 0);
+  const tarifaRows = explodeTarifas(quote.tarifas);
+  const subtotalTarifas = tarifaRows.reduce((acc, r) => acc + r.subtotal, 0);
 
   const handleConvertToSale = async () => {
     try {
@@ -233,19 +270,41 @@ export default function QuoteDetailPage() {
       <SectionCard title="Tarifas" empty={!quote.tarifas?.length} emptyMsg="No hay tarifas registradas.">
         <table className="qt-inner-table">
           <thead>
-            <tr><th>Formato</th><th>Periodicidad</th><th>Costo</th><th>Fechas</th><th>Total línea</th></tr>
+            <tr>
+              <th>Cantidad</th>
+              <th>Formato</th>
+              <th>Fecha</th>
+              <th>Día</th>
+              <th style={{ textAlign: "right" }}>Precio unitario</th>
+              <th style={{ textAlign: "right" }}>Subtotal</th>
+            </tr>
           </thead>
           <tbody>
-            {quote.tarifas?.map((t, i) => (
+            {tarifaRows.map((r, i) => (
               <tr key={i}>
-                <td>{t.formato || "—"}</td>
-                <td>{t.periodicidad || "—"}</td>
-                <td>{fmt(t.costo)}</td>
-                <td>{t.fechas?.length ? t.fechas.map(fmtDate).join(", ") : "—"}</td>
-                <td>{fmt(t.totalLinea || t.totaLinea)}</td>
+                <td>1</td>
+                <td>{r.formato}</td>
+                <td>{r.fecha ? fmtFechaCorta(r.fecha) : "Por definir"}</td>
+                <td>{r.fecha ? fmtDiaSemana(r.fecha) : "—"}</td>
+                <td style={{ textAlign: "right" }}>{fmt(r.precioUnitario)}</td>
+                <td style={{ textAlign: "right" }}>{fmt(r.subtotal)}</td>
               </tr>
             ))}
           </tbody>
+          <tfoot>
+            <tr>
+              <td colSpan={5} style={{ textAlign: "right", fontWeight: 700 }}>Subtotal</td>
+              <td style={{ textAlign: "right", fontWeight: 700 }}>{fmt(subtotalTarifas)}</td>
+            </tr>
+            {tieneAjustes && (
+              <tr>
+                <td colSpan={5} style={{ textAlign: "right" }}>
+                  {ajustes.tipoAccion === "Reducir" ? "Ajuste (descuento)" : "Ajuste"}
+                </td>
+                <td style={{ textAlign: "right" }}>{fmt(ajustes.valorAjuste)}</td>
+              </tr>
+            )}
+          </tfoot>
         </table>
       </SectionCard>
 

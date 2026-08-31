@@ -15,6 +15,10 @@ export default function QuoteIntercambioSection({ form, setForm }) {
 
   // Cuando cambia % Efectivo → auto-calcula % Especie y montos
   const handleEfectivoChange = (rawVal) => {
+    if (rawVal === "") {
+      update({ porcentajeEfectivo: "" });
+      return;
+    }
     const pEfectivo = Math.min(100, Math.max(0, Number(rawVal) || 0));
     const pEspecie = Number((100 - pEfectivo).toFixed(2));
     update({ porcentajeEfectivo: pEfectivo, porcentajeEspecie: pEspecie });
@@ -22,9 +26,35 @@ export default function QuoteIntercambioSection({ form, setForm }) {
 
   // Cuando cambia % Especie → auto-calcula % Efectivo y montos
   const handleEspecieChange = (rawVal) => {
+    if (rawVal === "") {
+      update({ porcentajeEspecie: "" });
+      return;
+    }
     const pEspecie = Math.min(100, Math.max(0, Number(rawVal) || 0));
     const pEfectivo = Number((100 - pEspecie).toFixed(2));
     update({ porcentajeEfectivo: pEfectivo, porcentajeEspecie: pEspecie });
+  };
+
+  // Al salir del campo, si quedó vacío se normaliza a un número coherente
+  const handlePorcentajeBlur = () => {
+    setForm((prev) => {
+      const it = prev.intercambio;
+      const efEmpty = it.porcentajeEfectivo === "" || it.porcentajeEfectivo == null;
+      const esEmpty = it.porcentajeEspecie === "" || it.porcentajeEspecie == null;
+      if (!efEmpty && !esEmpty) return prev;
+
+      let ef = Number(it.porcentajeEfectivo) || 0;
+      let es = Number(it.porcentajeEspecie) || 0;
+      if (efEmpty && esEmpty) {
+        ef = 0;
+        es = 0;
+      } else if (efEmpty) {
+        ef = Number((100 - es).toFixed(2));
+      } else if (esEmpty) {
+        es = Number((100 - ef).toFixed(2));
+      }
+      return { ...prev, intercambio: { ...it, porcentajeEfectivo: ef, porcentajeEspecie: es } };
+    });
   };
 
   const pEfectivo = Number(form.intercambio.porcentajeEfectivo) || 0;
@@ -86,8 +116,9 @@ export default function QuoteIntercambioSection({ form, setForm }) {
                 min={0}
                 max={100}
                 step={1}
-                value={form.intercambio.porcentajeEfectivo}
+                value={form.intercambio.porcentajeEfectivo ?? ""}
                 onChange={(e) => handleEfectivoChange(e.target.value)}
+                onBlur={handlePorcentajeBlur}
               />
             </div>
             <div>
@@ -98,8 +129,9 @@ export default function QuoteIntercambioSection({ form, setForm }) {
                 min={0}
                 max={100}
                 step={1}
-                value={form.intercambio.porcentajeEspecie}
+                value={form.intercambio.porcentajeEspecie ?? ""}
                 onChange={(e) => handleEspecieChange(e.target.value)}
+                onBlur={handlePorcentajeBlur}
               />
             </div>
           </div>

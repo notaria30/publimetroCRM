@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Plus, Trash2, ChevronDown, X } from "lucide-react";
 import DateInput from "../../components/DateInput";
+import SelectConOtro from "../../components/SelectConOtro";
 import "./quotes.css";
 
 const EMPTY_ACTIVACION = {
@@ -107,6 +108,7 @@ const calcularTotalActivacion = (a) => {
 // ── Componente de selección múltiple para puntos de distribución ────────────
 function PuntosDropdown({ value, onChange }) {
   const [open, setOpen] = useState(false);
+  const [customPunto, setCustomPunto] = useState("");
 
   // value es un string con puntos separados por coma
   const selected = value
@@ -125,8 +127,18 @@ function PuntosDropdown({ value, onChange }) {
     onChange(selected.filter((p) => p !== punto).join(", "));
   };
 
+  // Puntos personalizados que no están en el catálogo
+  const customSeleccionados = selected.filter((p) => !PUNTOS_DISTRIBUCION.includes(p));
+
+  const addCustom = () => {
+    const v = customPunto.trim();
+    setCustomPunto("");
+    if (!v || selected.includes(v)) return;
+    onChange([...selected, v].join(", "));
+  };
+
   return (
-    <div style={{ position: "relative" }}>
+    <div>
       {/* Chips de seleccionados */}
       {selected.length > 0 && (
         <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 6 }}>
@@ -167,16 +179,64 @@ function PuntosDropdown({ value, onChange }) {
         <ChevronDown size={14} style={{ transform: open ? "rotate(180deg)" : "none", transition: "transform 0.2s" }} />
       </button>
 
-      {/* Lista desplegable */}
+      {/* Lista desplegable (en flujo normal para no ser recortada por el overflow de la tarjeta) */}
       {open && (
         <div
           style={{
-            position: "absolute", top: "calc(100% + 4px)", left: 0, right: 0,
+            marginTop: 4,
             background: "var(--qt-card-bg, #fff)", border: "1px solid var(--qt-border, #e5e7eb)",
-            borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,0.12)", zIndex: 50,
+            borderRadius: 8, boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
             maxHeight: 260, overflowY: "auto",
           }}
         >
+          {/* Agregar punto personalizado ("Otro") */}
+          <div
+            style={{
+              display: "flex", gap: 6, padding: "8px 10px",
+              borderBottom: "1px solid var(--qt-border-light, #f3f4f6)",
+              position: "sticky", top: 0, background: "var(--qt-card-bg, #fff)", zIndex: 1,
+            }}
+          >
+            <input
+              type="text"
+              className="qt-input"
+              value={customPunto}
+              onChange={(e) => setCustomPunto(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); addCustom(); } }}
+              placeholder="Otro punto (especificar)…"
+              style={{ flex: 1, fontSize: 12, padding: "5px 8px" }}
+            />
+            <button
+              type="button"
+              onClick={addCustom}
+              className="qt-btn-secondary"
+              style={{ padding: "3px 12px", fontSize: 12, whiteSpace: "nowrap" }}
+            >
+              Agregar
+            </button>
+          </div>
+
+          {/* Puntos personalizados ya agregados */}
+          {customSeleccionados.map((punto) => (
+            <label
+              key={punto}
+              style={{
+                display: "flex", alignItems: "center", gap: 10,
+                padding: "8px 14px", cursor: "pointer", fontSize: 13,
+                background: "var(--qt-accent-light, #dcfce7)",
+                borderBottom: "1px solid var(--qt-border-light, #f3f4f6)",
+              }}
+            >
+              <input
+                type="checkbox"
+                checked
+                onChange={() => toggle(punto)}
+                style={{ accentColor: "#16a34a" }}
+              />
+              {punto} <span style={{ color: "#9ca3af", fontSize: 11 }}>(personalizado)</span>
+            </label>
+          ))}
+
           {PUNTOS_DISTRIBUCION.map((punto) => (
             <label
               key={punto}
@@ -367,16 +427,11 @@ export default function QuoteActivacionSection({ form, setForm }) {
                 {/* Tipo */}
                 <div>
                   <label className="qt-input-label">Tipo</label>
-                  <select
-                    className="qt-input"
+                  <SelectConOtro
                     value={act.tipo}
-                    onChange={(e) => updateActivacion(idx, { tipo: e.target.value })}
-                  >
-                    <option value="">Seleccione...</option>
-                    {TIPOS.map((t) => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
-                  </select>
+                    onChange={(v) => updateActivacion(idx, { tipo: v })}
+                    options={TIPOS}
+                  />
                 </div>
 
                 {/* Cantidad de tipo */}

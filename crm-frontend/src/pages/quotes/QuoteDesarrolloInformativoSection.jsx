@@ -1,5 +1,6 @@
 import "./quotes.css";
 import DateInput from "../../components/DateInput";
+import SelectConOtro from "../../components/SelectConOtro";
 
 const FORMATOS = [
   "1/4 plana",
@@ -62,16 +63,11 @@ export default function QuoteDesarrolloInformativoSection({ form, setForm }) {
             {/* Formato */}
             <div>
               <label className="qt-input-label">Formato</label>
-              <select
-                className="qt-input"
+              <SelectConOtro
                 value={form.desarrolloInformativo.formato || ""}
-                onChange={(e) => update({ formato: e.target.value })}
-              >
-                <option value="">Seleccione...</option>
-                {FORMATOS.map((f) => (
-                  <option key={f} value={f}>{f}</option>
-                ))}
-              </select>
+                onChange={(v) => update({ formato: v })}
+                options={FORMATOS}
+              />
             </div>
           </div>
         </div>

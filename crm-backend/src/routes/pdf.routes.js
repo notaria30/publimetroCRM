@@ -122,6 +122,26 @@ router.get("/quote/:id", auth, async (req, res) => {
       return isNaN(dt.getTime()) ? "—" : dt.toLocaleDateString("es-MX");
     };
 
+    // Parseo de fecha "solo día" en UTC para evitar corrimientos de zona horaria
+    const DIAS_SEMANA = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+    const parseFechaUTC = (d) => {
+      if (!d) return null;
+      const m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})/);
+      if (m) return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
+      const dt = new Date(d);
+      return isNaN(dt.getTime()) ? null : dt;
+    };
+    const fmtDiaSemana = (d) => {
+      const dt = parseFechaUTC(d);
+      return dt ? DIAS_SEMANA[dt.getUTCDay()] : "—";
+    };
+    const fmtFechaTabla = (d) => {
+      const dt = parseFechaUTC(d);
+      return dt
+        ? dt.toLocaleDateString("es-MX", { timeZone: "UTC", day: "2-digit", month: "2-digit", year: "numeric" })
+        : "—";
+    };
+
     const fmtDur = (d) => {
       const n = Number(d) || 0;
       if (n) return `${n} ${n === 1 ? "mes" : "meses"}`;
@@ -445,17 +465,27 @@ router.get("/quote/:id", auth, async (req, res) => {
 
     const tarifas = quote.tarifas || [];
     if (tarifas.length) {
-      const headers = ["Cant.", "Formato", "Periodicidad", "Fechas de publicación", "Precio Unitario", "Subtotal"];
-      const colWidths = [40, 110, 90, 160, 74, 74];
+      const headers = ["Cant.", "Formato", "Fecha de publicación", "Día", "Precio Unitario", "Subtotal"];
+      const colWidths = [42, 125, 120, 90, 85, 86]; // suma = 548 = CONTENT_W
 
-      const rows = tarifas.map((t) => [
-        "1",
-        t.formato || "—",
-        t.periodicidad || "—",
-        (t.fechas || []).map((f) => new Date(f).toLocaleDateString("es-MX")).join(", ") || "—",
-        money(t.costo),
-        money(t.totalLinea),
-      ]);
+      // Una fila por cada publicación (fecha). Si faltan fechas, se muestra "Por definir".
+      const rows = [];
+      tarifas.forEach((t) => {
+        const costo = Number(t.costo) || 0;
+        const fechas = (t.fechas || []).filter(Boolean);
+        const periodicidad = Number(t.periodicidad) || 0;
+        const qty = periodicidad > 0 ? periodicidad : Math.max(1, fechas.length);
+        for (let i = 0; i < qty; i++) {
+          rows.push([
+            "1",
+            t.formato || "—",
+            fechas[i] ? fmtFechaTabla(fechas[i]) : "Por definir",
+            fechas[i] ? fmtDiaSemana(fechas[i]) : "—",
+            money(costo),
+            money(costo),
+          ]);
+        }
+      });
 
       drawTable(headers, rows, colWidths);
     } else {
@@ -600,11 +630,17 @@ router.get("/quote/:id", auth, async (req, res) => {
     const subtotalActivaciones = activas.reduce((s, a) => s + (Number(a.total) || 0), 0);
     const subtotalGeneral = subtotalTarifas + subtotalActivaciones;
 
+    // IVA — se aplica únicamente en el PDF. quote.total es la base gravable (subtotal).
+    const IVA_RATE = 0.16;
+    const baseGravable = Number(quote.total) || 0;
+    const ivaMonto = Number((baseGravable * IVA_RATE).toFixed(2));
+    const totalConIVA = Number((baseGravable + ivaMonto).toFixed(2));
+
     const summaryW = 260;
     const summaryX = PW - MARGIN - summaryW;
     const rowH = 20;
     const bigRowH = 40;
-    const boxH = 8 + rowH + (tieneAjustes ? rowH : 0) + 12 + bigRowH + 8;
+    const boxH = 8 + rowH + (tieneAjustes ? rowH : 0) + rowH + 12 + bigRowH + 8;
 
     ensureSpace(boxH + 20);
     doc.moveDown(0.4);
@@ -631,11 +667,12 @@ router.get("/quote/:id", auth, async (req, res) => {
     if (tieneAjustes) {
       summaryRow(aj.tipoAccion === "Reducir" ? "Ajuste (descuento)" : "Ajuste", aj.valorAjuste || 0);
     }
+    summaryRow("IVA (16%)", ivaMonto);
     sy += 4;
     doc.moveTo(summaryX + 12, sy).lineTo(summaryX + summaryW - 12, sy)
       .strokeColor(C.grisLinea).lineWidth(0.6).stroke();
     sy += 8;
-    summaryRow("TOTAL", quote.total || 0, { big: true, bg: C.verde });
+    summaryRow("TOTAL", totalConIVA, { big: true, bg: C.verde });
 
     doc.roundedRect(summaryX, boxTop, summaryW, boxH, 6)
       .strokeColor(C.grisLinea).lineWidth(0.8).stroke();
@@ -650,12 +687,12 @@ router.get("/quote/:id", auth, async (req, res) => {
     doc.fontSize(6.5).fillColor(C.grisMedio).font("Helvetica-Bold")
       .text("TOTAL CON LETRA", CONTENT_X + 10, letraY + 5, { width: CONTENT_W - 20 });
     doc.fontSize(8.5).fillColor(C.negro).font("Helvetica-Bold")
-      .text(totalEnLetras(quote.total || 0), CONTENT_X + 10, letraY + 15, { width: CONTENT_W - 20, lineBreak: false });
+      .text(totalEnLetras(totalConIVA), CONTENT_X + 10, letraY + 15, { width: CONTENT_W - 20, lineBreak: false });
     doc.y = letraY + 40;
     resetX();
 
     doc.fontSize(7.5).fillColor(C.grisMedio).font("Helvetica-Oblique")
-      .text("Precios en MXN. Sujetos a disponibilidad de espacio.", CONTENT_X, doc.y);
+      .text("Precios en MXN. El total incluye IVA del 16%. Sujetos a disponibilidad de espacio.", CONTENT_X, doc.y);
     doc.moveDown(1);
     resetX();
 
@@ -685,11 +722,16 @@ router.get("/quote/:id", auth, async (req, res) => {
     // ─────────────────────────────────────────────────────────
     // SECCIÓN DE FIRMAS — estilo línea + leyenda
     // ─────────────────────────────────────────────────────────
-    ensureSpace(90);
+    ensureSpace(160);
     doc.moveDown(0.8);
 
     sectionTitle("Autorización y Firmas");
-    doc.moveDown(1.2);
+
+    // Espacio en blanco por encima de la línea para que quepa la firma.
+    // Si la sección quedó en una página con bastante espacio libre, se deja más aire.
+    const firmaRoom = (PH - MARGIN_BOTTOM) - doc.y;
+    const firmaGap = Math.max(55, Math.min(140, firmaRoom - 60));
+    doc.y += firmaGap;
 
     const firmas = [
       { titulo: "Cliente / Conducto", sub: "Nombre completo y firma" },

@@ -1,5 +1,6 @@
 import { Trash2, Plus } from "lucide-react";
 import DateInput from "../../components/DateInput";
+import SelectConOtro from "../../components/SelectConOtro";
 import "./quotes.css";
 
 const FORMATOS = [
@@ -129,14 +130,11 @@ export default function QuoteTarifasSection({
               {/* Formato */}
               <div>
                 <label className="qt-input-label">Formato</label>
-                <select
-                  className="qt-input"
+                <SelectConOtro
                   value={tarifa.formato}
-                  onChange={(e) => handleTarifaField(index, "formato", e.target.value)}
-                >
-                  <option value="">Seleccione...</option>
-                  {FORMATOS.map((f) => <option key={f} value={f}>{f}</option>)}
-                </select>
+                  onChange={(v) => handleTarifaField(index, "formato", v)}
+                  options={FORMATOS}
+                />
               </div>
 
               {/* Costo */}
