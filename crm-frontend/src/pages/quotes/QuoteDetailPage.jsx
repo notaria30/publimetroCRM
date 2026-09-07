@@ -152,6 +152,17 @@ export default function QuoteDetailPage() {
     ((ajustes.porcentajeAjuste || 0) !== 0 || (ajustes.valorAjuste || 0) !== 0);
   const tarifaRows = explodeTarifas(quote.tarifas);
   const subtotalTarifas = tarifaRows.reduce((acc, r) => acc + r.subtotal, 0);
+  const subtotalActivaciones = activaciones.reduce((acc, a) => acc + (Number(a.total) || 0), 0);
+  const totalTarifasConAjuste = (() => {
+    if (!tieneAjustes) return subtotalTarifas;
+    const val = Number(ajustes.valorAjuste) || 0;
+    return ajustes.tipoAccion === "Reducir" ? subtotalTarifas - val : subtotalTarifas + val;
+  })();
+  const totalSinDescuento = subtotalTarifas + subtotalActivaciones;
+  const totalConDescuento = Number(quote.total) || 0;
+  const esAumento = tieneAjustes && ajustes.tipoAccion === "Aumentar";
+  const labelTotalSinAjuste = esAumento ? "Total sin aumento" : "Total sin descuento";
+  const labelTotalConAjuste = esAumento ? "Total con aumento" : "Total con descuento";
 
   const handleConvertToSale = async () => {
     try {
@@ -230,10 +241,14 @@ export default function QuoteDetailPage() {
             )}
           </div>
 
-          <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 16 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 24, marginBottom: 16, flexWrap: "wrap" }}>
             <div>
-              <p className="qt-info-label">Total</p>
-              <p className="qt-info-value" style={{ fontSize: 20, color: "#16a34a" }}>{fmt(quote.total)}</p>
+              <p className="qt-info-label">{labelTotalSinAjuste}</p>
+              <p className="qt-info-value" style={{ fontSize: 20, color: "#6b7280" }}>{fmt(totalSinDescuento)}</p>
+            </div>
+            <div>
+              <p className="qt-info-label">{labelTotalConAjuste}</p>
+              <p className="qt-info-value" style={{ fontSize: 20, color: "#16a34a" }}>{fmt(totalConDescuento)}</p>
             </div>
             <div>
               <p className="qt-info-label">Status</p>
@@ -293,16 +308,22 @@ export default function QuoteDetailPage() {
           </tbody>
           <tfoot>
             <tr>
-              <td colSpan={5} style={{ textAlign: "right", fontWeight: 700 }}>Subtotal</td>
+              <td colSpan={5} style={{ textAlign: "right", fontWeight: 700 }}>Subtotal de tarifas</td>
               <td style={{ textAlign: "right", fontWeight: 700 }}>{fmt(subtotalTarifas)}</td>
             </tr>
             {tieneAjustes && (
-              <tr>
-                <td colSpan={5} style={{ textAlign: "right" }}>
-                  {ajustes.tipoAccion === "Reducir" ? "Ajuste (descuento)" : "Ajuste"}
-                </td>
-                <td style={{ textAlign: "right" }}>{fmt(ajustes.valorAjuste)}</td>
-              </tr>
+              <>
+                <tr>
+                  <td colSpan={5} style={{ textAlign: "right" }}>
+                    {ajustes.tipoAccion === "Reducir" ? "Ajuste (descuento)" : "Ajuste"}
+                  </td>
+                  <td style={{ textAlign: "right" }}>{fmt(ajustes.valorAjuste)}</td>
+                </tr>
+                <tr>
+                  <td colSpan={5} style={{ textAlign: "right", fontWeight: 700 }}>Total de tarifas</td>
+                  <td style={{ textAlign: "right", fontWeight: 700 }}>{fmt(totalTarifasConAjuste)}</td>
+                </tr>
+              </>
             )}
           </tfoot>
         </table>
@@ -312,20 +333,39 @@ export default function QuoteDetailPage() {
       <SectionCard title="Activación" empty={activaciones.length === 0} emptyMsg="No hay activación para esta cotización.">
         <table className="qt-inner-table">
           <thead>
-            <tr><th>Tipo</th><th>Cantidad</th><th>Costo activación</th><th>Costo impresión</th><th>Fechas</th><th>Puntos distribución</th></tr>
+            <tr>
+              <th>Cantidad</th>
+              <th>Tipo</th>
+              <th>Cant. tipo</th>
+              <th style={{ textAlign: "right" }}>Costo activación</th>
+              <th style={{ textAlign: "right" }}>Costo impresión</th>
+              <th>Fechas</th>
+              <th>Puntos distribución</th>
+              <th style={{ textAlign: "right" }}>Total</th>
+            </tr>
           </thead>
           <tbody>
             {activaciones.map((a, i) => (
               <tr key={i}>
-                <td>{a.tipo || "—"}</td>
                 <td>{a.cantidad ?? 0}</td>
-                <td>{fmt(a.costoActivacion)}</td>
-                <td>{fmt(a.costoImpresion)}</td>
+                <td>{a.tipo || "—"}</td>
+                <td>{a.cantidadTipo ?? 0}</td>
+                <td style={{ textAlign: "right" }}>{fmt(a.costoActivacion)}</td>
+                <td style={{ textAlign: "right" }}>{fmt(a.costoImpresion)}</td>
                 <td>{a.fechas?.length ? a.fechas.map(fmtDate).join(", ") : "—"}</td>
                 <td>{a.puntosDistribucion || "—"}</td>
+                <td style={{ textAlign: "right" }}>{fmt(a.total)}</td>
               </tr>
             ))}
           </tbody>
+          {activaciones.length > 0 && (
+            <tfoot>
+              <tr>
+                <td colSpan={7} style={{ textAlign: "right", fontWeight: 700 }}>Total</td>
+                <td style={{ textAlign: "right", fontWeight: 700 }}>{fmt(subtotalActivaciones)}</td>
+              </tr>
+            </tfoot>
+          )}
         </table>
       </SectionCard>
 

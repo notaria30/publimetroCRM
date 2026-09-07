@@ -225,7 +225,7 @@ quoteSchema.pre("validate", function (next) {
 
       const totalActivacion =
         (Number(a.cantidad) || 0) * (Number(a.costoActivacion) || 0) +
-        (Number(a.cantidadTipo) || 0) * (Number(a.costoImpresion) || 0);
+        (Number(a.costoImpresion) || 0);
 
       return {
         ...a.toObject?.() ?? a,

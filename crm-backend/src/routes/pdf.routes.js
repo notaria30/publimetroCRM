@@ -269,8 +269,10 @@ router.get("/quote/:id", auth, async (req, res) => {
     // ─────────────────────────────────────────────────────────
     // SECTION TITLE (pill)
     // ─────────────────────────────────────────────────────────
-    const sectionTitle = (title) => {
-      ensureSpace(50);
+    // `keepWithNext` reserva espacio también para lo que sigue al título (p.ej. una
+    // tabla), para que el salto de página nunca deje el título solo en una página.
+    const sectionTitle = (title, keepWithNext = 0) => {
+      ensureSpace(50 + keepWithNext);
       doc.moveDown(0.4);
 
       const ty = doc.y;
@@ -461,7 +463,7 @@ router.get("/quote/:id", auth, async (req, res) => {
     resetX();
 
     // ── Tabla de tarifas ─────────────────────────────────────
-    sectionTitle("Cotización de Servicios — Tarifas");
+    sectionTitle("Cotización de Servicios — Tarifas", 65);
 
     const tarifas = quote.tarifas || [];
     if (tarifas.length) {
@@ -507,7 +509,7 @@ router.get("/quote/:id", auth, async (req, res) => {
     const activas = activacionesEnabled ? activacionesList : [];
 
     if (activas.length) {
-      sectionTitle("Activaciones");
+      sectionTitle("Activaciones", 80);
 
       activas.forEach((act, idx) => {
         ensureSpace(80);
@@ -520,17 +522,18 @@ router.get("/quote/:id", auth, async (req, res) => {
         const fechasAct = (act?.fechas || []).filter(Boolean).map(fmtDate).join(", ");
 
         drawTable(
-          ["Tipo", "Cant.", "Cant. tipo", "Activación", "Impresión", "Fechas", "Distribución"],
+          ["Cant.", "Tipo", "Cant. tipo", "Costo activación", "Costo impresión", "Fechas", "Distribución", "Total"],
           [[
-            act?.tipo || "—",
             String(act?.cantidad ?? 0),
+            act?.tipo || "—",
             String(act?.cantidadTipo ?? 0),
             money(costoActivacion),
             money(costoImpresion),
             fechasAct || "—",
             act?.puntosDistribucion || "—",
+            money(act?.total),
           ]],
-          [70, 45, 65, 80, 80, 90, 118],
+          [40, 60, 45, 70, 70, 105, 88, 70],
           { headerFontSize: 7, bodyFontSize: 7.5, cellPadding: 5, minRowH: 20 }
         );
         doc.moveDown(0.5);
@@ -539,7 +542,7 @@ router.get("/quote/:id", auth, async (req, res) => {
 
     // ── Desarrollo informativo ───────────────────────────────
     if (quote.desarrolloInformativo?.activo) {
-      sectionTitle("Desarrollo Informativo");
+      sectionTitle("Desarrollo Informativo", 65);
       drawTable(
         ["Fecha", "Formato"],
         [[
@@ -552,7 +555,7 @@ router.get("/quote/:id", auth, async (req, res) => {
 
     // ── Posteo redes sociales ────────────────────────────────
     if (quote.posteoRedesSociales?.activo) {
-      sectionTitle("Posteo en Redes Sociales");
+      sectionTitle("Posteo en Redes Sociales", 65);
       const fechasPost = (quote.posteoRedesSociales?.fechas || []).filter(Boolean).map(fmtDate).join(", ");
       drawTable(
         ["Cantidad", "Fechas"],
@@ -563,7 +566,7 @@ router.get("/quote/:id", auth, async (req, res) => {
 
     // ── Intercambio ──────────────────────────────────────────
     if (quote.intercambio?.activo) {
-      sectionTitle("Intercambio");
+      sectionTitle("Intercambio", 65);
       drawTable(
         ["% Efectivo", "% Especie"],
         [[`${quote.intercambio?.porcentajeEfectivo ?? 0}%`, `${quote.intercambio?.porcentajeEspecie ?? 0}%`]],
@@ -586,7 +589,7 @@ router.get("/quote/:id", auth, async (req, res) => {
 
     // ── Cortesías ────────────────────────────────────────────
     if (quote.cortesias?.activo) {
-      sectionTitle("Cortesías");
+      sectionTitle("Cortesías", 65);
       const fechasCor = (quote.cortesias?.fechas || []).filter(Boolean).map(fmtDate).join(", ");
       drawTable(
         ["Cantidad", "Formato", "Fechas"],
@@ -595,26 +598,16 @@ router.get("/quote/:id", auth, async (req, res) => {
       );
     }
 
-    // ── Ajustes de precios ───────────────────────────────────
+    // El ajuste de precios se muestra únicamente en el resumen financiero (Subtotal/Ajuste/IVA/Total).
     const aj = quote.ajustesPrecios || {};
     const tieneAjustes =
       aj.tipoAccion && aj.tipoAccion !== "Ninguno" &&
       ((aj.porcentajeAjuste || 0) !== 0 || (aj.valorAjuste || 0) !== 0);
 
-    if (tieneAjustes) {
-      sectionTitle("Ajustes de Precios");
-      drawTable(
-        ["Tipo de acción", "% Ajuste", "Valor ajuste"],
-        [[aj.tipoAccion || "—", `${aj.porcentajeAjuste || 0}%`, money(aj.valorAjuste || 0)]],
-        [220, 150, 178]
-      );
-    }
-
     // ── Observaciones ─────────────────────────────────────────
     if (quote.presentation && quote.presentation.trim()) {
-      sectionTitle("Observaciones");
       const obsH = doc.fontSize(8.5).heightOfString(quote.presentation, { width: CONTENT_W - 24 }) + 20;
-      ensureSpace(obsH + 10);
+      sectionTitle("Observaciones", obsH + 10);
       const oy = doc.y;
       doc.rect(CONTENT_X, oy, CONTENT_W, obsH).strokeColor(C.grisLinea).lineWidth(0.6).stroke();
       doc.fontSize(8.5).fillColor(C.grisOscuro).font("Helvetica")
@@ -629,8 +622,9 @@ router.get("/quote/:id", auth, async (req, res) => {
     const subtotalTarifas = tarifas.reduce((s, t) => s + (Number(t.totalLinea) || 0), 0);
     const subtotalActivaciones = activas.reduce((s, a) => s + (Number(a.total) || 0), 0);
     const subtotalGeneral = subtotalTarifas + subtotalActivaciones;
+    const labelAjuste = aj.tipoAccion === "Reducir" ? "Descuento" : "Aumento";
 
-    // IVA — se aplica únicamente en el PDF. quote.total es la base gravable (subtotal).
+    // IVA — se aplica únicamente en el PDF. quote.total es la base gravable (subtotal con ajuste).
     const IVA_RATE = 0.16;
     const baseGravable = Number(quote.total) || 0;
     const ivaMonto = Number((baseGravable * IVA_RATE).toFixed(2));
@@ -665,7 +659,7 @@ router.get("/quote/:id", auth, async (req, res) => {
     sy += 8;
     summaryRow("Subtotal", subtotalGeneral);
     if (tieneAjustes) {
-      summaryRow(aj.tipoAccion === "Reducir" ? "Ajuste (descuento)" : "Ajuste", aj.valorAjuste || 0);
+      summaryRow(labelAjuste, aj.valorAjuste || 0);
     }
     summaryRow("IVA (16%)", ivaMonto);
     sy += 4;
@@ -699,8 +693,6 @@ router.get("/quote/:id", auth, async (req, res) => {
     // ─────────────────────────────────────────────────────────
     // TÉRMINOS Y CONDICIONES
     // ─────────────────────────────────────────────────────────
-    sectionTitle("Términos y Condiciones");
-
     const terminos = [
       "La celebración del presente instrumento es vinculante y surtirá plenos efectos en términos del Código Civil para el Estado de Querétaro y su correlativo en el orden federal, para la empresa que se describe en la carátula, a partir de la firma de autorización.",
       'No obstante lo anterior, en caso de que, a criterio de Medios Informativos de Querétaro, S.A. de C.V. ("Publimetro Querétaro"), considere necesario celebrar un contrato en términos de la Ley para la Transparencia, Prevención y Combate de Prácticas Indebidas en Materia de Contratación de Publicidad, la empresa se obliga a proporcionar todos los documentos solicitados y a firmar dicho contrato.',
@@ -710,6 +702,9 @@ router.get("/quote/:id", auth, async (req, res) => {
       "Para todo lo relativo a interpretación y cumplimiento, las Partes se someten a los tribunales competentes en la Ciudad de Querétaro, renunciando a cualquier otro fuero.",
       "El presente documento se firma de conformidad en el lugar y fecha manifestado en la carátula.",
     ];
+
+    const primerTerminoH = doc.fontSize(7).heightOfString(terminos[0], { width: CONTENT_W, lineGap: 1 });
+    sectionTitle("Términos y Condiciones", primerTerminoH + 10);
 
     terminos.forEach((t) => {
       ensureSpace(25);
