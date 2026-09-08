@@ -114,6 +114,13 @@ invoiceSchema.pre("save", function (next) {
   }
   // Calcular saldo y estado pagado automáticamente
   const totalPagado = (this.pagos || []).reduce((acc, p) => acc + (p.importe || 0), 0);
+
+  // Un abono nunca puede dejar el total pagado por encima del importe de la factura
+  // (evita pagar facturas en $0 o abonar más del saldo pendiente).
+  if (totalPagado > (this.importeConIVA || 0) + 0.01) {
+    return next(new Error("SALDO_EXCEDIDO"));
+  }
+
   this.saldoPendiente = Math.max(0, (this.importeConIVA || 0) - totalPagado);
   this.pagado = this.saldoPendiente === 0 && (this.pagos || []).length > 0;
   next();

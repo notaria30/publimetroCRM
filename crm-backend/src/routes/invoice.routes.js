@@ -1,4 +1,5 @@
 const express = require("express");
+const mongoose = require("mongoose");
 const Invoice = require("../models/Invoice");
 const Client = require("../models/Client");
 const Quote = require("../models/Quote");
@@ -48,12 +49,18 @@ router.post("/", auth, async (req, res) => {
 
 
     // Validar cliente
+    if (!client || !mongoose.Types.ObjectId.isValid(client)) {
+      return res.status(400).json({ message: "Debes seleccionar un cliente." });
+    }
     const clientData = await Client.findById(client);
     if (!clientData) {
       return res.status(404).json({ message: "Cliente no encontrado" });
     }
 
-    // Validar cotización
+    // Validar cotización (toda factura debe estar ligada a una cotización)
+    if (!quote || !mongoose.Types.ObjectId.isValid(quote)) {
+      return res.status(400).json({ message: "Debes seleccionar una cotización para poder crear la factura." });
+    }
     const quoteData = await Quote.findById(quote);
     if (!quoteData) {
       return res.status(404).json({ message: "Cotización no encontrada" });
@@ -128,6 +135,9 @@ router.post("/", auth, async (req, res) => {
   } catch (error) {
     if (error.code === 11000 && error.keyPattern?.numeroFactura) {
       return res.status(400).json({ message: "Ya existe una factura registrada con este mismo número." });
+    }
+    if (error.message === "SALDO_EXCEDIDO") {
+      return res.status(400).json({ message: "La suma de los pagos no puede exceder el importe de la factura." });
     }
     console.error("Error al crear factura:", error);
     res.status(500).json({ message: "Error interno del servidor" });
@@ -263,6 +273,14 @@ router.put("/:id", auth, async (req, res) => {
       return res.status(403).json({ message: "No tienes permiso para actualizar esta factura" });
     }
 
+    // Una factura siempre debe quedar ligada a una cotización válida
+    if ("quote" in req.body && (!req.body.quote || !mongoose.Types.ObjectId.isValid(req.body.quote))) {
+      return res.status(400).json({ message: "Debes seleccionar una cotización para poder actualizar la factura." });
+    }
+    if ("client" in req.body && (!req.body.client || !mongoose.Types.ObjectId.isValid(req.body.client))) {
+      return res.status(400).json({ message: "Debes seleccionar un cliente." });
+    }
+
     // --- LÓGICA DE INTERCAMBIO (Validación de tope máximo en edición) ---
     if (req.body.importeSinIVA !== undefined) {
       const quoteData = await Quote.findById(invoice.quote);
@@ -317,6 +335,9 @@ router.put("/:id", auth, async (req, res) => {
   } catch (error) {
     if (error.code === 11000 && error.keyPattern?.numeroFactura) {
       return res.status(400).json({ message: "Ya existe una factura registrada con este mismo número." });
+    }
+    if (error.message === "SALDO_EXCEDIDO") {
+      return res.status(400).json({ message: "La suma de los pagos no puede exceder el importe de la factura." });
     }
     console.error("Error al actualizar factura:", error);
     res.status(500).json({ message: "Error interno del servidor" });

@@ -59,6 +59,17 @@ export default function InvoiceDetailPage() {
       setToast({ msg: "El importe debe ser mayor a 0", type: "error" });
       return;
     }
+    const pagosActuales = invoice.pagos || [];
+    const totalPagadoActual = pagosActuales.reduce((acc, p) => acc + (Number(p.importe) || 0), 0);
+    const saldoActual = Math.max(0, (invoice.importeConIVA || 0) - totalPagadoActual);
+    if (saldoActual <= 0) {
+      setToast({ msg: "Esta factura ya está saldada, no se puede registrar otro abono", type: "error" });
+      return;
+    }
+    if (Number(abono.importe) > saldoActual + 0.01) {
+      setToast({ msg: `El abono no puede ser mayor al saldo pendiente (${fmtMoney(saldoActual)})`, type: "error" });
+      return;
+    }
     try {
       setSaving(true);
       const nuevosPagos = [
@@ -70,8 +81,9 @@ export default function InvoiceDetailPage() {
       setShowAbono(false);
       setAbono({ fecha: today, importe: "", nota: "" });
       await load();
-    } catch {
-      setToast({ msg: "Error al registrar el abono", type: "error" });
+    } catch (err) {
+      const msg = err.response?.data?.message || "Error al registrar el abono";
+      setToast({ msg, type: "error" });
     } finally {
       setSaving(false);
     }
@@ -217,6 +229,9 @@ export default function InvoiceDetailPage() {
                   <input
                     className="sl-input"
                     type="number"
+                    min="0.01"
+                    max={saldoPendiente}
+                    step="0.01"
                     placeholder={`Máx. ${fmtMoney(saldoPendiente)}`}
                     value={abono.importe}
                     onChange={(e) => setAbono((p) => ({ ...p, importe: e.target.value }))}

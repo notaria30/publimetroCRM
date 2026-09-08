@@ -115,11 +115,21 @@ export default function InvoiceCreatePage() {
     setForm((prev) => ({ ...prev, [name]: value }));
   };
 
+  const totalPagosForm = form.pagos.reduce((acc, p) => acc + (Number(p.importe) || 0), 0);
+  const saldoDisponibleForm = Math.max(0, Number(form.importeConIVA) - totalPagosForm);
+  const excedeSaldoForm = totalPagosForm > Number(form.importeConIVA || 0) + 0.01;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setInvoiceNumberError("");
     if (!form.numeroFactura) return alert("El número de factura es obligatorio");
     if (!form.fechaFactura) return alert("La fecha de factura es obligatoria");
+    if (!form.quote) return alert("Debes seleccionar una cotización para poder crear la factura");
+    if (excedeSaldoForm) {
+      return alert(
+        `La suma de los pagos ($${totalPagosForm.toLocaleString("es-MX", { minimumFractionDigits: 2 })}) no puede ser mayor al importe de la factura ($${Number(form.importeConIVA || 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}).`
+      );
+    }
     try {
       await createInvoice({ ...form, sale: saleId });
       navigate("/invoices");
@@ -229,15 +239,16 @@ export default function InvoiceCreatePage() {
           <div className="sl-card-body">
             <div className="inv-grid-3">
               <div className="sl-form-group">
-                <label className="sl-label">Cotización</label>
+                <label className="sl-label">Cotización *</label>
                 <select
                   className="sl-select-full"
                   name="quote"
                   value={form.quote}
                   onChange={handleChange}
+                  required
                   disabled={fromSale}
                 >
-                  <option value="">Sin cotización</option>
+                  <option value="">Seleccionar cotización…</option>
                   {quotes.length === 0 && <option disabled>No hay cotizaciones para este cliente</option>}
                   {quotes.map((q) => (
                     <option key={q._id} value={q._id}>Folio {q.folio} – ${q.total}</option>
@@ -348,55 +359,77 @@ export default function InvoiceCreatePage() {
             {form.pagos.length === 0 && (
               <p style={{ color: "#9ca3af", margin: 0, fontSize: 13 }}>Sin pagos registrados aún.</p>
             )}
-            {form.pagos.map((pago, i) => (
-              <div key={i} style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr auto", gap: 12, marginBottom: 12, alignItems: "end" }}>
-                <div className="sl-form-group">
-                  <label className="sl-label">Fecha</label>
-                  <DateInput
-                    value={pago.fecha}
-                    onChange={(val) => {
-                      const pagos = [...form.pagos];
-                      pagos[i] = { ...pagos[i], fecha: val };
-                      setForm((prev) => ({ ...prev, pagos }));
-                    }}
-                  />
+            {form.pagos.map((pago, i) => {
+              const otrosPagos = form.pagos.reduce((acc, p, j) => (j === i ? acc : acc + (Number(p.importe) || 0)), 0);
+              const maxFila = Math.max(0, Number(form.importeConIVA || 0) - otrosPagos);
+              const filaExcede = Number(pago.importe) > maxFila + 0.01;
+              return (
+                <div key={i}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 2fr auto", gap: 12, marginBottom: filaExcede ? 4 : 12, alignItems: "end" }}>
+                    <div className="sl-form-group">
+                      <label className="sl-label">Fecha</label>
+                      <DateInput
+                        value={pago.fecha}
+                        onChange={(val) => {
+                          const pagos = [...form.pagos];
+                          pagos[i] = { ...pagos[i], fecha: val };
+                          setForm((prev) => ({ ...prev, pagos }));
+                        }}
+                      />
+                    </div>
+                    <div className="sl-form-group">
+                      <label className="sl-label">Importe</label>
+                      <input
+                        className="sl-input"
+                        type="number"
+                        min="0"
+                        max={maxFila}
+                        step="0.01"
+                        placeholder="0.00"
+                        value={pago.importe}
+                        onChange={(e) => {
+                          const pagos = [...form.pagos];
+                          pagos[i] = { ...pagos[i], importe: e.target.value };
+                          setForm((prev) => ({ ...prev, pagos }));
+                        }}
+                        style={filaExcede ? { borderColor: "#ef4444", boxShadow: "0 0 0 1px #ef4444" } : {}}
+                      />
+                    </div>
+                    <div className="sl-form-group">
+                      <label className="sl-label">Nota (opcional)</label>
+                      <input
+                        className="sl-input"
+                        placeholder="Ej. Primer abono"
+                        value={pago.nota}
+                        onChange={(e) => {
+                          const pagos = [...form.pagos];
+                          pagos[i] = { ...pagos[i], nota: e.target.value };
+                          setForm((prev) => ({ ...prev, pagos }));
+                        }}
+                      />
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setForm((prev) => ({ ...prev, pagos: prev.pagos.filter((_, j) => j !== i) }))}
+                      style={{ background: "#dc2626", color: "white", border: "none", borderRadius: 8, padding: "8px 12px", cursor: "pointer", marginBottom: 0 }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                  {filaExcede && (
+                    <p style={{ color: "#ef4444", fontSize: 12, fontWeight: 500, margin: "0 0 12px" }}>
+                      Este pago no puede ser mayor a ${maxFila.toLocaleString("es-MX", { minimumFractionDigits: 2 })} (saldo disponible de la factura).
+                    </p>
+                  )}
                 </div>
-                <div className="sl-form-group">
-                  <label className="sl-label">Importe</label>
-                  <input
-                    className="sl-input"
-                    type="number"
-                    placeholder="0.00"
-                    value={pago.importe}
-                    onChange={(e) => {
-                      const pagos = [...form.pagos];
-                      pagos[i] = { ...pagos[i], importe: e.target.value };
-                      setForm((prev) => ({ ...prev, pagos }));
-                    }}
-                  />
-                </div>
-                <div className="sl-form-group">
-                  <label className="sl-label">Nota (opcional)</label>
-                  <input
-                    className="sl-input"
-                    placeholder="Ej. Primer abono"
-                    value={pago.nota}
-                    onChange={(e) => {
-                      const pagos = [...form.pagos];
-                      pagos[i] = { ...pagos[i], nota: e.target.value };
-                      setForm((prev) => ({ ...prev, pagos }));
-                    }}
-                  />
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setForm((prev) => ({ ...prev, pagos: prev.pagos.filter((_, j) => j !== i) }))}
-                  style={{ background: "#dc2626", color: "white", border: "none", borderRadius: 8, padding: "8px 12px", cursor: "pointer", marginBottom: 0 }}
-                >
-                  ✕
-                </button>
+              );
+            })}
+
+            {excedeSaldoForm && (
+              <div style={{ background: "#fef2f2", border: "1px solid #fecaca", color: "#991b1b", borderRadius: 8, padding: "10px 14px", fontSize: 13, fontWeight: 600, marginBottom: 12 }}>
+                ⚠ La suma de los pagos (${totalPagosForm.toLocaleString("es-MX", { minimumFractionDigits: 2 })}) supera el importe de la factura (${Number(form.importeConIVA || 0).toLocaleString("es-MX", { minimumFractionDigits: 2 })}). Ajusta los pagos antes de guardar.
               </div>
-            ))}
+            )}
 
             {/* RESUMEN SALDO */}
             {form.importeConIVA > 0 && (
@@ -427,7 +460,13 @@ export default function InvoiceCreatePage() {
           <button type="button" className="sl-btn-secondary" onClick={() => navigate("/invoices")}>
             Cancelar
           </button>
-          <button type="submit" className="sl-btn-save">
+          <button
+            type="submit"
+            className="sl-btn-save"
+            disabled={excedeSaldoForm}
+            title={excedeSaldoForm ? "La suma de los pagos no puede ser mayor al importe de la factura" : ""}
+            style={excedeSaldoForm ? { opacity: 0.6, cursor: "not-allowed" } : {}}
+          >
             Guardar Factura
           </button>
         </div>
