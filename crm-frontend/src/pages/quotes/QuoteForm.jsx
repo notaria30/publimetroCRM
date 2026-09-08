@@ -20,6 +20,8 @@ const EMPTY_TARIFA = {
   costo: "",
   fechas: [],
   totalLinea: 0,
+  pagina: "",
+  seccion: "",
 };
 
 const defaultForm = {
@@ -29,7 +31,7 @@ const defaultForm = {
   duracion: "",
   activacionesActivo: false,
   activaciones: [],
-  desarrolloInformativo: { activo: false, fecha: "", formato: "" },
+  desarrolloInformativo: { activo: false, fecha: "", formato: "", tipo: "", pagina: "", seccion: "" },
   posteoRedesSociales: { activo: false, cantidad: 0, fechas: [""] },
   intercambio: {
     activo: false,
@@ -38,7 +40,7 @@ const defaultForm = {
     ofrecemos: "",
     nosOfrecen: "",
   },
-  cortesias: { activo: false, cantidad: 0, formato: "", fechas: ["", ""] },
+  cortesias: { activo: false, cantidad: 0, formato: "", fechas: ["", ""], pagina: "", seccion: "" },
   ajustesPrecios: { porcentajeAjuste: 0, valorAjuste: 0, tipoAccion: "Ninguno" },
   formaPago: "",
   metodoPago: "",
@@ -65,6 +67,7 @@ function mapInitialQuoteToForm(quote) {
       : quote.activacion ? [quote.activacion] : [];
 
   const activaciones = activacionesRaw.map((a) => ({
+    activo: true,
     cantidad: a?.cantidad ?? 0,
     costoActivacion: a?.costoActivacion ?? a?.costo ?? 0,
     costoImpresion: a?.costoImpresion ?? 0,
@@ -76,6 +79,11 @@ function mapInitialQuoteToForm(quote) {
       .concat(Array(Math.max(0, 2 - (a?.fechas || []).length)).fill(""))
       .slice(0, 2),
     puntosDistribucion: a?.puntosDistribucion || "",
+    tiposExtra: (a?.tiposExtra || []).map((t) => ({
+      tipo: t?.tipo || "",
+      cantidadTipo: t?.cantidadTipo ?? 0,
+      costoImpresion: t?.costoImpresion ?? 0,
+    })),
   }));
 
   return {
@@ -90,6 +98,8 @@ function mapInitialQuoteToForm(quote) {
         .concat(Array(Math.max(0, 5 - (t.fechas || []).length)).fill(""))
         .slice(0, 5),
       totalLinea: t.totalLinea ?? 0,
+      pagina: t.pagina ?? "",
+      seccion: t.seccion || "",
     })),
     duracion: quote.duracion || "",
     activacionesActivo: activaciones.length > 0,
@@ -98,6 +108,9 @@ function mapInitialQuoteToForm(quote) {
       activo: quote.desarrolloInformativo?.activo ?? false,
       fecha: formatDateInput(quote.desarrolloInformativo?.fecha),
       formato: quote.desarrolloInformativo?.formato || "",
+      tipo: quote.desarrolloInformativo?.tipo || "",
+      pagina: quote.desarrolloInformativo?.pagina ?? "",
+      seccion: quote.desarrolloInformativo?.seccion || "",
     },
     posteoRedesSociales: {
       activo: quote.posteoRedesSociales?.activo ?? false,
@@ -122,6 +135,8 @@ function mapInitialQuoteToForm(quote) {
         .map(formatDateInput)
         .concat(Array(Math.max(0, (quote.cortesias?.cantidad ?? 0) - (quote.cortesias?.fechas || []).length)).fill(""))
         .slice(0, quote.cortesias?.cantidad ?? 0),
+      pagina: quote.cortesias?.pagina ?? "",
+      seccion: quote.cortesias?.seccion || "",
     },
     ajustesPrecios: {
       porcentajeAjuste: quote.ajustesPrecios?.porcentajeAjuste ?? 0,
@@ -165,7 +180,7 @@ export default function QuoteForm({ mode = "create", initialQuote = null, onSubm
     setForm((prev) => {
       const tarifas = [...prev.tarifas];
       const t = { ...tarifas[index] };
-      if (field === "costo") t.costo = value === "" ? "" : Number(value);
+      if (field === "costo" || field === "pagina") t[field] = value === "" ? "" : Number(value);
       else t[field] = value;
       t.totalLinea = (Number(t.periodicidad) || 0) * (Number(t.costo) || 0);
       tarifas[index] = t;
@@ -229,7 +244,7 @@ export default function QuoteForm({ mode = "create", initialQuote = null, onSubm
     let extras = 0;
     if (form.activacionesActivo) {
       (form.activaciones || []).forEach((a) => {
-        if (a.activo) extras += Number(a.total) || 0;
+        extras += Number(a.total) || 0;
       });
     }
     const aj = form.ajustesPrecios;
@@ -266,6 +281,8 @@ export default function QuoteForm({ mode = "create", initialQuote = null, onSubm
       costo: Number(t.costo) || 0,
       totalLinea: Number(t.totalLinea) || 0,
       fechas: (t.fechas || []).filter(Boolean),
+      pagina: t.pagina === "" || t.pagina == null ? null : Number(t.pagina),
+      seccion: t.seccion || "",
     })),
     activaciones: form.activacionesActivo
       ? (form.activaciones || []).map((a) => ({
@@ -275,11 +292,19 @@ export default function QuoteForm({ mode = "create", initialQuote = null, onSubm
         costoImpresion: Number(a.costoImpresion) || 0,
         total: Number(a.total) || 0,
         fechas: (a.fechas || []).filter(Boolean),
+        tiposExtra: (a.tiposExtra || []).map((t) => ({
+          ...t,
+          cantidadTipo: Number(t.cantidadTipo) || 0,
+          costoImpresion: Number(t.costoImpresion) || 0,
+        })),
       }))
       : [],
     desarrolloInformativo: {
       ...form.desarrolloInformativo,
       fecha: form.desarrolloInformativo.fecha || null,
+      pagina: form.desarrolloInformativo.pagina === "" || form.desarrolloInformativo.pagina == null
+        ? null
+        : Number(form.desarrolloInformativo.pagina),
     },
     posteoRedesSociales: {
       ...form.posteoRedesSociales,
@@ -295,6 +320,9 @@ export default function QuoteForm({ mode = "create", initialQuote = null, onSubm
       ...form.cortesias,
       cantidad: Number(form.cortesias.cantidad) || 0,
       fechas: (form.cortesias.fechas || []).filter(Boolean),
+      pagina: form.cortesias.pagina === "" || form.cortesias.pagina == null
+        ? null
+        : Number(form.cortesias.pagina),
     },
     ajustesPrecios: {
       ...form.ajustesPrecios,

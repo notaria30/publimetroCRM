@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { Fragment, useEffect, useState } from "react";
 import { Link, useParams, useNavigate } from "react-router-dom";
 import { getQuoteById, deleteQuote } from "../../services/quoteService";
 import { useAuth } from "../../context/AuthContext";
@@ -345,18 +345,61 @@ export default function QuoteDetailPage() {
             </tr>
           </thead>
           <tbody>
-            {activaciones.map((a, i) => (
-              <tr key={i}>
-                <td>{a.cantidad ?? 0}</td>
-                <td>{a.tipo || "—"}</td>
-                <td>{a.cantidadTipo ?? 0}</td>
-                <td style={{ textAlign: "right" }}>{fmt(a.costoActivacion)}</td>
-                <td style={{ textAlign: "right" }}>{fmt(a.costoImpresion)}</td>
-                <td>{a.fechas?.length ? a.fechas.map(fmtDate).join(", ") : "—"}</td>
-                <td>{a.puntosDistribucion || "—"}</td>
-                <td style={{ textAlign: "right" }}>{fmt(a.total)}</td>
-              </tr>
-            ))}
+            {activaciones.map((a, i) => {
+              const extras = a.tiposExtra || [];
+              const fechasTxt = a.fechas?.length ? a.fechas.map(fmtDate).join(", ") : "—";
+
+              if (extras.length === 0) {
+                return (
+                  <tr key={i}>
+                    <td>{a.cantidad ?? 0}</td>
+                    <td>{a.tipo || "—"}</td>
+                    <td>{a.cantidadTipo ?? 0}</td>
+                    <td style={{ textAlign: "right" }}>{fmt(a.costoActivacion)}</td>
+                    <td style={{ textAlign: "right" }}>{fmt(a.costoImpresion)}</td>
+                    <td>{fechasTxt}</td>
+                    <td>{a.puntosDistribucion || "—"}</td>
+                    <td style={{ textAlign: "right" }}>{fmt(a.total)}</td>
+                  </tr>
+                );
+              }
+
+              // Con tipos adicionales: una fila por tipo (su propio costo de
+              // impresión como Total) + una fila de cierre con el total real
+              // de la activación (cantidad × costo activación + impresiones).
+              return (
+                <Fragment key={i}>
+                  <tr key={`${i}-principal`}>
+                    <td>{a.cantidad ?? 0}</td>
+                    <td>{a.tipo || "—"}</td>
+                    <td>{a.cantidadTipo ?? 0}</td>
+                    <td style={{ textAlign: "right" }}>{fmt(a.costoActivacion)}</td>
+                    <td style={{ textAlign: "right" }}>{fmt(a.costoImpresion)}</td>
+                    <td>{fechasTxt}</td>
+                    <td>{a.puntosDistribucion || "—"}</td>
+                    <td style={{ textAlign: "right" }}>{fmt(a.costoImpresion)}</td>
+                  </tr>
+                  {extras.map((te, j) => (
+                    <tr key={`${i}-extra-${j}`}>
+                      <td>—</td>
+                      <td>{te.tipo || "—"}</td>
+                      <td>{te.cantidadTipo ?? 0}</td>
+                      <td style={{ textAlign: "right" }}>—</td>
+                      <td style={{ textAlign: "right" }}>{fmt(te.costoImpresion)}</td>
+                      <td>—</td>
+                      <td>—</td>
+                      <td style={{ textAlign: "right" }}>{fmt(te.costoImpresion)}</td>
+                    </tr>
+                  ))}
+                  <tr key={`${i}-total`}>
+                    <td colSpan={7} style={{ textAlign: "right", fontWeight: 700 }}>
+                      Total activación {i + 1}
+                    </td>
+                    <td style={{ textAlign: "right", fontWeight: 700 }}>{fmt(a.total)}</td>
+                  </tr>
+                </Fragment>
+              );
+            })}
           </tbody>
           {activaciones.length > 0 && (
             <tfoot>
@@ -369,14 +412,17 @@ export default function QuoteDetailPage() {
         </table>
       </SectionCard>
 
-      {/* DESARROLLO INFORMATIVO */}
-      <SectionCard title="Desarrollo Informativo" empty={!quote.desarrolloInformativo?.activo} emptyMsg="No hay desarrollo informativo.">
+      {/* DESARROLLOS */}
+      <SectionCard title="Desarrollos" empty={!quote.desarrolloInformativo?.activo} emptyMsg="No hay desarrollos para esta cotización.">
         <table className="qt-inner-table">
-          <thead><tr><th>Fecha</th><th>Formato</th></tr></thead>
+          <thead><tr><th>Fecha</th><th>Formato</th><th>Tipo</th><th>Página</th><th>Sección</th></tr></thead>
           <tbody>
             <tr>
               <td>{fmtDate(quote.desarrolloInformativo?.fecha)}</td>
               <td>{quote.desarrolloInformativo?.formato || "—"}</td>
+              <td>{quote.desarrolloInformativo?.tipo || "—"}</td>
+              <td>{quote.desarrolloInformativo?.pagina ?? "—"}</td>
+              <td>{quote.desarrolloInformativo?.seccion || "—"}</td>
             </tr>
           </tbody>
         </table>
@@ -413,12 +459,14 @@ export default function QuoteDetailPage() {
       {/* CORTESÍAS */}
       <SectionCard title="Cortesías" empty={!quote.cortesias?.activo} emptyMsg="No hay cortesías para esta cotización.">
         <table className="qt-inner-table">
-          <thead><tr><th>Cantidad</th><th>Formato</th><th>Fechas</th></tr></thead>
+          <thead><tr><th>Cantidad</th><th>Formato</th><th>Fechas</th><th>Página</th><th>Sección</th></tr></thead>
           <tbody>
             <tr>
               <td>{quote.cortesias?.cantidad ?? 0}</td>
               <td>{quote.cortesias?.formato || "—"}</td>
               <td>{quote.cortesias?.fechas?.length ? quote.cortesias.fechas.map(fmtDate).join(", ") : "—"}</td>
+              <td>{quote.cortesias?.pagina ?? "—"}</td>
+              <td>{quote.cortesias?.seccion || "—"}</td>
             </tr>
           </tbody>
         </table>

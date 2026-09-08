@@ -14,6 +14,8 @@ const FORMATOS = [
   "Robaplana",
 ];
 
+const SECCIONES = ["Noticias", "Espectáculo", "Deportes"];
+
 export default function QuoteTarifasSection({
   form,
   setForm,
@@ -160,6 +162,33 @@ export default function QuoteTarifasSection({
                   readOnly
                   style={{ background: "transparent", cursor: "default" }}
                 />
+              </div>
+
+              {/* Página */}
+              <div>
+                <label className="qt-input-label">Página</label>
+                <input
+                  className="qt-input"
+                  type="number"
+                  placeholder="0"
+                  value={tarifa.pagina ?? ""}
+                  onChange={(e) => handleTarifaField(index, "pagina", e.target.value)}
+                />
+              </div>
+
+              {/* Sección */}
+              <div>
+                <label className="qt-input-label">Sección</label>
+                <select
+                  className="qt-input"
+                  value={tarifa.seccion || ""}
+                  onChange={(e) => handleTarifaField(index, "seccion", e.target.value)}
+                >
+                  <option value="">Seleccionar…</option>
+                  {SECCIONES.map((s) => (
+                    <option key={s} value={s}>{s}</option>
+                  ))}
+                </select>
               </div>
             </div>
 

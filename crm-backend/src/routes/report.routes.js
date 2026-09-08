@@ -523,6 +523,8 @@ router.get("/advertising", auth, async (req, res) => {
             cliente,
             tipoPublicidad: tipoPublicidadDetectado,
             formato: formatoTarifa || "No especificado",
+            pagina: tarifa.pagina ?? null,
+            seccion: tarifa.seccion || "",
           });
         }
       });

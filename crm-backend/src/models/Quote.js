@@ -7,6 +7,23 @@ const tarifaSchema = new mongoose.Schema(
     costo: { type: Number, default: 0 },
     fechas: [Date], // Fecha 1 ... Fecha 5
     totalLinea: { type: Number, default: 0 }, // total por esa tarifa
+    pagina: { type: Number, default: null },
+    seccion: {
+      type: String,
+      enum: ["", "Noticias", "Espectáculo", "Deportes"],
+      default: "",
+    },
+  },
+  { _id: false }
+);
+
+// Un "tipo" adicional dentro de la misma activación (mismo cliente/activación,
+// otro material impreso), sin duplicar cantidad/costoActivación/fechas/distribución.
+const tipoExtraSchema = new mongoose.Schema(
+  {
+    tipo: { type: String },
+    cantidadTipo: { type: Number, default: 0 },
+    costoImpresion: { type: Number, default: 0 },
   },
   { _id: false }
 );
@@ -23,6 +40,8 @@ const activacionSchema = new mongoose.Schema(
     total: { type: Number, default: 0 },
     fechas: [Date],
     puntosDistribucion: { type: String },
+    // Tipos adicionales agregados con "Agregar otro tipo" (mismo cliente/activación).
+    tiposExtra: [tipoExtraSchema],
   },
   { _id: false }
 );
@@ -67,11 +86,22 @@ const quoteSchema = new mongoose.Schema(
       default: [],
     },
 
-    // DESARROLLO INFORMATIVO
+    // DESARROLLOS (antes "Desarrollo Informativo")
     desarrolloInformativo: {
       activo: { type: Boolean, default: false },
       fecha: { type: Date },
       formato: { type: String },
+      tipo: {
+        type: String,
+        enum: ["", "Comercial", "Informativo", "Editorial"],
+        default: "",
+      },
+      pagina: { type: Number, default: null },
+      seccion: {
+        type: String,
+        enum: ["", "Noticias", "Espectáculo", "Deportes"],
+        default: "",
+      },
     },
 
     // POSTEO REDES SOCIALES
@@ -96,6 +126,12 @@ const quoteSchema = new mongoose.Schema(
       cantidad: { type: Number, default: 0 },
       formato: { type: String },
       fechas: [Date],
+      pagina: { type: Number, default: null },
+      seccion: {
+        type: String,
+        enum: ["", "Noticias", "Espectáculo", "Deportes"],
+        default: "",
+      },
     },
 
     // -----------------------------
@@ -218,14 +254,22 @@ quoteSchema.pre("validate", function (next) {
     });
   }
   
-  // Recalcular total de cada activación automáticamente
+  // Recalcular total de cada activación automáticamente.
+  // El total suma el costo de impresión del tipo principal MÁS el de cada
+  // tipo adicional (tiposExtra) — así una sola activación puede tener varios
+  // tipos sin duplicar cantidad/costoActivación.
   if (Array.isArray(this.activaciones)) {
     this.activaciones = this.activaciones.map((a) => {
       if (!a) return a;
 
+      const extras = Array.isArray(a.tiposExtra) ? a.tiposExtra : [];
+      const costoImpresionTotal =
+        (Number(a.costoImpresion) || 0) +
+        extras.reduce((s, t) => s + (Number(t?.costoImpresion) || 0), 0);
+
       const totalActivacion =
         (Number(a.cantidad) || 0) * (Number(a.costoActivacion) || 0) +
-        (Number(a.costoImpresion) || 0);
+        costoImpresionTotal;
 
       return {
         ...a.toObject?.() ?? a,

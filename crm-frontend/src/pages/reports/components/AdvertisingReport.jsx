@@ -37,6 +37,8 @@ export default function AdvertisingReport() {
       "Cliente": row.cliente,
       "Tipo Publicidad": TIPO_LABELS[row.tipoPublicidad] || row.tipoPublicidad,
       "Formato": row.formato,
+      "Página": row.pagina ?? "—",
+      "Sección": row.seccion || "—",
     })), "reporte_publicidad");
   };
 
@@ -105,7 +107,7 @@ export default function AdvertisingReport() {
       {hasSearched && !loading && data.length > 0 && (
         <div className="sl-table-wrap">
           <table className="sl-table">
-            <thead><tr><th>Fecha</th><th>Cliente</th><th>Tipo publicidad</th><th>Formato</th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Cliente</th><th>Tipo publicidad</th><th>Formato</th><th>Página</th><th>Sección</th></tr></thead>
             <tbody>
               {data.map((row, i) => (
                 <tr key={i}>
@@ -113,6 +115,8 @@ export default function AdvertisingReport() {
                   <td>{row.cliente}</td>
                   <td><span className={`sl-badge ${TIPO_BADGE[row.tipoPublicidad] || "sl-badge--gray"}`}>{TIPO_LABELS[row.tipoPublicidad] || row.tipoPublicidad}</span></td>
                   <td><span className="sl-badge sl-badge--gray">{row.formato}</span></td>
+                  <td>{row.pagina ?? "—"}</td>
+                  <td>{row.seccion || "—"}</td>
                 </tr>
               ))}
             </tbody>

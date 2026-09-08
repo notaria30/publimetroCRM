@@ -14,6 +14,13 @@ const EMPTY_ACTIVACION = {
   total: 0,
   fechas: [],
   puntosDistribucion: "",
+  tiposExtra: [],
+};
+
+const EMPTY_TIPO_EXTRA = {
+  tipo: "",
+  cantidadTipo: 0,
+  costoImpresion: 0,
 };
 
 const TIPOS = [
@@ -98,11 +105,17 @@ const resizeFechas = (prevFechas = [], newLen) => {
   return next;
 };
 
+// Suma el costo de impresión del tipo principal + el de cada tipo adicional
+const sumaCostoImpresion = (a) => {
+  const propio = Number(a.costoImpresion) || 0;
+  const extras = (a.tiposExtra || []).reduce((s, t) => s + (Number(t.costoImpresion) || 0), 0);
+  return propio + extras;
+};
+
 const calcularTotalActivacion = (a) => {
   const cantidad = Number(a.cantidad) || 0;
   const costoActivacion = Number(a.costoActivacion) || 0;
-  const costoImpresion = Number(a.costoImpresion) || 0;
-  return cantidad * costoActivacion + costoImpresion;
+  return cantidad * costoActivacion + sumaCostoImpresion(a);
 };
 
 // ── Componente de selección múltiple para puntos de distribución ────────────
@@ -225,6 +238,7 @@ function PuntosDropdown({ value, onChange }) {
                 padding: "8px 14px", cursor: "pointer", fontSize: 13,
                 background: "var(--qt-accent-light, #dcfce7)",
                 borderBottom: "1px solid var(--qt-border-light, #f3f4f6)",
+                color: "#111827",
               }}
             >
               <input
@@ -245,6 +259,7 @@ function PuntosDropdown({ value, onChange }) {
                 padding: "8px 14px", cursor: "pointer", fontSize: 13,
                 background: selected.includes(punto) ? "var(--qt-accent-light, #dcfce7)" : "transparent",
                 borderBottom: "1px solid var(--qt-border-light, #f3f4f6)",
+                color: "#111827",
               }}
               onMouseEnter={(e) => { if (!selected.includes(punto)) e.currentTarget.style.background = "var(--qt-hover, #f9fafb)"; }}
               onMouseLeave={(e) => { e.currentTarget.style.background = selected.includes(punto) ? "var(--qt-accent-light, #dcfce7)" : "transparent"; }}
@@ -304,9 +319,7 @@ export default function QuoteActivacionSection({ form, setForm }) {
     setForm((prev) => {
       const next = [...(prev.activaciones || [])];
       const updated = { ...next[index], ...patch };
-      updated.total =
-        (Number(updated.cantidad) || 0) * (Number(updated.costoActivacion) || 0) +
-        (Number(updated.costoImpresion) || 0);
+      updated.total = calcularTotalActivacion(updated);
       next[index] = updated;
       return { ...prev, activaciones: next };
     });
@@ -319,16 +332,50 @@ export default function QuoteActivacionSection({ form, setForm }) {
       if (raw === "") {
         a.cantidad = "";
         a.fechas = [];
+        a.total = calcularTotalActivacion(a);
         next[idx] = a;
         return { ...prev, activaciones: next };
       }
       const newCantidad = Math.max(0, Number(raw));
       a.cantidad = newCantidad;
-      a.total =
-        newCantidad * (Number(a.costoActivacion) || 0) +
-        (Number(a.costoImpresion) || 0);
       a.fechas = resizeFechas(a.fechas || [], newCantidad);
+      a.total = calcularTotalActivacion(a);
       next[idx] = a;
+      return { ...prev, activaciones: next };
+    });
+  };
+
+  // ── Tipos adicionales dentro de la misma activación ──────────────────────
+  const addTipoExtra = (activacionIdx) => {
+    setForm((prev) => {
+      const next = [...(prev.activaciones || [])];
+      const a = { ...next[activacionIdx] };
+      a.tiposExtra = [...(a.tiposExtra || []), { ...EMPTY_TIPO_EXTRA }];
+      next[activacionIdx] = a;
+      return { ...prev, activaciones: next };
+    });
+  };
+
+  const updateTipoExtra = (activacionIdx, tipoIdx, patch) => {
+    setForm((prev) => {
+      const next = [...(prev.activaciones || [])];
+      const a = { ...next[activacionIdx] };
+      const tiposExtra = [...(a.tiposExtra || [])];
+      tiposExtra[tipoIdx] = { ...tiposExtra[tipoIdx], ...patch };
+      a.tiposExtra = tiposExtra;
+      a.total = calcularTotalActivacion(a);
+      next[activacionIdx] = a;
+      return { ...prev, activaciones: next };
+    });
+  };
+
+  const removeTipoExtra = (activacionIdx, tipoIdx) => {
+    setForm((prev) => {
+      const next = [...(prev.activaciones || [])];
+      const a = { ...next[activacionIdx] };
+      a.tiposExtra = (a.tiposExtra || []).filter((_, i) => i !== tipoIdx);
+      a.total = calcularTotalActivacion(a);
+      next[activacionIdx] = a;
       return { ...prev, activaciones: next };
     });
   };
@@ -397,7 +444,7 @@ export default function QuoteActivacionSection({ form, setForm }) {
               </div>
 
               {/* Campos principales */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(150px, 1fr))", gap: 14 }}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr) 28px", gap: 14 }}>
                 {/* Cantidad */}
                 <div>
                   <label className="qt-input-label">Cantidad</label>
@@ -476,6 +523,105 @@ export default function QuoteActivacionSection({ form, setForm }) {
                     style={{ background: "transparent", cursor: "default" }}
                   />
                 </div>
+
+                {/* Columna vacía: reserva el espacio del ícono de eliminar de los tipos adicionales,
+                    para que sus columnas queden alineadas con las de esta fila principal. */}
+                <div />
+              </div>
+
+              {/* Tipos adicionales (mismo cliente/activación, sin duplicar cantidad/costo activación).
+                  Usa la MISMA plantilla de columnas que la fila principal para que Tipo, Cantidad de
+                  tipo, Costo impresión y Total queden exactamente alineados debajo de sus homólogas. */}
+              {(act.tiposExtra || []).map((te, teIdx) => (
+                <div
+                  key={teIdx}
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "repeat(6, 1fr) 28px",
+                    gap: 14,
+                    alignItems: "end",
+                    marginTop: 12,
+                  }}
+                >
+                  {/* Cantidad / Costo activación: no aplican por tipo, se dejan vacías */}
+                  <div />
+                  <div />
+
+                  <div>
+                    <label className="qt-input-label">Tipo</label>
+                    <SelectConOtro
+                      value={te.tipo}
+                      onChange={(v) => updateTipoExtra(idx, teIdx, { tipo: v })}
+                      options={TIPOS}
+                    />
+                  </div>
+                  <div>
+                    <label className="qt-input-label">Cantidad de tipo</label>
+                    <input
+                      className="qt-input"
+                      type="number"
+                      value={te.cantidadTipo ?? 0}
+                      onChange={(e) =>
+                        updateTipoExtra(idx, teIdx, {
+                          cantidadTipo: e.target.value === "" ? "" : Number(e.target.value),
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="qt-input-label">Costo impresión</label>
+                    <input
+                      className="qt-input"
+                      type="number"
+                      value={te.costoImpresion ?? 0}
+                      onChange={(e) =>
+                        updateTipoExtra(idx, teIdx, {
+                          costoImpresion: e.target.value === "" ? "" : Number(e.target.value),
+                        })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label className="qt-input-label">Total</label>
+                    <input
+                      className="qt-input"
+                      type="number"
+                      value={Number(te.costoImpresion) || 0}
+                      placeholder="0"
+                      readOnly
+                      style={{ background: "transparent", cursor: "default" }}
+                    />
+                  </div>
+
+                  <button
+                    type="button"
+                    onClick={() => removeTipoExtra(idx, teIdx)}
+                    title="Eliminar tipo"
+                    style={{
+                      background: "none",
+                      border: "none",
+                      cursor: "pointer",
+                      color: "#dc2626",
+                      padding: 4,
+                      display: "flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                    }}
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))}
+
+              <div style={{ marginTop: 12 }}>
+                <button
+                  className="qt-btn-secondary"
+                  style={{ padding: "4px 12px", fontSize: 13 }}
+                  onClick={() => addTipoExtra(idx)}
+                  type="button"
+                >
+                  <Plus size={14} /> Agregar otro tipo
+                </button>
               </div>
 
               {/* Fechas */}

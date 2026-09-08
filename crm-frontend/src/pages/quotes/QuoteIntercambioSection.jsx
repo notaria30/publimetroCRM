@@ -109,7 +109,7 @@ export default function QuoteIntercambioSection({ form, setForm }) {
           {/* Porcentajes */}
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 14 }}>
             <div>
-              <label className="qt-input-label">% Efectivo (a facturar)</label>
+              <label className="qt-input-label">% FACTURADO</label>
               <input
                 className="qt-input"
                 type="number"
@@ -122,7 +122,7 @@ export default function QuoteIntercambioSection({ form, setForm }) {
               />
             </div>
             <div>
-              <label className="qt-input-label">% Especie (intercambio)</label>
+              <label className="qt-input-label">% INTERCAMBIO</label>
               <input
                 className="qt-input"
                 type="number"

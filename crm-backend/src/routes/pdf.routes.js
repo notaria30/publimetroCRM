@@ -123,17 +123,12 @@ router.get("/quote/:id", auth, async (req, res) => {
     };
 
     // Parseo de fecha "solo día" en UTC para evitar corrimientos de zona horaria
-    const DIAS_SEMANA = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
     const parseFechaUTC = (d) => {
       if (!d) return null;
       const m = String(d).match(/^(\d{4})-(\d{2})-(\d{2})/);
       if (m) return new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]));
       const dt = new Date(d);
       return isNaN(dt.getTime()) ? null : dt;
-    };
-    const fmtDiaSemana = (d) => {
-      const dt = parseFechaUTC(d);
-      return dt ? DIAS_SEMANA[dt.getUTCDay()] : "—";
     };
     const fmtFechaTabla = (d) => {
       const dt = parseFechaUTC(d);
@@ -330,14 +325,13 @@ router.get("/quote/:id", auth, async (req, res) => {
     // ─────────────────────────────────────────────────────────
     const drawTable = (headers, rows, colWidths, opts = {}) => {
       const {
-        headerBg = C.verde,
-        headerColor = C.blanco,
-        altRowBg = C.verdePale,
+        headerColor = C.verde,
+        headerLineColor = C.verde,
         lineColor = C.grisLinea,
         headerFontSize = 8,
         bodyFontSize = 8.5,
         cellPadding = 7,
-        headerH = 28,
+        headerH = 24,
         minRowH = 24,
         align = "center",
       } = opts;
@@ -346,21 +340,22 @@ router.get("/quote/:id", auth, async (req, res) => {
       const startX = CONTENT_X;
 
       const drawHeader = (ty) => {
-        doc.roundedRect(startX, ty, totalW, headerH, 5).fill(headerBg);
-        doc.rect(startX, ty + headerH / 2, totalW, headerH / 2).fill(headerBg);
-
         doc.fontSize(headerFontSize).fillColor(headerColor).font("Helvetica-Bold");
         let hx = startX;
         headers.forEach((h, i) => {
-          doc.text(String(h), hx + cellPadding, ty + 9, {
+          doc.text(String(h), hx + cellPadding, ty + 6, {
             width: colWidths[i] - cellPadding * 2,
+            height: headerFontSize + 2,
             align,
             lineBreak: false,
             ellipsis: true,
           });
           hx += colWidths[i];
         });
-        return ty + headerH;
+        const lineY = ty + headerH;
+        doc.moveTo(startX, lineY).lineTo(startX + totalW, lineY)
+          .strokeColor(headerLineColor).lineWidth(1.2).stroke();
+        return lineY;
       };
 
       ensureSpace(headerH + minRowH + 10);
@@ -368,7 +363,7 @@ router.get("/quote/:id", auth, async (req, res) => {
 
       doc.fontSize(bodyFontSize).fillColor(C.negro).font("Helvetica");
 
-      rows.forEach((row, ri) => {
+      rows.forEach((row) => {
         let rowH = minRowH;
         row.forEach((cell, ci) => {
           const txt = cell == null || cell === "" ? "—" : String(cell);
@@ -381,10 +376,6 @@ router.get("/quote/:id", auth, async (req, res) => {
           doc.addPage();
           drawContinuationHeader();
           y = drawHeader(doc.y);
-        }
-
-        if (ri % 2 === 1) {
-          doc.rect(startX, y, totalW, rowH).fill(altRowBg);
         }
 
         doc.fontSize(bodyFontSize).fillColor(C.negro).font("Helvetica");
@@ -462,13 +453,13 @@ router.get("/quote/:id", auth, async (req, res) => {
     doc.moveDown(0.6);
     resetX();
 
-    // ── Tabla de tarifas ─────────────────────────────────────
-    sectionTitle("Cotización de Servicios — Tarifas", 65);
+    // ── Tabla de publicaciones ─────────────────────────────────
+    sectionTitle("Publicaciones", 65);
 
     const tarifas = quote.tarifas || [];
     if (tarifas.length) {
-      const headers = ["Cant.", "Formato", "Fecha de publicación", "Día", "Precio Unitario", "Subtotal"];
-      const colWidths = [42, 125, 120, 90, 85, 86]; // suma = 548 = CONTENT_W
+      const headers = ["Cant.", "Formato", "Fecha", "Página", "Sección", "Precio Unitario", "Subtotal"];
+      const colWidths = [35, 95, 95, 55, 90, 85, 93]; // suma = 548 = CONTENT_W
 
       // Una fila por cada publicación (fecha). Si faltan fechas, se muestra "Por definir".
       const rows = [];
@@ -482,7 +473,8 @@ router.get("/quote/:id", auth, async (req, res) => {
             "1",
             t.formato || "—",
             fechas[i] ? fmtFechaTabla(fechas[i]) : "Por definir",
-            fechas[i] ? fmtDiaSemana(fechas[i]) : "—",
+            t.pagina ?? "—",
+            t.seccion || "—",
             money(costo),
             money(costo),
           ]);
@@ -520,36 +512,63 @@ router.get("/quote/:id", auth, async (req, res) => {
 
         const { costoActivacion, costoImpresion } = getCostosActivacion(act);
         const fechasAct = (act?.fechas || []).filter(Boolean).map(fmtDate).join(", ");
+        const tiposExtra = Array.isArray(act?.tiposExtra) ? act.tiposExtra : [];
+
+        const filaPrincipal = [
+          String(act?.cantidad ?? 0),
+          act?.tipo || "—",
+          String(act?.cantidadTipo ?? 0),
+          money(costoActivacion),
+          // Con tipos adicionales, el Total de esta fila es solo su propio costo
+          // de impresión; el total real de la activación se muestra al final.
+          money(costoImpresion),
+          fechasAct || "—",
+          act?.puntosDistribucion || "—",
+          money(tiposExtra.length ? costoImpresion : act?.total),
+        ];
+
+        const filasExtra = tiposExtra.map((t) => [
+          "—",
+          t?.tipo || "—",
+          String(t?.cantidadTipo ?? 0),
+          "—",
+          money(t?.costoImpresion),
+          "—",
+          "—",
+          money(t?.costoImpresion),
+        ]);
 
         drawTable(
           ["Cant.", "Tipo", "Cant. tipo", "Costo activación", "Costo impresión", "Fechas", "Distribución", "Total"],
-          [[
-            String(act?.cantidad ?? 0),
-            act?.tipo || "—",
-            String(act?.cantidadTipo ?? 0),
-            money(costoActivacion),
-            money(costoImpresion),
-            fechasAct || "—",
-            act?.puntosDistribucion || "—",
-            money(act?.total),
-          ]],
+          [filaPrincipal, ...filasExtra],
           [40, 60, 45, 70, 70, 105, 88, 70],
           { headerFontSize: 7, bodyFontSize: 7.5, cellPadding: 5, minRowH: 20 }
         );
+
+        if (tiposExtra.length) {
+          ensureSpace(20);
+          doc.fontSize(8.5).fillColor(C.verde).font("Helvetica-Bold")
+            .text(`Total activación ${idx + 1}: ${money(act?.total)}`, CONTENT_X, doc.y, { width: CONTENT_W, align: "right" });
+          doc.moveDown(0.3); resetX();
+        }
+
         doc.moveDown(0.5);
       });
     }
 
-    // ── Desarrollo informativo ───────────────────────────────
+    // ── Desarrollos ────────────────────────────────────────────
     if (quote.desarrolloInformativo?.activo) {
-      sectionTitle("Desarrollo Informativo", 65);
+      sectionTitle("Desarrollos", 65);
       drawTable(
-        ["Fecha", "Formato"],
+        ["Fecha", "Formato", "Tipo", "Página", "Sección"],
         [[
           quote.desarrolloInformativo?.fecha ? fmtDate(quote.desarrolloInformativo.fecha) : "—",
           quote.desarrolloInformativo?.formato || "—",
+          quote.desarrolloInformativo?.tipo || "—",
+          String(quote.desarrolloInformativo?.pagina ?? "—"),
+          quote.desarrolloInformativo?.seccion || "—",
         ]],
-        [200, 348]
+        [100, 140, 110, 70, 128]
       );
     }
 
@@ -573,18 +592,17 @@ router.get("/quote/:id", auth, async (req, res) => {
         [220, 328]
       );
 
-      if (quote.intercambio?.ofrecemos) {
-        doc.fontSize(8).fillColor(C.grisMedio).font("Helvetica").text("Ofrecemos:", CONTENT_X, doc.y);
-        doc.moveDown(0.2);
-        doc.fontSize(8.5).fillColor(C.negro).text(quote.intercambio.ofrecemos, CONTENT_X, doc.y, { width: CONTENT_W });
-        doc.moveDown(0.5); resetX();
+      if (quote.intercambio?.ofrecemos || quote.intercambio?.nosOfrecen) {
+        resetX();
+        formRow([
+          { label: "Ofrecemos", value: quote.intercambio?.ofrecemos, weight: 1 },
+          { label: "Nos ofrecen", value: quote.intercambio?.nosOfrecen, weight: 1 },
+        ]);
       }
-      if (quote.intercambio?.nosOfrecen) {
-        doc.fontSize(8).fillColor(C.grisMedio).font("Helvetica").text("Nos ofrecen:", CONTENT_X, doc.y);
-        doc.moveDown(0.2);
-        doc.fontSize(8.5).fillColor(C.negro).text(quote.intercambio.nosOfrecen, CONTENT_X, doc.y, { width: CONTENT_W });
-        doc.moveDown(0.5); resetX();
-      }
+      // Aire extra antes de la siguiente sección, para que el recuadro de
+      // Ofrecemos/Nos ofrecen se vea claramente parte de Intercambio y no de
+      // la sección que sigue.
+      doc.moveDown(0.8); resetX();
     }
 
     // ── Cortesías ────────────────────────────────────────────
@@ -592,9 +610,15 @@ router.get("/quote/:id", auth, async (req, res) => {
       sectionTitle("Cortesías", 65);
       const fechasCor = (quote.cortesias?.fechas || []).filter(Boolean).map(fmtDate).join(", ");
       drawTable(
-        ["Cantidad", "Formato", "Fechas"],
-        [[String(quote.cortesias?.cantidad ?? 0), quote.cortesias?.formato || "—", fechasCor || "—"]],
-        [120, 180, 248]
+        ["Cantidad", "Formato", "Fechas", "Página", "Sección"],
+        [[
+          String(quote.cortesias?.cantidad ?? 0),
+          quote.cortesias?.formato || "—",
+          fechasCor || "—",
+          String(quote.cortesias?.pagina ?? "—"),
+          quote.cortesias?.seccion || "—",
+        ]],
+        [70, 120, 160, 70, 128]
       );
     }
 
@@ -729,10 +753,9 @@ router.get("/quote/:id", auth, async (req, res) => {
     doc.y += firmaGap;
 
     const firmas = [
-      { titulo: "Cliente / Conducto", sub: "Nombre completo y firma" },
-      { titulo: "Vendedor", sub: "Nombre y firma" },
-      { titulo: "Gerente de Ventas", sub: "" },
-      { titulo: "Crédito y Cobranza", sub: "" },
+      { titulo: "Cliente", sub: "Nombre completo y firma" },
+      { titulo: "Ejecutivo Comercial", sub: "Nombre y firma" },
+      { titulo: "Dirección Comercial", sub: "" },
     ];
 
     const firmaColW = CONTENT_W / firmas.length;

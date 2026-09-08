@@ -13,6 +13,9 @@ const FORMATOS = [
   "Robaplana",
 ];
 
+const TIPOS = ["Comercial", "Informativo", "Editorial"];
+const SECCIONES = ["Noticias", "Espectáculo", "Deportes"];
+
 export default function QuoteDesarrolloInformativoSection({ form, setForm }) {
   const isActivo = !!form.desarrolloInformativo.activo;
 
@@ -28,7 +31,7 @@ export default function QuoteDesarrolloInformativoSection({ form, setForm }) {
         className="qt-card-header"
         style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}
       >
-        <span>Desarrollo Informativo</span>
+        <span>Desarrollos</span>
         <label className="cl-toggle-wrap" style={{ margin: 0 }}>
           <span className="cl-toggle">
             <input
@@ -68,6 +71,48 @@ export default function QuoteDesarrolloInformativoSection({ form, setForm }) {
                 onChange={(v) => update({ formato: v })}
                 options={FORMATOS}
               />
+            </div>
+
+            {/* Tipo */}
+            <div>
+              <label className="qt-input-label">Tipo</label>
+              <select
+                className="qt-input"
+                value={form.desarrolloInformativo.tipo || ""}
+                onChange={(e) => update({ tipo: e.target.value })}
+              >
+                <option value="">Seleccionar…</option>
+                {TIPOS.map((t) => (
+                  <option key={t} value={t}>{t}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Página */}
+            <div>
+              <label className="qt-input-label">Página</label>
+              <input
+                className="qt-input"
+                type="number"
+                placeholder="0"
+                value={form.desarrolloInformativo.pagina ?? ""}
+                onChange={(e) => update({ pagina: e.target.value === "" ? "" : Number(e.target.value) })}
+              />
+            </div>
+
+            {/* Sección */}
+            <div>
+              <label className="qt-input-label">Sección</label>
+              <select
+                className="qt-input"
+                value={form.desarrolloInformativo.seccion || ""}
+                onChange={(e) => update({ seccion: e.target.value })}
+              >
+                <option value="">Seleccionar…</option>
+                {SECCIONES.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
             </div>
           </div>
         </div>

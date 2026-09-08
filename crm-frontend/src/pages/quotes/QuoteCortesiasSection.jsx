@@ -13,6 +13,8 @@ const FORMATOS_CORTESIA = [
   "Robaplana",
 ];
 
+const SECCIONES = ["Noticias", "Espectáculo", "Deportes"];
+
 export default function QuoteCortesiasSection({ form, setForm }) {
   const handleFechaChange = (index, value) => {
     setForm((prev) => {
@@ -61,7 +63,7 @@ export default function QuoteCortesiasSection({ form, setForm }) {
                   cortesias: {
                     ...prev.cortesias,
                     activo: e.target.checked,
-                    ...(e.target.checked ? {} : { fechas: [], cantidad: 0, formato: "" }),
+                    ...(e.target.checked ? {} : { fechas: [], cantidad: 0, formato: "", pagina: "", seccion: "" }),
                   },
                 }))
               }
@@ -106,6 +108,43 @@ export default function QuoteCortesiasSection({ form, setForm }) {
                 }
                 options={FORMATOS_CORTESIA}
               />
+            </div>
+
+            {/* Página */}
+            <div>
+              <label className="qt-input-label">Página</label>
+              <input
+                className="qt-input"
+                type="number"
+                placeholder="0"
+                value={form.cortesias.pagina ?? ""}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    cortesias: { ...prev.cortesias, pagina: e.target.value === "" ? "" : Number(e.target.value) },
+                  }))
+                }
+              />
+            </div>
+
+            {/* Sección */}
+            <div>
+              <label className="qt-input-label">Sección</label>
+              <select
+                className="qt-input"
+                value={form.cortesias.seccion || ""}
+                onChange={(e) =>
+                  setForm((prev) => ({
+                    ...prev,
+                    cortesias: { ...prev.cortesias, seccion: e.target.value },
+                  }))
+                }
+              >
+                <option value="">Seleccionar…</option>
+                {SECCIONES.map((s) => (
+                  <option key={s} value={s}>{s}</option>
+                ))}
+              </select>
             </div>
           </div>
 
