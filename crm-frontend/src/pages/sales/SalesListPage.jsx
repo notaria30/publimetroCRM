@@ -92,8 +92,8 @@ if (loading) return (
               <th>ID</th>
               <th>Cliente</th>
               <th>Total</th>
-              <th>Pagada</th>
               <th>Facturado</th>
+              <th>Pagada</th>
               <th>Acciones</th>
             </tr>
           </thead>
@@ -107,13 +107,13 @@ if (loading) return (
                   <td>{s.client?.nombreComercial || "—"}</td>
                   <td>${(s.quote?.total || 0).toLocaleString("es-MX")}</td>
                   <td>
-                    <span className={`sl-badge ${s.paid ? "sl-badge--success" : "sl-badge--error"}`}>
-                      {s.paid ? "Sí" : "No"}
+                    <span className={`sl-badge ${isFacturado(s) ? "sl-badge--success" : "sl-badge--error"}`}>
+                      {isFacturado(s) ? "Sí" : "No"}
                     </span>
                   </td>
                   <td>
-                    <span className={`sl-badge ${isFacturado(s) ? "sl-badge--success" : "sl-badge--error"}`}>
-                      {isFacturado(s) ? "Sí" : "No"}
+                    <span className={`sl-badge ${s.paid ? "sl-badge--success" : "sl-badge--error"}`}>
+                      {s.paid ? "Sí" : "No"}
                     </span>
                   </td>
                   <td>
