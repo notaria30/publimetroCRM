@@ -6,6 +6,9 @@
 //   - "prospecto"  → nunca ha tenido una venta cerrada (isClosed = true)
 //   - "activo"     → tiene al menos 1 venta cerrada con closedAt en los últimos 90 días
 //   - "inactivo"   → tiene ventas cerradas, pero ninguna dentro de los últimos 90 días
+//
+// Si un OWNER edita el status manualmente (Client.statusManual = true), esta
+// regla automática deja de aplicarse para ese cliente hasta que se desmarque.
 
 const Client = require("../models/Client");
 const Sale = require("../models/Sale");
@@ -25,6 +28,11 @@ async function updateClientStatus(clientId) {
   }
 
   const previousStatus = client.status;
+
+  // Si el status fue fijado manualmente por un OWNER, no se recalcula.
+  if (client.statusManual) {
+    return { clientId, previousStatus, newStatus: previousStatus, updated: false };
+  }
 
   // Buscar TODAS las ventas cerradas del cliente
   const closedSales = await Sale.find({

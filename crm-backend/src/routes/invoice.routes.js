@@ -5,6 +5,20 @@ const Client = require("../models/Client");
 const Quote = require("../models/Quote");
 const Sale = require("../models/Sale");
 const { auth } = require("../middlewares/auth.middleware");
+const { updateClientStatus } = require("../services/clientStatus.service");
+
+// Marca la venta como cerrada al generarle una factura (si aún no lo estaba)
+// y refresca de inmediato el estatus del cliente (regla de los 90 días),
+// sin esperar al cron nocturno.
+async function closeSaleForInvoice(sale) {
+  if (!sale) return;
+  if (!sale.isClosed) {
+    sale.isClosed = true;
+    sale.closedAt = new Date();
+    await sale.save();
+  }
+  await updateClientStatus(sale.client);
+}
 
 const router = express.Router();
 
@@ -116,6 +130,9 @@ router.post("/", auth, async (req, res) => {
     if (sale) {
       targetSale = await Sale.findById(sale);
     }
+
+    // Generar la factura cierra la venta y actualiza el estatus del cliente
+    await closeSaleForInvoice(targetSale);
 
     if (factura.pagado && targetSale) {
       targetSale.paid = true;
@@ -312,11 +329,14 @@ router.put("/:id", auth, async (req, res) => {
     // ✅ .save() SÍ dispara pre("save") → recalcula pagado y saldoPendiente
     const updated = await invoice.save();
 
-    // Sincronizar pago con la venta si correspondiera
-    if (updated.pagado && updated.sale) {
-      const Sale = require("../models/Sale");
+    // Sincronizar la venta ligada a esta factura
+    if (updated.sale) {
       const targetSale = await Sale.findById(updated.sale);
-      if (targetSale && !targetSale.paid) {
+
+      // Generar/actualizar la factura cierra la venta y refresca el estatus del cliente
+      await closeSaleForInvoice(targetSale);
+
+      if (updated.pagado && targetSale && !targetSale.paid) {
         targetSale.paid = true;
         targetSale.paidAt = new Date();
         await targetSale.save();

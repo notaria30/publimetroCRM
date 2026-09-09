@@ -186,6 +186,15 @@ router.put("/:id", auth, async (req, res) => {
       delete req.body.assignedTo;
     }
 
+    // Solo OWNER puede editar el status manualmente. Se marca como "manual"
+    // únicamente si el valor realmente cambia (el formulario reenvía el
+    // cliente completo en cada guardado, aunque el status no se haya tocado).
+    if (req.user.role !== "OWNER") {
+      delete req.body.status;
+    } else if ("status" in req.body && req.body.status !== client.status) {
+      req.body.statusManual = true;
+    }
+
     // Validar duplicados en backend para updates
     if (req.body.rfc) {
       const existingRfc = await Client.findOne({

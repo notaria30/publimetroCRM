@@ -138,7 +138,16 @@ export default function ClientDetailPage() {
             </Field>
           ))}
 
-          <Field label="Status" value={client.status?.charAt(0).toUpperCase() + client.status?.slice(1)} editing={false}>
+          <Field
+            label="Status"
+            value={client.status ? client.status.charAt(0).toUpperCase() + client.status.slice(1) : ""}
+            editing={editing && isOwner}
+          >
+            <select className="cl-select" value={client.status || "prospecto"} onChange={(e) => set("status", e.target.value)}>
+              <option value="prospecto">Prospecto</option>
+              <option value="activo">Activo</option>
+              <option value="inactivo">Inactivo</option>
+            </select>
           </Field>
 
           <Field label="Tipo de Cliente" value={client.tipoCliente} editing={editing}>

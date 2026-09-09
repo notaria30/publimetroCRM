@@ -7,12 +7,9 @@ import "./ClientsPage.css";
 import { TableSkeleton } from "../../components/skeletons/TableSkeleton";
 
 const STATUS_COLORS = {
-  prospeccion: { bg: "#fff7ed", text: "#c2410c", border: "#fed7aa" },
-  presentacion: { bg: "#eff6ff", text: "#1d4ed8", border: "#bfdbfe" },
-  negociacion:  { bg: "#f5f3ff", text: "#6d28d9", border: "#ddd6fe" },
-  propuesta:    { bg: "#f5f3ff", text: "#6d28d9", border: "#ddd6fe" },
-  cerrado:      { bg: "#f0fdf4", text: "#15803d", border: "#bbf7d0" },
-  cierre:       { bg: "#f0fdf4", text: "#15803d", border: "#bbf7d0" },
+  prospecto: { bg: "#fff7ed", text: "#c2410c", border: "#fed7aa" },
+  activo:    { bg: "#f0fdf4", text: "#15803d", border: "#bbf7d0" },
+  inactivo:  { bg: "#fef2f2", text: "#991b1b", border: "#fecaca" },
 };
 
 function StatusBadge({ status }) {

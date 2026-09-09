@@ -106,6 +106,12 @@ const clientSchema = new mongoose.Schema(
       enum: ["prospecto", "activo", "inactivo"],
       default: "prospecto",
     },
+    // Si un OWNER edita el status a mano, queda "fijado" y el cálculo
+    // automático de los 90 días deja de sobreescribirlo.
+    statusManual: {
+      type: Boolean,
+      default: false,
+    },
 
     // Relación con trabajador asignado
     assignedTo: {

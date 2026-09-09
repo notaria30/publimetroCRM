@@ -3,6 +3,7 @@ import { getClientById, updateClient } from "../../services/clientService";
 import { getUsers } from "../../services/userService";
 import { useNavigate, useParams } from "react-router-dom";
 import { ArrowLeft } from "lucide-react";
+import { useAuth } from "../../context/AuthContext";
 import "./clients.css";
 
 const REGIMENES = [
@@ -54,6 +55,7 @@ const ESTADOS = [
 export default function ClientEditPage() {
   const navigate = useNavigate();
   const { id } = useParams();
+  const { isOwner } = useAuth();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [form, setForm] = useState(null);
@@ -159,6 +161,17 @@ export default function ClientEditPage() {
                 <option value="corporativo">Corporativo</option>
               </select>
             </div>
+
+            {isOwner && (
+              <div className="cl-form-group">
+                <label className="cl-label">Status</label>
+                <select className="cl-select" value={form.status || "prospecto"} onChange={(e) => set("status", e.target.value)}>
+                  <option value="prospecto">Prospecto</option>
+                  <option value="activo">Activo</option>
+                  <option value="inactivo">Inactivo</option>
+                </select>
+              </div>
+            )}
 
           </div>
         </div>
