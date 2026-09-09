@@ -443,175 +443,159 @@ export default function QuoteActivacionSection({ form, setForm }) {
                 </button>
               </div>
 
-              {/* Campos principales */}
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(6, 1fr) 28px", gap: 14 }}>
-                {/* Cantidad */}
-                <div>
-                  <label className="qt-input-label">Cantidad</label>
-                  <input
-                    className="qt-input"
-                    type="number"
-                    value={act.cantidad}
-                    onChange={(e) => handleCantidadChange(idx, e.target.value)}
-                  />
-                </div>
-
-                {/* Costo activación */}
-                <div>
-                  <label className="qt-input-label">Costo activación</label>
-                  <input
-                    className="qt-input"
-                    type="number"
-                    value={act.costoActivacion ?? 0}
-                    onChange={(e) =>
-                      updateActivacion(idx, {
-                        costoActivacion: e.target.value === "" ? "" : Number(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-
-                {/* Tipo */}
-                <div>
-                  <label className="qt-input-label">Tipo</label>
-                  <SelectConOtro
-                    value={act.tipo}
-                    onChange={(v) => updateActivacion(idx, { tipo: v })}
-                    options={TIPOS}
-                  />
-                </div>
-
-                {/* Cantidad de tipo */}
-                <div>
-                  <label className="qt-input-label">Cantidad de tipo</label>
-                  <input
-                    className="qt-input"
-                    type="number"
-                    value={act.cantidadTipo ?? 0}
-                    onChange={(e) =>
-                      updateActivacion(idx, {
-                        cantidadTipo: e.target.value === "" ? "" : Number(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-
-                {/* Costo impresión */}
-                <div>
-                  <label className="qt-input-label">Costo impresión</label>
-                  <input
-                    className="qt-input"
-                    type="number"
-                    value={act.costoImpresion ?? 0}
-                    onChange={(e) =>
-                      updateActivacion(idx, {
-                        costoImpresion: e.target.value === "" ? "" : Number(e.target.value),
-                      })
-                    }
-                  />
-                </div>
-
-                {/* Total (solo lectura) */}
-                <div>
-                  <label className="qt-input-label">Total</label>
-                  <input
-                    className="qt-input"
-                    type="number"
-                    value={calcularTotalActivacion(act)}
-                    placeholder="0"
-                    readOnly
-                    style={{ background: "transparent", cursor: "default" }}
-                  />
-                </div>
-
-                {/* Columna vacía: reserva el espacio del ícono de eliminar de los tipos adicionales,
-                    para que sus columnas queden alineadas con las de esta fila principal. */}
-                <div />
-              </div>
-
-              {/* Tipos adicionales (mismo cliente/activación, sin duplicar cantidad/costo activación).
-                  Usa la MISMA plantilla de columnas que la fila principal para que Tipo, Cantidad de
-                  tipo, Costo impresión y Total queden exactamente alineados debajo de sus homólogas. */}
-              {(act.tiposExtra || []).map((te, teIdx) => (
-                <div
-                  key={teIdx}
-                  style={{
-                    display: "grid",
-                    gridTemplateColumns: "repeat(6, 1fr) 28px",
-                    gap: 14,
-                    alignItems: "end",
-                    marginTop: 12,
-                  }}
-                >
-                  {/* Cantidad / Costo activación: no aplican por tipo, se dejan vacías */}
-                  <div />
-                  <div />
-
-                  <div>
-                    <label className="qt-input-label">Tipo</label>
-                    <SelectConOtro
-                      value={te.tipo}
-                      onChange={(v) => updateTipoExtra(idx, teIdx, { tipo: v })}
-                      options={TIPOS}
-                    />
-                  </div>
-                  <div>
-                    <label className="qt-input-label">Cantidad de tipo</label>
-                    <input
-                      className="qt-input"
-                      type="number"
-                      value={te.cantidadTipo ?? 0}
-                      onChange={(e) =>
-                        updateTipoExtra(idx, teIdx, {
-                          cantidadTipo: e.target.value === "" ? "" : Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="qt-input-label">Costo impresión</label>
-                    <input
-                      className="qt-input"
-                      type="number"
-                      value={te.costoImpresion ?? 0}
-                      onChange={(e) =>
-                        updateTipoExtra(idx, teIdx, {
-                          costoImpresion: e.target.value === "" ? "" : Number(e.target.value),
-                        })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <label className="qt-input-label">Total</label>
-                    <input
-                      className="qt-input"
-                      type="number"
-                      value={Number(te.costoImpresion) || 0}
-                      placeholder="0"
-                      readOnly
-                      style={{ background: "transparent", cursor: "default" }}
-                    />
-                  </div>
-
-                  <button
-                    type="button"
-                    onClick={() => removeTipoExtra(idx, teIdx)}
-                    title="Eliminar tipo"
+              {/* Campos principales + tipos adicionales, en UNA sola grilla: así el
+                  Total (único, combinado) puede quedar centrado verticalmente en
+                  medio de todas las filas de tipo (principal + agregados). */}
+              {(() => {
+                const extras = act.tiposExtra || [];
+                const totalFilas = 1 + extras.length;
+                return (
+                  <div
                     style={{
-                      background: "none",
-                      border: "none",
-                      cursor: "pointer",
-                      color: "#dc2626",
-                      padding: 4,
-                      display: "flex",
-                      alignItems: "center",
-                      justifyContent: "center",
+                      display: "grid",
+                      gridTemplateColumns: "repeat(5, 1fr) 1fr 28px",
+                      columnGap: 14,
+                      rowGap: 12,
+                      alignItems: "end",
                     }}
                   >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              ))}
+                    {/* Fila principal */}
+                    <div style={{ gridColumn: 1, gridRow: 1 }}>
+                      <label className="qt-input-label">Cantidad</label>
+                      <input
+                        className="qt-input"
+                        type="number"
+                        value={act.cantidad}
+                        onChange={(e) => handleCantidadChange(idx, e.target.value)}
+                      />
+                    </div>
+                    <div style={{ gridColumn: 2, gridRow: 1 }}>
+                      <label className="qt-input-label">Costo activación</label>
+                      <input
+                        className="qt-input"
+                        type="number"
+                        value={act.costoActivacion ?? 0}
+                        onChange={(e) =>
+                          updateActivacion(idx, {
+                            costoActivacion: e.target.value === "" ? "" : Number(e.target.value),
+                          })
+                        }
+                      />
+                    </div>
+                    <div style={{ gridColumn: 3, gridRow: 1 }}>
+                      <label className="qt-input-label">Tipo</label>
+                      <SelectConOtro
+                        value={act.tipo}
+                        onChange={(v) => updateActivacion(idx, { tipo: v })}
+                        options={TIPOS}
+                      />
+                    </div>
+                    <div style={{ gridColumn: 4, gridRow: 1 }}>
+                      <label className="qt-input-label">Cantidad de tipo</label>
+                      <input
+                        className="qt-input"
+                        type="number"
+                        value={act.cantidadTipo ?? 0}
+                        onChange={(e) =>
+                          updateActivacion(idx, {
+                            cantidadTipo: e.target.value === "" ? "" : Number(e.target.value),
+                          })
+                        }
+                      />
+                    </div>
+                    <div style={{ gridColumn: 5, gridRow: 1 }}>
+                      <label className="qt-input-label">Costo impresión</label>
+                      <input
+                        className="qt-input"
+                        type="number"
+                        value={act.costoImpresion ?? 0}
+                        onChange={(e) =>
+                          updateActivacion(idx, {
+                            costoImpresion: e.target.value === "" ? "" : Number(e.target.value),
+                          })
+                        }
+                      />
+                    </div>
+
+                    {/* Total único: combina el total de todos los tipos de esta activación.
+                        Si hay 2 filas de tipo queda entre las 2, si hay 3 entre las 3, etc. */}
+                    <div style={{ gridColumn: 6, gridRow: `1 / span ${totalFilas}`, alignSelf: "center" }}>
+                      <label className="qt-input-label">Total</label>
+                      <input
+                        className="qt-input"
+                        type="number"
+                        value={calcularTotalActivacion(act)}
+                        placeholder="0"
+                        readOnly
+                        style={{ background: "transparent", cursor: "default" }}
+                      />
+                    </div>
+
+                    {/* Tipos adicionales: comparten Cantidad/Costo activación con la principal,
+                        solo agregan Tipo, Cantidad de tipo y Costo impresión. */}
+                    {extras.map((te, teIdx) => {
+                      const fila = teIdx + 2;
+                      return (
+                        <div key={teIdx} style={{ display: "contents" }}>
+                          <div style={{ gridColumn: 3, gridRow: fila }}>
+                            <label className="qt-input-label">Tipo</label>
+                            <SelectConOtro
+                              value={te.tipo}
+                              onChange={(v) => updateTipoExtra(idx, teIdx, { tipo: v })}
+                              options={TIPOS}
+                            />
+                          </div>
+                          <div style={{ gridColumn: 4, gridRow: fila }}>
+                            <label className="qt-input-label">Cantidad de tipo</label>
+                            <input
+                              className="qt-input"
+                              type="number"
+                              value={te.cantidadTipo ?? 0}
+                              onChange={(e) =>
+                                updateTipoExtra(idx, teIdx, {
+                                  cantidadTipo: e.target.value === "" ? "" : Number(e.target.value),
+                                })
+                              }
+                            />
+                          </div>
+                          <div style={{ gridColumn: 5, gridRow: fila }}>
+                            <label className="qt-input-label">Costo impresión</label>
+                            <input
+                              className="qt-input"
+                              type="number"
+                              value={te.costoImpresion ?? 0}
+                              onChange={(e) =>
+                                updateTipoExtra(idx, teIdx, {
+                                  costoImpresion: e.target.value === "" ? "" : Number(e.target.value),
+                                })
+                              }
+                            />
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => removeTipoExtra(idx, teIdx)}
+                            title="Eliminar tipo"
+                            style={{
+                              gridColumn: 7,
+                              gridRow: fila,
+                              background: "none",
+                              border: "none",
+                              cursor: "pointer",
+                              color: "#dc2626",
+                              padding: 4,
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
 
               <div style={{ marginTop: 12 }}>
                 <button

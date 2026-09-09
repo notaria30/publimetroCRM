@@ -347,7 +347,9 @@ export default function QuoteDetailPage() {
           <tbody>
             {activaciones.map((a, i) => {
               const extras = a.tiposExtra || [];
-              const fechasTxt = a.fechas?.length ? a.fechas.map(fmtDate).join(", ") : "—";
+              const fechasCell = a.fechas?.length
+                ? a.fechas.filter(Boolean).map((f, fi) => <div key={fi}>{fmtDate(f)}</div>)
+                : "—";
 
               if (extras.length === 0) {
                 return (
@@ -357,16 +359,17 @@ export default function QuoteDetailPage() {
                     <td>{a.cantidadTipo ?? 0}</td>
                     <td style={{ textAlign: "right" }}>{fmt(a.costoActivacion)}</td>
                     <td style={{ textAlign: "right" }}>{fmt(a.costoImpresion)}</td>
-                    <td>{fechasTxt}</td>
+                    <td>{fechasCell}</td>
                     <td>{a.puntosDistribucion || "—"}</td>
                     <td style={{ textAlign: "right" }}>{fmt(a.total)}</td>
                   </tr>
                 );
               }
 
-              // Con tipos adicionales: una fila por tipo (su propio costo de
-              // impresión como Total) + una fila de cierre con el total real
-              // de la activación (cantidad × costo activación + impresiones).
+              // Con tipos adicionales: cada tipo es una "sub-activación" de la
+              // misma activación, hereda Cantidad/Costo activación/Fechas/
+              // Distribución de la principal (solo Tipo, Cant. tipo y Costo
+              // impresión son propios) + una fila de cierre con el total real.
               return (
                 <Fragment key={i}>
                   <tr key={`${i}-principal`}>
@@ -375,19 +378,19 @@ export default function QuoteDetailPage() {
                     <td>{a.cantidadTipo ?? 0}</td>
                     <td style={{ textAlign: "right" }}>{fmt(a.costoActivacion)}</td>
                     <td style={{ textAlign: "right" }}>{fmt(a.costoImpresion)}</td>
-                    <td>{fechasTxt}</td>
+                    <td>{fechasCell}</td>
                     <td>{a.puntosDistribucion || "—"}</td>
                     <td style={{ textAlign: "right" }}>{fmt(a.costoImpresion)}</td>
                   </tr>
                   {extras.map((te, j) => (
                     <tr key={`${i}-extra-${j}`}>
-                      <td>—</td>
+                      <td>{a.cantidad ?? 0}</td>
                       <td>{te.tipo || "—"}</td>
                       <td>{te.cantidadTipo ?? 0}</td>
-                      <td style={{ textAlign: "right" }}>—</td>
+                      <td style={{ textAlign: "right" }}>{fmt(a.costoActivacion)}</td>
                       <td style={{ textAlign: "right" }}>{fmt(te.costoImpresion)}</td>
-                      <td>—</td>
-                      <td>—</td>
+                      <td>{fechasCell}</td>
+                      <td>{a.puntosDistribucion || "—"}</td>
                       <td style={{ textAlign: "right" }}>{fmt(te.costoImpresion)}</td>
                     </tr>
                   ))}

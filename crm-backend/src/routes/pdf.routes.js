@@ -284,7 +284,8 @@ router.get("/quote/:id", auth, async (req, res) => {
     // ─────────────────────────────────────────────────────────
     // FORM ROW — celdas con etiqueta arriba / valor abajo (estilo formulario)
     // ─────────────────────────────────────────────────────────
-    const formRow = (cells) => {
+    const formRow = (cells, opts = {}) => {
+      const { boldValue = true } = opts;
       const labelFS = 6.5;
       const valueFS = 8.5;
       const totalWeight = cells.reduce((s, c) => s + (c.weight || 1), 0);
@@ -310,7 +311,7 @@ router.get("/quote/:id", auth, async (req, res) => {
           .text(String(c.label).toUpperCase(), x + 7, y + 4, { width: w - 14, lineBreak: false, ellipsis: true });
 
         const val = c.value === null || c.value === undefined || c.value === "" ? "—" : String(c.value);
-        doc.fontSize(valueFS).fillColor(C.negro).font("Helvetica-Bold")
+        doc.fontSize(valueFS).fillColor(C.negro).font(boldValue ? "Helvetica-Bold" : "Helvetica")
           .text(val, x + 7, y + 20, { width: w - 14, lineBreak: true });
 
         x += w;
@@ -511,46 +512,39 @@ router.get("/quote/:id", auth, async (req, res) => {
         doc.moveDown(0.3); resetX();
 
         const { costoActivacion, costoImpresion } = getCostosActivacion(act);
-        const fechasAct = (act?.fechas || []).filter(Boolean).map(fmtDate).join(", ");
+        // Una fecha por línea (en vez de separadas por coma en una sola línea).
+        const fechasAct = (act?.fechas || []).filter(Boolean).map(fmtDate).join("\n");
         const tiposExtra = Array.isArray(act?.tiposExtra) ? act.tiposExtra : [];
 
-        const filaPrincipal = [
-          String(act?.cantidad ?? 0),
-          act?.tipo || "—",
-          String(act?.cantidadTipo ?? 0),
-          money(costoActivacion),
-          // Con tipos adicionales, el Total de esta fila es solo su propio costo
-          // de impresión; el total real de la activación se muestra al final.
-          money(costoImpresion),
-          fechasAct || "—",
-          act?.puntosDistribucion || "—",
-          money(tiposExtra.length ? costoImpresion : act?.total),
+        // Datos que la activación "madre" comparte con todos sus tipos
+        // (hijas): se muestran UNA sola vez, no repetidos por fila.
+        formRow([
+          { label: "Fecha", value: fechasAct || "—", weight: 1 },
+          { label: "Cantidad", value: act?.cantidad ?? 0, weight: 1 },
+          { label: "Distribución", value: act?.puntosDistribucion || "—", weight: 1 },
+          { label: "Costo activación", value: money(costoActivacion), weight: 1 },
+        ], { boldValue: false });
+
+        // Por cada tipo (la madre y cada hija agregada con "Agregar otro tipo")
+        // solo lo que le es propio: Tipo, Cantidad de tipo y Costo impresión.
+        const filas = [
+          [act?.tipo || "—", String(act?.cantidadTipo ?? 0), money(costoImpresion)],
+          ...tiposExtra.map((t) => [t?.tipo || "—", String(t?.cantidadTipo ?? 0), money(t?.costoImpresion)]),
         ];
 
-        const filasExtra = tiposExtra.map((t) => [
-          "—",
-          t?.tipo || "—",
-          String(t?.cantidadTipo ?? 0),
-          "—",
-          money(t?.costoImpresion),
-          "—",
-          "—",
-          money(t?.costoImpresion),
-        ]);
-
         drawTable(
-          ["Cant.", "Tipo", "Cant. tipo", "Costo activación", "Costo impresión", "Fechas", "Distribución", "Total"],
-          [filaPrincipal, ...filasExtra],
-          [40, 60, 45, 70, 70, 105, 88, 70],
+          ["Tipo", "Cant. tipo", "Costo impresión"],
+          filas,
+          [220, 140, 188],
           { headerFontSize: 7, bodyFontSize: 7.5, cellPadding: 5, minRowH: 20 }
         );
 
-        if (tiposExtra.length) {
-          ensureSpace(20);
-          doc.fontSize(8.5).fillColor(C.verde).font("Helvetica-Bold")
-            .text(`Total activación ${idx + 1}: ${money(act?.total)}`, CONTENT_X, doc.y, { width: CONTENT_W, align: "right" });
-          doc.moveDown(0.3); resetX();
-        }
+        // Total combinado (madre + hijas): cantidad × costo activación + suma
+        // de costos de impresión de todos los tipos.
+        ensureSpace(20);
+        doc.fontSize(8.5).fillColor(C.verde).font("Helvetica-Bold")
+          .text(`Total activación ${idx + 1}: ${money(act?.total)}`, CONTENT_X, doc.y, { width: CONTENT_W, align: "right" });
+        doc.moveDown(0.3); resetX();
 
         doc.moveDown(0.5);
       });
@@ -754,8 +748,8 @@ router.get("/quote/:id", auth, async (req, res) => {
 
     const firmas = [
       { titulo: "Cliente", sub: "Nombre completo y firma" },
-      { titulo: "Ejecutivo Comercial", sub: "Nombre y firma" },
-      { titulo: "Dirección Comercial", sub: "" },
+      { titulo: "Ejecutivo Comercial", sub: "Nombre completo y firma" },
+      { titulo: "Dirección Comercial", sub: "Nombre completo y firma" },
     ];
 
     const firmaColW = CONTENT_W / firmas.length;
