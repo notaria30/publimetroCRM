@@ -426,118 +426,116 @@ router.get("/comparative", auth, async (req, res) => {
 // ============================================
 router.get("/advertising", auth, async (req, res) => {
   try {
-    const {
-      startDate,
-      endDate,
-      clientId,
-      tipoPublicidad,
-      formato
-    } = req.query;
+    const { startDate, endDate, clientId, tipoPublicidad, formato } = req.query;
 
-    // Construir filtro base para facturas (ventas)
-    let invoiceFilter = {};
-
-    if (startDate) {
-      invoiceFilter.fechaFactura = { $gte: new Date(startDate) };
-    }
-    if (endDate) {
-      invoiceFilter.fechaFactura = {
-        ...invoiceFilter.fechaFactura,
-        $lte: new Date(endDate),
-      };
-    }
-
-    // Obtener facturas con sus relaciones
-    let invoices = await Invoice.find(invoiceFilter)
+    // Cada publicación (línea de tarifa, desarrollo informativo, cortesía)
+    // tiene su propia fecha real de publicación — distinta de fechaFactura
+    // (la fecha de la orden/factura). El equipo de formación necesita
+    // filtrar por esa fecha real, así que aquí NO se filtra por fechaFactura:
+    // se trae todo y se filtra fila por fila, ya expandido, más abajo.
+    let invoices = await Invoice.find({})
       .populate("client", "nombreComercial tipoCliente")
-      .populate({
-        path: "sale",
-        populate: {
-          path: "quote",
-          populate: {
-            path: "tarifas",
-          },
-        },
-      })
+      .populate("quote", "tarifas desarrolloInformativo cortesias intercambio")
       .lean();
 
     // Filtrar por cliente específico
     if (clientId && clientId !== "all") {
-      invoices = invoices.filter((inv) => String(inv.client._id) === clientId);
+      invoices = invoices.filter((inv) => String(inv.client?._id) === clientId);
     }
 
-    // Procesar cada factura para extraer información de publicidad
+    // Una cotización puede tener más de una factura (facturación parcial /
+    // intercambio); sus publicaciones son las mismas, así que cada
+    // cotización solo debe aportar sus filas una vez.
+    const seenQuotes = new Set();
     const advertisingData = [];
 
+    const pushRow = (cliente, fecha, tipoPublicidadFila, formatoFila, pagina, seccion) => {
+      if (!fecha) return;
+      const dt = new Date(fecha);
+      if (Number.isNaN(dt.getTime())) return;
+      advertisingData.push({
+        fechaDate: dt,
+        fecha: dt.toLocaleDateString("es-MX"),
+        cliente,
+        tipoPublicidad: tipoPublicidadFila,
+        formato: formatoFila || "No especificado",
+        pagina: pagina ?? null,
+        seccion: seccion || "",
+      });
+    };
+
     invoices.forEach((invoice) => {
-      const fecha = new Date(invoice.fechaFactura);
-      const fechaStr = fecha.toLocaleDateString("es-MX");
       const cliente = invoice.client?.nombreComercial || "N/A";
-
-      // Obtener información de la cotización
-      const quote = invoice.sale?.quote || invoice.quote;
-
+      const quote = invoice.quote;
       if (!quote) return;
 
-      // Extraer tarifas (formatos publicitarios)
-      const tarifas = quote.tarifas || [];
+      const quoteId = String(quote._id || "");
+      if (quoteId) {
+        if (seenQuotes.has(quoteId)) return;
+        seenQuotes.add(quoteId);
+      }
 
-      // Para cada tarifa, determinar el tipo de publicidad
-      tarifas.forEach((tarifa) => {
-        // Determinar tipo de publicidad basado en el contexto
-        let tipoPublicidadDetectado = "pagada"; // Por defecto
+      const esIntercambio = !!(quote.intercambio?.activo && quote.intercambio.porcentajeEspecie > 0);
 
-        // Si hay intercambio en la cotización
-        if (quote.intercambio?.activo && quote.intercambio.porcentajeEspecie > 0) {
-          tipoPublicidadDetectado = "intercambio";
-        }
-
-        // Si hay cortesías
-        if (quote.cortesias?.activo && quote.cortesias.cantidad > 0) {
-          tipoPublicidadDetectado = "cortesias";
-        }
-
-        // Si hay desarrollo informativo
-        if (quote.desarrolloInformativo?.activo) {
-          tipoPublicidadDetectado = "desarrollo_informativo";
-        }
-
-        // Obtener formato de la tarifa
-        const formatoTarifa = tarifa.formato || "";
-
-        // Aplicar filtros adicionales
-        let include = true;
-
-        if (tipoPublicidad && tipoPublicidad !== "all") {
-          include = include && (tipoPublicidadDetectado === tipoPublicidad);
-        }
-
-        if (formato && formato !== "all") {
-          include = include && (formatoTarifa.toLowerCase().includes(formato.toLowerCase()) ||
-            formatoTarifa === formato);
-        }
-
-        if (include) {
-          advertisingData.push({
-            fecha: fechaStr,
+      // ── Tarifas: una fila por CADA fecha de publicación de esa línea ──
+      (quote.tarifas || []).forEach((tarifa) => {
+        const fechas = (tarifa.fechas || []).filter(Boolean);
+        const periodicidad = Number(tarifa.periodicidad) || 0;
+        const qty = periodicidad > 0 ? periodicidad : fechas.length;
+        for (let i = 0; i < qty; i++) {
+          if (!fechas[i]) continue;
+          pushRow(
             cliente,
-            tipoPublicidad: tipoPublicidadDetectado,
-            formato: formatoTarifa || "No especificado",
-            pagina: tarifa.pagina ?? null,
-            seccion: tarifa.seccion || "",
-          });
+            fechas[i],
+            esIntercambio ? "intercambio" : "pagada",
+            tarifa.formato,
+            tarifa.pagina,
+            tarifa.seccion
+          );
         }
       });
+
+      // ── Desarrollo informativo: publicación con su propia fecha ──
+      if (quote.desarrolloInformativo?.activo) {
+        pushRow(
+          cliente,
+          quote.desarrolloInformativo.fecha,
+          "desarrollo_informativo",
+          quote.desarrolloInformativo.formato,
+          quote.desarrolloInformativo.pagina,
+          quote.desarrolloInformativo.seccion
+        );
+      }
+
+      // ── Cortesías: una fila por cada fecha ──
+      if (quote.cortesias?.activo && (quote.cortesias?.cantidad || 0) > 0) {
+        (quote.cortesias.fechas || []).filter(Boolean).forEach((f) => {
+          pushRow(cliente, f, "cortesias", quote.cortesias.formato, quote.cortesias.pagina, quote.cortesias.seccion);
+        });
+      }
     });
 
-    // Ordenar por fecha descendente
-    advertisingData.sort((a, b) => {
-      const dateA = new Date(a.fecha.split("/").reverse().join("-"));
-      const dateB = new Date(b.fecha.split("/").reverse().join("-"));
-      return dateB - dateA;
-    });
+    // Filtros a nivel de fila (fecha real de la publicación, tipo, formato)
+    const desde = startDate ? new Date(startDate) : null;
+    const hasta = endDate ? new Date(endDate) : null;
 
-    res.json({ data: advertisingData });
+    let filtered = advertisingData;
+    if (desde) filtered = filtered.filter((r) => r.fechaDate >= desde);
+    if (hasta) filtered = filtered.filter((r) => r.fechaDate <= hasta);
+    if (tipoPublicidad && tipoPublicidad !== "all") {
+      filtered = filtered.filter((r) => r.tipoPublicidad === tipoPublicidad);
+    }
+    if (formato && formato !== "all") {
+      filtered = filtered.filter(
+        (r) => r.formato.toLowerCase().includes(formato.toLowerCase()) || r.formato === formato
+      );
+    }
+
+    filtered.sort((a, b) => b.fechaDate - a.fechaDate);
+
+    const data = filtered.map(({ fechaDate, ...row }) => row);
+
+    res.json({ data });
   } catch (error) {
     console.error("Error en reporte publicidad:", error);
     res.status(500).json({ message: "Error interno del servidor" });
