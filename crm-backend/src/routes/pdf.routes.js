@@ -111,6 +111,7 @@ router.get("/quote/:id", auth, async (req, res) => {
     const CONTENT_W = PW - MARGIN * 2;
     const MARGIN_BOTTOM = 64;
     const logoPath = path.join(__dirname, "../../public/logopublimetro.png");
+    const logoBlancoPath = path.join(__dirname, "../../public/logopublimetro-blanco.png");
     const folioStr = `#${String(quote.folio || "—").padStart(4, "0")}`;
 
     const money = (n) =>
@@ -181,8 +182,10 @@ router.get("/quote/:id", auth, async (req, res) => {
     // ─────────────────────────────────────────────────────────
     const drawContinuationHeader = () => {
       doc.rect(0, 0, PW, 44).fill(C.verde);
+      // El logo a color se pierde sobre el verde del encabezado; en las
+      // páginas de continuación se usa la versión en blanco para que resalte.
       try {
-        doc.image(logoPath, MARGIN, 8, { width: 92 });
+        doc.image(logoBlancoPath, MARGIN, 8, { width: 92 });
       } catch {
         doc.fontSize(13).fillColor(C.blanco).font("Helvetica-Bold").text("PUBLIMETRO", MARGIN, 14);
       }
