@@ -8,7 +8,7 @@ const SalesGoal = require("../models/SalesGoal");
 const User = require("../models/User");
 const Quote = require("../models/Quote");
 
-async function getFinancialEvents({ startDate, endDate, clientId, executiveId, tipoCliente, tipoVenta, statusPago }) {
+async function getFinancialEvents({ startDate, endDate, clientId, executiveId, tipoCliente, tipoPersona, tipoVenta, statusPago }) {
   const events = [];
 
   // 1. FACTURADAS (Efectivo)
@@ -20,7 +20,7 @@ async function getFinancialEvents({ startDate, endDate, clientId, executiveId, t
     if (statusPago === "pendiente") invFilter.pagado = false;
 
     let invoices = await Invoice.find(invFilter)
-      .populate("client", "nombreComercial razonSocial tipoCliente")
+      .populate("client", "nombreComercial razonSocial tipoCliente tipoPersona")
       .populate("quote", "folio total")
       .populate({ path: "sale", populate: { path: "assignedTo", select: "name" } })
       .lean();
@@ -28,6 +28,7 @@ async function getFinancialEvents({ startDate, endDate, clientId, executiveId, t
     for (const inv of invoices) {
       if (clientId && clientId !== "all" && String(inv.client?._id) !== clientId) continue;
       if (tipoCliente && tipoCliente !== "all" && inv.client?.tipoCliente !== tipoCliente) continue;
+      if (tipoPersona && tipoPersona !== "all" && inv.client?.tipoPersona !== tipoPersona) continue;
 
       const assignedTo = inv.sale?.assignedTo?._id || inv.sale?.assignedTo;
       if (executiveId && executiveId !== "all" && String(assignedTo) !== executiveId) continue;
@@ -52,6 +53,7 @@ async function getFinancialEvents({ startDate, endDate, clientId, executiveId, t
         client: inv.client,
         razonSocial: inv.client?.razonSocial || inv.client?.nombreComercial || "N/A",
         tipoCliente: inv.client?.tipoCliente || null,
+        tipoPersona: inv.client?.tipoPersona || null,
         cotizacion: inv.quote?.folio ?? null,
         cotizacionTotal: inv.quote?.total ?? null, // total cotizado (base para comparativo)
         factura: inv.numeroFactura || null,
@@ -74,7 +76,7 @@ async function getFinancialEvents({ startDate, endDate, clientId, executiveId, t
       if (endDate) quoteFilter.approvedAt = { ...quoteFilter.approvedAt, $lte: new Date(endDate) };
 
       let quotes = await Quote.find(quoteFilter)
-        .populate("client", "nombreComercial razonSocial tipoCliente")
+        .populate("client", "nombreComercial razonSocial tipoCliente tipoPersona")
         .lean();
 
       const quoteIds = quotes.map(q => q._id);
@@ -88,7 +90,8 @@ async function getFinancialEvents({ startDate, endDate, clientId, executiveId, t
       for (const q of quotes) {
         if (clientId && clientId !== "all" && String(q.client?._id) !== clientId) continue;
         if (tipoCliente && tipoCliente !== "all" && q.client?.tipoCliente !== tipoCliente) continue;
-        
+        if (tipoPersona && tipoPersona !== "all" && q.client?.tipoPersona !== tipoPersona) continue;
+
         const sale = saleByQuote[String(q._id)];
         const assignedTo = sale?.assignedTo?._id || sale?.assignedTo;
         if (executiveId && executiveId !== "all" && String(assignedTo) !== executiveId) continue;
@@ -108,6 +111,7 @@ async function getFinancialEvents({ startDate, endDate, clientId, executiveId, t
           client: q.client,
           razonSocial: q.client?.razonSocial || q.client?.nombreComercial || "N/A",
           tipoCliente: q.client?.tipoCliente || null,
+          tipoPersona: q.client?.tipoPersona || null,
           cotizacion: q.folio ?? null,
           cotizacionTotal: q.total ?? 0, // total cotizado (base para comparativo)
           factura: null,
@@ -126,13 +130,13 @@ async function getFinancialEvents({ startDate, endDate, clientId, executiveId, t
 // ============================================
 router.get("/sales-monthly", auth, async (req, res) => {
   try {
-    const { startDate, endDate, clientId, tipoCliente, tipoVenta } = req.query;
+    const { startDate, endDate, clientId, tipoCliente, tipoPersona, tipoVenta } = req.query;
     // Filtro "Pagado": all | si | no  (se acepta también el legacy statusPago)
     let pagado = req.query.pagado || "all";
     if (pagado === "all" && req.query.statusPago === "pagadas") pagado = "si";
     if (pagado === "all" && req.query.statusPago === "pendiente") pagado = "no";
 
-    let events = await getFinancialEvents({ startDate, endDate, clientId, tipoCliente, tipoVenta });
+    let events = await getFinancialEvents({ startDate, endDate, clientId, tipoCliente, tipoPersona, tipoVenta });
 
     if (pagado === "si") events = events.filter((e) => e.paid);
     else if (pagado === "no") events = events.filter((e) => !e.paid);
@@ -204,6 +208,7 @@ router.get("/sales-monthly", auth, async (req, res) => {
     const detalle = events.map((ev) => ({
       tipoVenta: ev.type, // "facturada" | "intercambio"
       tipoCliente: ev.tipoCliente || null,
+      tipoPersona: ev.tipoPersona || null,
       cliente: ev.razonSocial || "N/A",
       cotizacion: ev.cotizacion ?? null,
       factura: ev.factura || null,
@@ -365,12 +370,12 @@ router.get("/executive", auth, async (req, res) => {
 // ============================================
 router.get("/comparative", auth, async (req, res) => {
   try {
-    const { startDate, endDate, clientId, tipoCliente, tipoVenta } = req.query;
+    const { startDate, endDate, clientId, tipoCliente, tipoPersona, tipoVenta } = req.query;
     let pagado = req.query.pagado || "all";
     if (pagado === "all" && req.query.statusPago === "pagadas") pagado = "si";
     if (pagado === "all" && req.query.statusPago === "pendiente") pagado = "no";
 
-    let events = await getFinancialEvents({ startDate, endDate, clientId, tipoCliente, tipoVenta });
+    let events = await getFinancialEvents({ startDate, endDate, clientId, tipoCliente, tipoPersona, tipoVenta });
 
     if (pagado === "si") events = events.filter((e) => e.paid);
     else if (pagado === "no") events = events.filter((e) => !e.paid);
@@ -388,6 +393,7 @@ router.get("/comparative", auth, async (req, res) => {
       return {
         tipoVenta: ev.type,
         tipoCliente: ev.tipoCliente || null,
+        tipoPersona: ev.tipoPersona || null,
         cliente: ev.razonSocial || "N/A",
         cotizacion: ev.cotizacion ?? null,
         factura: ev.factura || null,
@@ -553,9 +559,9 @@ router.get("/active-clients", auth, async (req, res) => {
     // Obtener facturas recientes y clientes en paralelo (consultas independientes)
     const [invoices, allClients] = await Promise.all([
       Invoice.find({ fechaFactura: { $gte: ninetyDaysAgo } })
-        .populate("client", "nombreComercial tipoCliente rfc")
+        .populate("client", "nombreComercial tipoCliente tipoPersona rfc")
         .lean(),
-      Client.find({}, "nombreComercial tipoCliente rfc").lean(),
+      Client.find({}, "nombreComercial tipoCliente tipoPersona rfc").lean(),
     ]);
 
     // Agrupar por cliente
@@ -567,6 +573,7 @@ router.get("/active-clients", auth, async (req, res) => {
       const clientId = String(invoice.client._id);
       const clientName = invoice.client.nombreComercial;
       const clientType = invoice.client.tipoCliente || "No especificado";
+      const clientPersonType = invoice.client.tipoPersona || "Sin definir";
       const clientRfc = invoice.client.rfc;
       const invoiceAmount = invoice.importeConIVA || 0;
       const invoiceDate = invoice.fechaFactura;
@@ -575,6 +582,7 @@ router.get("/active-clients", auth, async (req, res) => {
         clientActivity.set(clientId, {
           cliente: clientName,
           tipoCliente: clientType,
+          tipoPersona: clientPersonType,
           rfc: clientRfc,
           ultimaVenta: invoiceDate,
           totalVentas: 0,
@@ -604,6 +612,7 @@ router.get("/active-clients", auth, async (req, res) => {
       return {
         cliente: client.nombreComercial,
         tipoCliente: client.tipoCliente || "No especificado",
+        tipoPersona: client.tipoPersona || "Sin definir",
         rfc: client.rfc,
         estado: isActive ? "Activo" : "Inactivo",
         ultimaVenta: activity ? new Date(activity.ultimaVenta).toLocaleDateString("es-MX") : "Sin ventas",

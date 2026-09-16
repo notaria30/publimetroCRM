@@ -47,7 +47,7 @@ export default function ClientsPage() {
     const q = normalize(search.trim());
     if (!q) return clients;
     return clients.filter((c) =>
-      [c.nombreComercial, c.razonSocial, c.rfc, c.status, c.assignedTo?.name]
+      [c.nombreComercial, c.razonSocial, c.rfc, c.status, c.tipoPersona, c.assignedTo?.name]
         .filter(Boolean).map(normalize).join(" ").includes(q)
     );
   }, [clients, search]);
@@ -72,7 +72,7 @@ if (loading) return (
             <Search size={15} className="cl-search-icon" />
             <input
               className="cl-search"
-              placeholder="Buscar cliente (nombre, razón social, RFC, estatus, ejecutivo)…"
+              placeholder="Buscar cliente (nombre, razón social, RFC, estatus, tipo de persona, ejecutivo)…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
             />
@@ -97,6 +97,7 @@ if (loading) return (
               <th>Razón Social</th>
               <th>RFC</th>
               <th>Estatus</th>
+              <th>Tipo de Persona</th>
               <th>Ejecutivo Asignado</th>
               <th>Acciones</th>
             </tr>
@@ -108,6 +109,7 @@ if (loading) return (
                 <td>{client.razonSocial}</td>
                 <td className="cl-rfc">{client.rfc}</td>
                 <td><StatusBadge status={client.status} /></td>
+                <td>{client.tipoPersona || "Sin definir"}</td>
                 <td>{client.assignedTo?.name || "N/A"}</td>
                 <td>
                   <div className="cl-actions">
@@ -119,7 +121,7 @@ if (loading) return (
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="cl-empty">
+                <td colSpan={7} className="cl-empty">
                   No se encontraron clientes con ese criterio.
                 </td>
               </tr>

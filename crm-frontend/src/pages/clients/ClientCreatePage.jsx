@@ -25,6 +25,8 @@ const INDUSTRIAS = [
   "distribuidoras de autos", "cursos o diplomados", "laboratorios medicos",
 ];
 
+const TIPOS_PERSONA = ["Sin definir", "Persona física", "Persona moral"];
+
 const ESTADOS = [
   "Aguascalientes",
   "Baja California",
@@ -77,7 +79,7 @@ export default function ClientCreatePage() {
   const [form, setForm] = useState({
     nombreComercial: "", razonSocial: "", rfc: "", curp: "",
     direccion: { calleNumero: "", colonia: "", ciudad: "", estado: "", pais: "", cp: "", telefono: "" },
-    regimen: "", agenciaODirecto: "", tipoCliente: "", tipoIndustria: "",
+    regimen: "", agenciaODirecto: "", tipoCliente: "", tipoIndustria: "", tipoPersona: "Sin definir",
     contactos: {
       mercadotecnia: { nombre: "", email: "", celular: "" },
       diseno: { nombre: "", email: "", celular: "" },
@@ -248,6 +250,12 @@ export default function ClientCreatePage() {
         <div className="cl-card">
           <p className="cl-section-title">Clasificación del Cliente</p>
           <div className="cl-form-grid">
+            <div className="cl-form-group">
+              <label className="cl-label">Tipo de Persona</label>
+              <select className="cl-select" value={form.tipoPersona} onChange={(e) => set("tipoPersona", e.target.value)}>
+                {TIPOS_PERSONA.map((v) => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </div>
             <div className="cl-form-group">
               <label className="cl-label">Régimen Fiscal</label>
               <select className="cl-select" value={form.regimen} onChange={(e) => set("regimen", e.target.value)}>

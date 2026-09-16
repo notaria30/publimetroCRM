@@ -239,6 +239,9 @@ export default function QuoteDetailPage() {
                 RFC: {quote.client.rfc}
               </p>
             )}
+            <p style={{ color: "#6b7280", margin: "2px 0 0", fontSize: 13 }}>
+              Tipo de persona: {quote.client?.tipoPersona || "Sin definir"}
+            </p>
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 24, marginBottom: 16, flexWrap: "wrap" }}>

@@ -18,6 +18,8 @@ const REGIMENES = [
   "RÉGIMEN DE INCORPORACIÓN FISCAL",
 ];
 
+const TIPOS_PERSONA = ["Sin definir", "Persona física", "Persona moral"];
+
 function Toast({ msg, type, onClose }) {
   useEffect(() => { const t = setTimeout(onClose, 3000); return () => clearTimeout(t); }, [onClose]);
   return <div className={`cl-toast cl-toast--${type}`}>{msg}</div>;
@@ -150,19 +152,9 @@ export default function ClientDetailPage() {
             </select>
           </Field>
 
-          <Field label="Tipo de Cliente" value={client.tipoCliente} editing={editing}>
-            <select className="cl-select" value={client.tipoCliente || ""} onChange={(e) => set("tipoCliente", e.target.value)}>
-              <option value="iniciativa privada">Iniciativa Privada</option>
-              <option value="gobierno">Gobierno</option>
-              <option value="corporativo">Corporativo</option>
-            </select>
-          </Field>
-
-          <Field label="Industria" value={client.tipoIndustria} editing={editing}>
-            <select className="cl-select" value={client.tipoIndustria || ""} onChange={(e) => set("tipoIndustria", e.target.value)}>
-              {["alimentaria","hotelera","automotriz","construccion","servicios financieros"].map((v) => (
-                <option key={v} value={v}>{v}</option>
-              ))}
+          <Field label="Tipo de Persona" value={client.tipoPersona || "Sin definir"} editing={editing}>
+            <select className="cl-select" value={client.tipoPersona || "Sin definir"} onChange={(e) => set("tipoPersona", e.target.value)}>
+              {TIPOS_PERSONA.map((v) => <option key={v} value={v}>{v}</option>)}
             </select>
           </Field>
 
@@ -176,6 +168,22 @@ export default function ClientDetailPage() {
             <select className="cl-select" value={client.agenciaODirecto || ""} onChange={(e) => set("agenciaODirecto", e.target.value)}>
               <option value="AGENCIA">AGENCIA</option>
               <option value="DIRECTO">DIRECTO</option>
+            </select>
+          </Field>
+
+          <Field label="Tipo de Cliente" value={client.tipoCliente} editing={editing}>
+            <select className="cl-select" value={client.tipoCliente || ""} onChange={(e) => set("tipoCliente", e.target.value)}>
+              <option value="iniciativa privada">Iniciativa Privada</option>
+              <option value="gobierno">Gobierno</option>
+              <option value="corporativo">Corporativo</option>
+            </select>
+          </Field>
+
+          <Field label="Industria" value={client.tipoIndustria} editing={editing}>
+            <select className="cl-select" value={client.tipoIndustria || ""} onChange={(e) => set("tipoIndustria", e.target.value)}>
+              {["alimentaria","hotelera","automotriz","construccion","servicios financieros"].map((v) => (
+                <option key={v} value={v}>{v}</option>
+              ))}
             </select>
           </Field>
         </div>

@@ -179,6 +179,7 @@ export default function ActiveClientsReport() {
       "Cliente": row.cliente,
       "RFC": row.rfc || "—",
       "Tipo Cliente": row.tipoCliente,
+      "Tipo Persona": row.tipoPersona,
       "Estado": row.estado,
       "Última Venta": row.ultimaVenta,
       "Total Ventas (90d)": row.totalVentas,
@@ -274,7 +275,7 @@ export default function ActiveClientsReport() {
           <div className="sl-table-wrap">
             <table className="sl-table">
               <thead><tr>
-                <th>Cliente</th><th>RFC</th><th>Tipo</th>
+                <th>Cliente</th><th>RFC</th><th>Tipo</th><th>Tipo de persona</th>
                 <th style={{ textAlign: "center" }}>Estado</th>
                 <th>Última venta</th>
                 <th style={{ textAlign: "right" }}>Total ventas (90d)</th>
@@ -282,12 +283,13 @@ export default function ActiveClientsReport() {
               </tr></thead>
               <tbody>
                 {filtered.length === 0
-                  ? <tr><td colSpan={7} className="sl-empty">No se encontraron clientes con ese criterio</td></tr>
+                  ? <tr><td colSpan={8} className="sl-empty">No se encontraron clientes con ese criterio</td></tr>
                   : filtered.map((c, i) => (
                     <tr key={i}>
                       <td>{c.cliente}</td>
                       <td>{c.rfc || "—"}</td>
                       <td><span className="sl-badge sl-badge--gray">{c.tipoCliente}</span></td>
+                      <td><span className="sl-badge sl-badge--gray">{c.tipoPersona}</span></td>
                       <td style={{ textAlign: "center" }}>
                         <span className={`sl-badge ${c.estado === "Activo" ? "sl-badge--success" : "sl-badge--error"}`}>{c.estado}</span>
                       </td>

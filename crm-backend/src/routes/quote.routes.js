@@ -183,7 +183,7 @@ router.get("/", auth, async (req, res) => {
 router.get("/:id", auth, async (req, res) => {
   try {
     const quote = await Quote.findById(req.params.id)
-      .populate("client", "nombreComercial razonSocial rfc")
+      .populate("client", "nombreComercial razonSocial rfc tipoPersona")
       .populate("createdBy", "name email")
       .populate("approvedBy", "name email role");
 

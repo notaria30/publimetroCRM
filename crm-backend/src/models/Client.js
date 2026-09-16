@@ -41,6 +41,12 @@ const clientSchema = new mongoose.Schema(
       enum: ["iniciativa privada", "gobierno", "corporativo"],
     },
 
+    tipoPersona: {
+      type: String,
+      enum: ["Persona física", "Persona moral", "Sin definir"],
+      default: "Sin definir",
+    },
+
     tipoIndustria: {
       type: String,
       lowercase: true,

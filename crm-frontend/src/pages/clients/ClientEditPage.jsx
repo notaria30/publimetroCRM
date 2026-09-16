@@ -17,6 +17,8 @@ const REGIMENES = [
   "RÉGIMEN DE INCORPORACIÓN FISCAL",
 ];
 
+const TIPOS_PERSONA = ["Sin definir", "Persona física", "Persona moral"];
+
 const ESTADOS = [
   "Aguascalientes",
   "Baja California",
@@ -137,6 +139,12 @@ export default function ClientEditPage() {
         <div className="cl-card">
           <p className="cl-section-title">Clasificación</p>
           <div className="cl-form-grid">
+            <div className="cl-form-group">
+              <label className="cl-label">Tipo de Persona</label>
+              <select className="cl-select" value={form.tipoPersona || "Sin definir"} onChange={(e) => set("tipoPersona", e.target.value)}>
+                {TIPOS_PERSONA.map((v) => <option key={v} value={v}>{v}</option>)}
+              </select>
+            </div>
             <div className="cl-form-group">
               <label className="cl-label">Régimen Fiscal</label>
               <select className="cl-select" value={form.regimen || ""} onChange={(e) => set("regimen", e.target.value)}>
