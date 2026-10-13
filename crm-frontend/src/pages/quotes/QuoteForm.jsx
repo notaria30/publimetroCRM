@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { getClients } from "../../services/clientService";
 import { getOpportunities } from "../../services/opportunityService";
 import { approveQuote, rejectQuote } from "../../services/quoteService";
@@ -49,6 +50,15 @@ const defaultForm = {
   total: 0,
   status: "pendiente",
 };
+
+// Al cotizar desde una oportunidad: liga la oportunidad y su cliente.
+function applyOpportunityPreset(form, opp) {
+  return {
+    ...form,
+    opportunityId: opp._id,
+    client: opp.client?._id || opp.client || form.client,
+  };
+}
 
 function formatDateInput(value) {
   if (!value) return "";
@@ -158,18 +168,23 @@ export default function QuoteForm({ mode = "create", initialQuote = null, onSubm
   const [opportunities, setOpportunities] = useState([]);
   const [form, setForm] = useState(() => initialQuote ? mapInitialQuoteToForm(initialQuote) : defaultForm);
   const [submitting, setSubmitting] = useState(false);
+  const [searchParams] = useSearchParams();
+  const presetOpportunityId = mode === "create" ? searchParams.get("opportunityId") : null;
 
   useEffect(() => {
     getClients().then((res) => setClients(res.data)).catch(console.error);
     getOpportunities()
       .then((res) => {
         const abiertas = res.data.filter(
-          (opp) => opp.stage !== "cerrado_ganado" && opp.stage !== "cerrado_perdido"
+          (opp) => opp.stage !== "cerrado_ganado" && opp.stage !== "cerrado_perdido" && !opp.convertedToSale
         );
         setOpportunities(abiertas);
+
+        const preset = presetOpportunityId && abiertas.find((o) => o._id === presetOpportunityId);
+        if (preset) setForm((prev) => applyOpportunityPreset(prev, preset));
       })
       .catch(console.error);
-  }, []);
+  }, [presetOpportunityId]);
 
   useEffect(() => {
     if (initialQuote) setForm(mapInitialQuoteToForm(initialQuote));

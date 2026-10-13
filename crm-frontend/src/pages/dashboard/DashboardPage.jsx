@@ -1,8 +1,5 @@
 import { useEffect, useState } from "react";
 import {
-  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer
-} from "recharts";
-import {
   getDashboardOverview,
   getDashboardPipeline,
   getDashboardBilling,
@@ -12,7 +9,6 @@ import {
 import "./DashboardPage.css";
 import { useAuth } from "../../context/AuthContext";
 import { getDashboardActiveClients } from "../../services/dashboardService";
-import { useTheme } from "../../context/ThemeContext";
 import { LoadingDashboard } from "./LoadingDashboard";
 
 function MetricCard({ label, value, sub }) {
@@ -35,7 +31,6 @@ export default function DashboardPage() {
   const [error, setError] = useState("");
   const [activeClients, setActiveClients] = useState(null);
   const { user } = useAuth();
-  const { darkMode } = useTheme();
 
 
   useEffect(() => {
@@ -76,12 +71,10 @@ export default function DashboardPage() {
       ? ((billing.pagado / (billing.pagado + billing.pendiente)) * 100).toFixed(1) + "%"
       : "0%";
 
-  const pipelineData = [
-    { etapa: "Prospecc.", cantidad: pipeline.prospeccion },
-    { etapa: "Calific.", cantidad: pipeline.presentacion },
-    { etapa: "Propuesta", cantidad: pipeline.propuesta },
-    { etapa: "Cerrada", cantidad: pipeline.cierre },
-  ];
+  const cerradasMes = pipeline.ganadasMes + pipeline.perdidasMes;
+  const tasaCierre = cerradasMes > 0
+    ? ((pipeline.ganadasMes / cerradasMes) * 100).toFixed(0) + "%"
+    : "—";
 
   return (
     <div className="db-page">
@@ -103,62 +96,50 @@ export default function DashboardPage() {
         <MetricCard label="Pendiente de Pago" value={fmt(overview.totalPendiente)} />
       </div>
 
-      {/* CHARTS ROW */}
-      <div className="db-charts-grid">
-
-        {/* Pipeline — barra */}
-        <div className="db-card">
-          <div className="db-card-header">
-            <p className="db-card-title">Pipeline de Ventas</p>
+      {/* Facturación — resumen */}
+      <div className="db-card db-bottom-card">
+        <p className="db-card-title">Facturación</p>
+        <div className="db-billing-rows">
+          <div className="db-billing-row">
+            <span className="db-billing-dot green" />
+            <span className="db-billing-label">Pagado</span>
+            <span className="db-billing-val green-txt">
+              {fmt(billing.pagado)}
+            </span>
           </div>
-          <ResponsiveContainer width="100%" height={200}>
-            <BarChart data={pipelineData} barSize={32}>
-              <XAxis
-                dataKey="etapa"
-                axisLine={false} tickLine={false}
-                tick={{ fontSize: 11, fill: "#9ca3af" }}
-              />
-              <YAxis hide />
-              <Tooltip
-                cursor={{ fill: darkMode ? "#334155" : "#f3f4f6" }}
-                contentStyle={{
-                  background: darkMode ? "#1e293b" : "#fff",
-                  border: `1px solid ${darkMode ? "#334155" : "#e5e7eb"}`,
-                  color: darkMode ? "#f1f5f9" : "#111827",
-                }}
-              />
-              <Bar dataKey="cantidad" fill="#16a34a" radius={[5, 5, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        {/* Facturación — resumen */}
-        <div className="db-card">
-          <p className="db-card-title">Facturación</p>
-          <div className="db-billing-rows">
-            <div className="db-billing-row">
-              <span className="db-billing-dot green" />
-              <span className="db-billing-label">Pagado</span>
-              <span className="db-billing-val green-txt">
-                {fmt(billing.pagado)}
-              </span>
-            </div>
-            <div className="db-billing-row">
-              <span className="db-billing-dot red" />
-              <span className="db-billing-label">Pendiente</span>
-              <span className="db-billing-val red-txt">
-                {fmt(billing.pendiente)}
-              </span>
-            </div>
-            <div className="db-billing-divider" />
-            <div className="db-billing-row">
-              <span className="db-billing-dot blue" />
-              <span className="db-billing-label">% Cobrado</span>
-              <span className="db-billing-val blue-txt">{pct}</span>
-            </div>
+          <div className="db-billing-row">
+            <span className="db-billing-dot red" />
+            <span className="db-billing-label">Pendiente</span>
+            <span className="db-billing-val red-txt">
+              {fmt(billing.pendiente)}
+            </span>
+          </div>
+          <div className="db-billing-divider" />
+          <div className="db-billing-row">
+            <span className="db-billing-dot blue" />
+            <span className="db-billing-label">% Cobrado</span>
+            <span className="db-billing-val blue-txt">{pct}</span>
           </div>
         </div>
+      </div>
 
+      {/* RESULTADOS DEL MES (oportunidades ganadas / perdidas) */}
+      <div className="db-card db-bottom-card">
+        <p className="db-card-title">Resultados del mes</p>
+        <div className="db-stats-row">
+          <div className="db-stat-box">
+            <p className="db-stat-label">Ganadas</p>
+            <p className="db-stat-val">{pipeline.ganadasMes}</p>
+          </div>
+          <div className="db-stat-box">
+            <p className="db-stat-label">Perdidas</p>
+            <p className="db-stat-val">{pipeline.perdidasMes}</p>
+          </div>
+          <div className="db-stat-box">
+            <p className="db-stat-label">Tasa de cierre</p>
+            <p className="db-stat-val">{tasaCierre}</p>
+          </div>
+        </div>
       </div>
 
       {/* CLIENTES Y COTIZACIONES */}

@@ -4,17 +4,10 @@ import { Plus, History } from "lucide-react";
 import { getOpportunities, updateOpportunityStage, createOpportunity } from "../../services/opportunityService";
 import { getClients } from "../../services/clientService"; // I guess this exists
 import { OpportunityBoardSkeleton } from "../../components/skeletons/OpportunityBoardSkeleton";
+import { STAGES } from "../../constants/opportunity";
+import LostReasonModal from "./LostReasonModal";
 import "../sales/sales.css";
 import "./opportunities.css";
-
-const STAGES = [
-  { id: "prospeccion", label: "Prospección" },
-  { id: "calificacion", label: "Calificación" },
-  { id: "propuesta", label: "Propuesta" },
-  { id: "negociacion", label: "Negociación" },
-  { id: "cerrado_ganado", label: "Cerrado Ganado" },
-  { id: "cerrado_perdido", label: "Cerrado Perdido" }
-];
 
 export default function OpportunityList() {
   const [opportunities, setOpportunities] = useState([]);
@@ -25,8 +18,9 @@ export default function OpportunityList() {
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [clients, setClients] = useState([]);
-  const [form, setForm] = useState({ title: "", clientId: "", estimatedValue: "" });
+  const [form, setForm] = useState({ title: "", clientId: "" });
   const [errorModal, setErrorModal] = useState("");
+  const [lostTarget, setLostTarget] = useState(null); // oportunidad a cerrar como perdida
 
   const navigate = useNavigate();
 
@@ -82,21 +76,34 @@ export default function OpportunityList() {
 
     if (stageId === "propuesta" || stageId === "negociacion") {
       if (!draggedItem.quotes || draggedItem.quotes.length === 0) {
-        setErrorModal("Para pasar a Propuesta o Negociación debes generar primero una Cotización desde el detalle de la Oportunidad.");
+        setErrorModal("Para pasar a Propuesta o Negociación crea primero una cotización desde el detalle de la oportunidad.");
         return;
       }
     }
 
+    if (stageId === "cerrado_perdido") {
+      if (draggedItem.convertedToSale) {
+        setErrorModal("Esta oportunidad ya tiene una venta; no puede marcarse como perdida.");
+        return;
+      }
+      setLostTarget(draggedItem);
+      return;
+    }
+
+    await moveTo(draggedItem, stageId);
+  };
+
+  const moveTo = async (opp, stageId, extra) => {
     // Optimistic UI Update
     setOpportunities(prev =>
-      prev.map(o => o._id === draggedItem._id ? { ...o, stage: stageId } : o)
+      prev.map(o => o._id === opp._id ? { ...o, stage: stageId, ...extra } : o)
     );
 
     try {
-      await updateOpportunityStage(draggedItem._id, stageId);
+      await updateOpportunityStage(opp._id, stageId, extra);
     } catch (err) {
-      alert("Error al mover la tarjeta");
-      // Revert 
+      setErrorModal(err.response?.data?.message || "Error al mover la tarjeta");
+      // Revert
       loadData();
     }
   };
@@ -107,7 +114,7 @@ export default function OpportunityList() {
     try {
       await createOpportunity(form);
       setIsModalOpen(false);
-      setForm({ title: "", clientId: "", estimatedValue: "" });
+      setForm({ title: "", clientId: "" });
       loadData();
     } catch (err) {
       alert("Error al crear la oportunidad");
@@ -150,7 +157,7 @@ export default function OpportunityList() {
             const thirtyDaysAgo = new Date();
             thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
             colOpps = colOpps.filter(o => {
-              const dateToCompare = new Date(o.updatedAt || o.createdAt);
+              const dateToCompare = new Date(o.closedAt || o.updatedAt || o.createdAt);
               return dateToCompare >= thirtyDaysAgo;
             });
           }
@@ -191,6 +198,9 @@ export default function OpportunityList() {
                   >
                     <p className="opp-card-title">{opp.title}</p>
                     <p className="opp-card-client">{opp.client?.nombreComercial || "Sin cliente"}</p>
+                    {opp.stage === "cerrado_perdido" && opp.motivoPerdida && (
+                      <p className="opp-card-flag opp-card-flag--lost">{opp.motivoPerdida}</p>
+                    )}
                     <div className="opp-card-footer">
                       <span className="opp-card-val">{getEffectiveValue(opp).toLocaleString("es-MX", { style: "currency", currency: "MXN", minimumFractionDigits: 0 })}</span>
                       <span>Cotizaciones: {opp.quotes?.length || 0}</span>
@@ -223,6 +233,14 @@ export default function OpportunityList() {
         </div>
       )}
 
+      {lostTarget && (
+        <LostReasonModal
+          opportunityTitle={lostTarget.title}
+          onCancel={() => setLostTarget(null)}
+          onConfirm={(extra) => { const opp = lostTarget; setLostTarget(null); moveTo(opp, "cerrado_perdido", extra); }}
+        />
+      )}
+
       {isModalOpen && (
         <div className="opp-modal-overlay">
           <div className="opp-modal">
@@ -238,10 +256,6 @@ export default function OpportunityList() {
                   <option value="">Seleccione un cliente</option>
                   {clients.map(c => <option key={c._id} value={c._id}>{c.nombreComercial}</option>)}
                 </select>
-              </div>
-              <div>
-                <label className="sl-label">Valor Estimado ($)</label>
-                <input className="sl-input" type="number" value={form.estimatedValue} onChange={e => setForm({ ...form, estimatedValue: e.target.value === "" ? "" : Number(e.target.value) })} />
               </div>
               <div style={{ display: "flex", justifyContent: "flex-end", gap: "8px", marginTop: "12px" }}>
                 <button type="button" className="sl-btn-secondary" onClick={() => setIsModalOpen(false)}>Cancelar</button>

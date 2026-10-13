@@ -1,4 +1,5 @@
 const mongoose = require("mongoose");
+require("./Counter");
 
 const tarifaSchema = new mongoose.Schema(
   {
@@ -215,18 +216,41 @@ const quoteSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
-// Asignar folio consecutivo
+// Asignar folio consecutivo con un contador atómico (evita folios duplicados
+// cuando se crean dos cotizaciones al mismo tiempo).
 quoteSchema.pre("save", async function (next) {
   if (this.folio) return next();
 
   try {
-    const lastQuote = await mongoose
-      .model("Quote")
-      .findOne({})
-      .sort({ folio: -1 })
-      .select("folio");
+    const Counter = mongoose.model("Counter");
 
-    this.folio = lastQuote ? lastQuote.folio + 1 : 1;
+    // La primera vez, el contador arranca desde el folio más alto existente.
+    if (!(await Counter.exists({ _id: "quoteFolio" }))) {
+      const lastQuote = await mongoose
+        .model("Quote")
+        .findOne({})
+        .sort({ folio: -1 })
+        .select("folio");
+
+      try {
+        await Counter.updateOne(
+          { _id: "quoteFolio" },
+          { $setOnInsert: { seq: lastQuote?.folio || 0 } },
+          { upsert: true }
+        );
+      } catch (err) {
+        // Otro proceso lo inicializó al mismo tiempo
+        if (err.code !== 11000) throw err;
+      }
+    }
+
+    const counter = await Counter.findByIdAndUpdate(
+      "quoteFolio",
+      { $inc: { seq: 1 } },
+      { new: true }
+    );
+
+    this.folio = counter.seq;
     next();
   } catch (err) {
     next(err);

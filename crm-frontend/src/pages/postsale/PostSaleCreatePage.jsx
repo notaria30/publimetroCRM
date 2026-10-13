@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { createPostSale } from "../../services/postSaleService";
+import { createPostSale, getPostSales } from "../../services/postSaleService";
 import { getSales } from "../../services/salesService";
 import { ArrowLeft } from "lucide-react";
 import "./postsale.css";
@@ -35,7 +35,13 @@ export default function PostSaleCreatePage() {
   });
 
   useEffect(() => {
-    getSales().then((res) => setSales(res.data)).catch(console.error);
+    // Solo ventas que aún no tienen post-venta
+    Promise.all([getSales(), getPostSales()])
+      .then(([salesRes, psRes]) => {
+        const withPostSale = new Set(psRes.data.map((ps) => String(ps.sale?._id || ps.sale)));
+        setSales(salesRes.data.filter((s) => !withPostSale.has(String(s._id))));
+      })
+      .catch(console.error);
   }, []);
 
   const handleChange = (e) => {
@@ -82,7 +88,12 @@ export default function PostSaleCreatePage() {
       await createPostSale(form);
       navigate("/postsale");
     } catch (err) {
-      alert("Error al crear registro");
+      if (err.response?.status === 409) {
+        alert(err.response.data.message);
+        navigate(`/postsale/${err.response.data.postSaleId}`);
+        return;
+      }
+      alert(err.response?.data?.message || "Error al crear registro");
       console.error(err);
     }
   };

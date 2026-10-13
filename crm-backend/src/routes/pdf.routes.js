@@ -462,8 +462,8 @@ router.get("/quote/:id", auth, async (req, res) => {
 
     const tarifas = quote.tarifas || [];
     if (tarifas.length) {
-      const headers = ["Cant.", "Formato", "Fecha", "Página", "Sección", "Precio Unitario", "Subtotal"];
-      const colWidths = [35, 95, 95, 55, 90, 85, 93]; // suma = 548 = CONTENT_W
+      const headers = ["Cant.", "Formato", "Fecha", "Página", "Sección", "Precio Unit.", "Subtotal", "Total"];
+      const colWidths = [38, 82, 76, 44, 78, 76, 76, 78]; // suma = 548 = CONTENT_W
 
       // Una fila por cada publicación (fecha). Si faltan fechas, se muestra "Por definir".
       const rows = [];
@@ -481,6 +481,7 @@ router.get("/quote/:id", auth, async (req, res) => {
             t.seccion || "—",
             money(costo),
             money(costo),
+            money(costo), // Total sin IVA: el IVA se suma solo en el resumen final
           ]);
         }
       });
@@ -654,7 +655,7 @@ router.get("/quote/:id", auth, async (req, res) => {
     const summaryW = 260;
     const summaryX = PW - MARGIN - summaryW;
     const rowH = 20;
-    const bigRowH = 40;
+    const bigRowH = 26;
     const boxH = 8 + rowH + (tieneAjustes ? rowH : 0) + rowH + 12 + bigRowH + 8;
 
     ensureSpace(boxH + 20);
@@ -669,10 +670,10 @@ router.get("/quote/:id", auth, async (req, res) => {
       if (bg) doc.rect(summaryX, sy, summaryW, h).fill(bg);
 
       doc.fontSize(big ? 8.5 : 8.5).fillColor(bg ? C.verdePale : C.grisMedio).font("Helvetica-Bold")
-        .text(label, summaryX + 12, sy + (big ? 8 : 5), { width: summaryW - 24, align: "left", lineBreak: false });
+        .text(label, summaryX + 12, sy + (big ? 9 : 5), { width: summaryW - 24, align: "left", lineBreak: false });
 
-      doc.fontSize(big ? 17 : 9.5).fillColor(bg ? C.blanco : C.negro).font("Helvetica-Bold")
-        .text(money(value), summaryX + 12, sy + (big ? 17 : 5), { width: summaryW - 24, align: "right", lineBreak: false });
+      doc.fontSize(big ? 12 : 9.5).fillColor(bg ? C.blanco : C.negro).font("Helvetica-Bold")
+        .text(money(value), summaryX + 12, sy + (big ? 7 : 5), { width: summaryW - 24, align: "right", lineBreak: false });
 
       sy += h;
     };

@@ -4,26 +4,14 @@ const Invoice = require("../models/Invoice");
 const Client = require("../models/Client");
 const Quote = require("../models/Quote");
 const Sale = require("../models/Sale");
-const { auth } = require("../middlewares/auth.middleware");
-const { updateClientStatus } = require("../services/clientStatus.service");
+const { auth, isOwner } = require("../middlewares/auth.middleware");
+const { closeSale } = require("../services/saleLifecycle.service");
 
-// Marca la venta como cerrada al generarle una factura (si aún no lo estaba)
-// y refresca de inmediato el estatus del cliente (regla de los 90 días),
-// sin esperar al cron nocturno.
-async function closeSaleForInvoice(sale) {
-  if (!sale) return;
-  if (!sale.isClosed) {
-    sale.isClosed = true;
-    sale.closedAt = new Date();
-    await sale.save();
-  }
-  await updateClientStatus(sale.client);
-}
 
 const router = express.Router();
 
 // Crear factura
-router.post("/", auth, async (req, res) => {
+router.post("/", auth, isOwner, async (req, res) => {
   try {
     const {
       client,
@@ -131,8 +119,9 @@ router.post("/", auth, async (req, res) => {
       targetSale = await Sale.findById(sale);
     }
 
-    // Generar la factura cierra la venta y actualiza el estatus del cliente
-    await closeSaleForInvoice(targetSale);
+    // Generar la factura cierra comercialmente la venta (sin tocar su etapa de
+    // ejecución), actualiza el estatus del cliente y abre su post-venta
+    await closeSale(targetSale);
 
     if (factura.pagado && targetSale) {
       targetSale.paid = true;
@@ -141,7 +130,7 @@ router.post("/", auth, async (req, res) => {
 
       if (targetSale.opportunityId) {
         const Opportunity = require("../models/Opportunity");
-        await Opportunity.findByIdAndUpdate(targetSale.opportunityId, { stage: "cerrado_ganado" });
+        await Opportunity.findByIdAndUpdate(targetSale.opportunityId, { stage: "cerrado_ganado", closedAt: new Date() });
       }
     }
 
@@ -162,7 +151,7 @@ router.post("/", auth, async (req, res) => {
 });
 
 // Listar facturas
-router.get("/", auth, async (req, res) => {
+router.get("/", auth, isOwner, async (req, res) => {
   try {
     let invoices;
 
@@ -186,7 +175,7 @@ router.get("/", auth, async (req, res) => {
 });
 
 // ✅ Ventas facturadas (para filtros en Sales)
-router.get("/sales-status", auth, async (req, res) => {
+router.get("/sales-status", auth, isOwner, async (req, res) => {
   try {
     // Traer solo sale y quote (ligas)
     const invoices = await Invoice.find({}, "sale quote");
@@ -210,7 +199,7 @@ router.get("/sales-status", auth, async (req, res) => {
 });
 
 // ✅ Límite de facturación por intercambio para una cotización
-router.get("/quote-limit/:quoteId", auth, async (req, res) => {
+router.get("/quote-limit/:quoteId", auth, isOwner, async (req, res) => {
   try {
     const quoteData = await Quote.findById(req.params.quoteId);
     if (!quoteData) return res.status(404).json({ message: "Cotización no encontrada" });
@@ -253,7 +242,7 @@ router.get("/quote-limit/:quoteId", auth, async (req, res) => {
   }
 });
 
-router.get("/:id", auth, async (req, res) => {
+router.get("/:id", auth, isOwner, async (req, res) => {
   try {
     const invoice = await Invoice.findById(req.params.id)
       .populate("client", "nombreComercial rfc")
@@ -275,7 +264,7 @@ router.get("/:id", auth, async (req, res) => {
   }
 });
 
-router.put("/:id", auth, async (req, res) => {
+router.put("/:id", auth, isOwner, async (req, res) => {
   try {
     const invoice = await Invoice.findById(req.params.id);
 
@@ -334,7 +323,7 @@ router.put("/:id", auth, async (req, res) => {
       const targetSale = await Sale.findById(updated.sale);
 
       // Generar/actualizar la factura cierra la venta y refresca el estatus del cliente
-      await closeSaleForInvoice(targetSale);
+      await closeSale(targetSale);
 
       if (updated.pagado && targetSale && !targetSale.paid) {
         targetSale.paid = true;
@@ -343,7 +332,7 @@ router.put("/:id", auth, async (req, res) => {
 
         if (targetSale.opportunityId) {
           const Opportunity = require("../models/Opportunity");
-          await Opportunity.findByIdAndUpdate(targetSale.opportunityId, { stage: "cerrado_ganado" });
+          await Opportunity.findByIdAndUpdate(targetSale.opportunityId, { stage: "cerrado_ganado", closedAt: new Date() });
         }
       }
     }
@@ -364,7 +353,7 @@ router.put("/:id", auth, async (req, res) => {
   }
 });
 
-router.delete("/:id", auth, async (req, res) => {
+router.delete("/:id", auth, isOwner, async (req, res) => {
   try {
     const invoice = await Invoice.findById(req.params.id);
 

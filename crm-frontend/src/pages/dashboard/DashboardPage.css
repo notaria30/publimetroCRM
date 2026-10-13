@@ -135,19 +135,6 @@
 }
 
 /* CHARTS GRID */
-.db-charts-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 16px;
-  margin-bottom: 16px;
-}
-
-@media (max-width: 800px) {
-  .db-charts-grid {
-    grid-template-columns: 1fr;
-  }
-}
-
 /* BILLING */
 .db-billing-rows {
   display: flex;
@@ -212,6 +199,9 @@
 /* BOTTOM STATS */
 .db-bottom-card {
   margin-top: 0;
+}
+.db-bottom-card + .db-bottom-card {
+  margin-top: 16px;
 }
 
 .db-stats-row {

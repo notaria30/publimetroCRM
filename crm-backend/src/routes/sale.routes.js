@@ -8,6 +8,7 @@ const router = express.Router();
 const Counter = require("../models/Counter");
 const Invoice = require("../models/Invoice");
 const { updateClientStatus } = require("../services/clientStatus.service");
+const { closeSale, createCampaignForSale } = require("../services/saleLifecycle.service");
 
 // NOTA: La creación de una venta a partir de cero o de cotización directamente 
 // ha sido reemplazada por el flujo de Opportunidades (POST /api/opportunities/:id/convert-to-sale).
@@ -170,12 +171,9 @@ router.put("/:id/close", auth, async (req, res) => {
       }
     }
 
-    sale.executionStage = "testigos_enviados"; // Etapa final de la ejecución
-    sale.isClosed = true;
-    sale.closedAt = new Date();
-    await sale.save();
-    // Evaluar estatus del cliente con la regla de los 90 días
-    await updateClientStatus(sale.client);
+    // Cierre comercial: no modifica la etapa de ejecución (executionStage),
+    // que sigue su propio avance. Igual que al facturar.
+    await closeSale(sale);
 
     res.json({
       message: "Venta cerrada correctamente",
@@ -305,6 +303,9 @@ router.post("/from-quote/:quoteId", auth, canConvertToSale, async (req, res) => 
 
     // Evaluar estatus del cliente con la regla de los 90 días
     await updateClientStatus(quote.client);
+
+    // Generar la campaña de la venta a partir de la cotización
+    await createCampaignForSale(newSale, req.user._id);
 
     res.status(201).json({
       message: "Venta creada correctamente desde cotización.",

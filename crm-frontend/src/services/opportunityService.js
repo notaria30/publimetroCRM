@@ -12,8 +12,9 @@ export const createOpportunity = (data) => {
   return api.post("/opportunities", data);
 };
 
-export const updateOpportunityStage = (id, stage) => {
-  return api.patch(`/opportunities/${id}/stage`, { stage });
+// extra: { motivoPerdida, comentarioPerdida } al cerrar como perdida
+export const updateOpportunityStage = (id, stage, extra = {}) => {
+  return api.patch(`/opportunities/${id}/stage`, { stage, ...extra });
 };
 
 export const convertOpportunityToSale = (id) => {

@@ -16,6 +16,19 @@ router.post("/", auth, async (req, res) => {
       return res.status(404).json({ message: "Venta no encontrada" });
     }
 
+    if (req.user.role === "WORKER" && String(saleData.assignedTo) !== String(req.user._id)) {
+      return res.status(403).json({ message: "No puedes crear post-venta para esta venta" });
+    }
+
+    // Una venta tiene un solo registro de post-venta (se crea automáticamente al cerrarla)
+    const existing = await PostSale.findOne({ sale }).select("_id");
+    if (existing) {
+      return res.status(409).json({
+        message: "Esta venta ya tiene un registro de post-venta.",
+        postSaleId: existing._id,
+      });
+    }
+
     const postSale = await PostSale.create({
       sale,
       postSaleStage,

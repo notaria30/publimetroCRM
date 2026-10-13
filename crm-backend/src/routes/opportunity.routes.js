@@ -1,11 +1,13 @@
 const express = require("express");
 const Opportunity = require("../models/Opportunity");
+const { MOTIVOS_PERDIDA } = Opportunity;
 const Client = require("../models/Client");
 const Quote = require("../models/Quote");
 const Sale = require("../models/Sale");
 const Counter = require("../models/Counter");
 const { auth, canConvertToSale } = require("../middlewares/auth.middleware");
 const { updateClientStatus } = require("../services/clientStatus.service");
+const { createCampaignForSale } = require("../services/saleLifecycle.service");
 
 const router = express.Router();
 
@@ -53,7 +55,7 @@ router.get("/:id", auth, async (req, res) => {
 // POST /api/opportunities
 router.post("/", auth, async (req, res) => {
   try {
-    const { title, clientId, assignedToId, estimatedValue, expectedCloseDate } = req.body;
+    const { title, clientId, assignedToId } = req.body;
 
     const assignedId = req.user.role === "OWNER" && assignedToId ? assignedToId : req.user._id;
 
@@ -61,8 +63,6 @@ router.post("/", auth, async (req, res) => {
       title,
       client: clientId,
       vendedorId: assignedId,
-      estimatedValue: estimatedValue || 0,
-      expectedCloseDate: expectedCloseDate || null,
       stage: "prospeccion"
     });
 
@@ -85,13 +85,39 @@ router.patch("/:id/stage", auth, async (req, res) => {
       return res.status(403).json({ message: "No tienes permiso para modificar esta oportunidad" });
     }
 
+    if (["cerrado_ganado", "cerrado_perdido"].includes(opp.stage)) {
+      return res.status(400).json({ message: "Esta oportunidad ya fue finalizada y no puede reabrirse." });
+    }
+
+    // "cerrado_ganado" solo se asigna automáticamente al pagarse la factura de su venta
+    if (stage === "cerrado_ganado") {
+      return res.status(400).json({
+        message: "No puedes mover a Cerrado Ganado manualmente. Avanzará cuando su venta esté facturada y pagada.",
+      });
+    }
+
+    // Propuesta y Negociación existen porque hay algo cotizado
+    if (["propuesta", "negociacion"].includes(stage) && !opp.quotes.length) {
+      return res.status(400).json({
+        message: "Para pasar a Propuesta o Negociación primero crea una cotización desde la oportunidad.",
+      });
+    }
+
+    if (stage === "cerrado_perdido") {
+      if (opp.convertedToSale) {
+        return res.status(400).json({ message: "Esta oportunidad ya tiene una venta; no puede marcarse como perdida." });
+      }
+      const { motivoPerdida, comentarioPerdida } = req.body;
+      if (!MOTIVOS_PERDIDA.includes(motivoPerdida)) {
+        return res.status(400).json({ message: "Indica el motivo por el que se perdió la oportunidad." });
+      }
+      opp.motivoPerdida = motivoPerdida;
+      opp.comentarioPerdida = comentarioPerdida || "";
+      opp.closedAt = new Date();
+    }
+
     opp.stage = stage;
     await opp.save();
-
-    if (stage === "cerrado_ganado") {
-      // Evaluar estatus del cliente con la regla de los 90 días
-      await updateClientStatus(opp.client);
-    }
 
     res.json(opp);
   } catch (error) {
@@ -183,6 +209,9 @@ router.post("/:id/convert-to-sale", auth, canConvertToSale, async (req, res) => 
 
     // Evaluar estatus del cliente con la regla de los 90 días
     await updateClientStatus(opp.client);
+
+    // Generar la campaña de la venta a partir de la cotización aprobada
+    await createCampaignForSale(newSale, req.user._id);
 
     res.status(201).json({
       message: "Venta creada correctamente (Oportunidad en pausa hasta pago)",

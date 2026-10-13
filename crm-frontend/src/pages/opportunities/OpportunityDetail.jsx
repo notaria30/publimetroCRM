@@ -1,14 +1,17 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
-import { ArrowLeft, Trash2 } from "lucide-react";
-import { getOpportunityById, updateOpportunityStage, convertOpportunityToSale, deleteOpportunity } from "../../services/opportunityService";
+import { ArrowLeft, Trash2, Plus } from "lucide-react";
+import {
+  getOpportunityById, updateOpportunityStage, convertOpportunityToSale, deleteOpportunity,
+} from "../../services/opportunityService";
 import { useAuth } from "../../context/AuthContext";
 import { DetailSkeleton } from "../../components/skeletons/DetailSkeleton";
+import { STAGES, STAGE_LABEL, isClosedStage } from "../../constants/opportunity";
+import LostReasonModal from "./LostReasonModal";
 import "../sales/sales.css"; // Reuse sales css for detail page styles
+import "./opportunities.css";
 
-const STAGES = [
-  "prospeccion", "calificacion", "propuesta", "negociacion", "cerrado_ganado", "cerrado_perdido"
-];
+const money = (n) => (n || 0).toLocaleString("es-MX", { style: "currency", currency: "MXN" });
 
 function InfoItem({ label, value }) {
   return (
@@ -28,6 +31,7 @@ export default function OpportunityDetail() {
   const [showConvertModal, setShowConvertModal] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState("");
+  const [showLostModal, setShowLostModal] = useState(false);
 
   const hasApprovedQuote = opp?.quotes?.some(q => q.status === "aprobada" || q.status === "aprobado");
 
@@ -43,12 +47,18 @@ export default function OpportunityDetail() {
       .finally(() => setLoading(false));
   };
 
-  const handleStageChange = async (stage) => {
+  const handleStageChange = async (stage, extra) => {
+    if (stage === "cerrado_perdido" && !extra) {
+      setShowLostModal(true);
+      return;
+    }
     try {
-      await updateOpportunityStage(id, stage);
+      await updateOpportunityStage(id, stage, extra);
+      setShowLostModal(false);
       loadOpp();
-    } catch {
-      alert("Error cambiando etapa");
+    } catch (err) {
+      setShowLostModal(false);
+      setShowErrorModal(err.response?.data?.message || "Error cambiando etapa");
     }
   };
 
@@ -93,6 +103,8 @@ export default function OpportunityDetail() {
     />
   );
   if (!opp) return <div>Oportunidad no encontrada</div>;
+
+  const cerrada = isClosedStage(opp.stage) || opp.convertedToSale;
 
   return (
     <div className="sl-page">
@@ -147,8 +159,8 @@ export default function OpportunityDetail() {
           <div className="sl-info-grid">
             <InfoItem label="Cliente" value={opp.client?.nombreComercial} />
             <InfoItem label="Propietario" value={opp.vendedorId?.name} />
-            <InfoItem label="Etapa actual" value={opp.stage.replace(/_/g, " ")} />
-            <InfoItem label="Valor Estimado" value={(opp.estimatedValue || 0).toLocaleString("es-MX", { style: "currency", currency: "MXN" })} />
+            <InfoItem label="Etapa actual" value={STAGE_LABEL[opp.stage]} />
+            <InfoItem label="Valor (última cotización)" value={money(opp.estimatedValue)} />
             <InfoItem label="Creación" value={new Date(opp.createdAt).toLocaleDateString("es-MX")} />
           </div>
           {opp.convertedToSale && (
@@ -173,17 +185,37 @@ export default function OpportunityDetail() {
             </div>
           )}
 
+          {opp.stage === "cerrado_perdido" && (
+            <div className="opp-lost-box">
+              <strong>Perdida:</strong> {opp.motivoPerdida || "Sin motivo registrado"}
+              {opp.comentarioPerdida && <> — {opp.comentarioPerdida}</>}
+            </div>
+          )}
+
           <div style={{ marginTop: 24 }}>
-            <label className="sl-label">Cambiar Etapa Manualmente</label>
-            <select className="sl-select-full" value={opp.stage} onChange={e => handleStageChange(e.target.value)} disabled={opp.stage === "cerrado_ganado"}>
-              {STAGES.map(s => <option key={s} value={s}>{s.replace(/_/g, " ")}</option>)}
+            <label className="sl-label">Cambiar etapa</label>
+            <select className="sl-select-full" value={opp.stage} onChange={e => handleStageChange(e.target.value)} disabled={cerrada}>
+              {STAGES
+                // Cerrado Ganado solo se alcanza al pagarse la venta
+                .filter(s => s.id !== "cerrado_ganado" || opp.stage === "cerrado_ganado")
+                .map(s => <option key={s.id} value={s.id}>{s.label}</option>)}
             </select>
           </div>
         </div>
       </div>
 
       <div className="sl-card">
-        <div className="sl-card-header">Cotizaciones de la oportunidad</div>
+        <div className="sl-card-header" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <span>Cotizaciones de la oportunidad</span>
+          {!cerrada && (
+            <button
+              className="sl-btn-save"
+              onClick={() => navigate(`/quotes/new?opportunityId=${opp._id}`)}
+            >
+              <Plus size={14} /> Crear cotización
+            </button>
+          )}
+        </div>
         <div className="sl-card-body">
           {!opp.quotes?.length ? (
             <p style={{ color: "var(--txt-muted)", margin: 0 }}>No hay cotizaciones para esta oportunidad.</p>
@@ -262,6 +294,14 @@ export default function OpportunityDetail() {
             </div>
           </div>
         </div>
+      )}
+
+      {showLostModal && (
+        <LostReasonModal
+          opportunityTitle={opp.title}
+          onCancel={() => setShowLostModal(false)}
+          onConfirm={(extra) => handleStageChange("cerrado_perdido", extra)}
+        />
       )}
 
       {showErrorModal && (

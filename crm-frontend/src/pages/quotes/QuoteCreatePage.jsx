@@ -6,7 +6,7 @@ import { ArrowLeft } from "lucide-react";
 import "./quotes.css";
 
 function Toast({ msg, type, onClose }) {
-  useEffect(() => { const t = setTimeout(onClose, 2500); return () => clearTimeout(t); }, [onClose]);
+  useEffect(() => { const t = setTimeout(onClose, type === "error" ? 6000 : 2500); return () => clearTimeout(t); }, [onClose, type]);
   return <div className={`qt-toast qt-toast--${type}`}>{msg}</div>;
 }
 
@@ -19,8 +19,8 @@ export default function QuoteCreatePage() {
       const res = await createQuote(payload);
       setToast({ msg: "Cotización creada correctamente", type: "success" });
       setTimeout(() => navigate(`/quotes/${res.data.quote._id}`), 1200);
-    } catch {
-      setToast({ msg: "Error creando cotización", type: "error" });
+    } catch (err) {
+      setToast({ msg: err.response?.data?.message || "Error creando cotización", type: "error" });
     }
   };
 

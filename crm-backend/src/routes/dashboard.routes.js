@@ -31,7 +31,11 @@ router.get("/overview", auth, async (req, res) => {
       totalCotizaciones,
     ] = await Promise.all([
       Client.countDocuments(clienteFiltro),
-      Opportunity.countDocuments({ ...ventaFiltro, stage: "cerrado_ganado" }),
+      // Las oportunidades se asignan por vendedorId (no assignedTo)
+      Opportunity.countDocuments({
+        stage: "cerrado_ganado",
+        ...(req.user.role === "WORKER" ? { vendedorId: req.user._id } : {}),
+      }),
       Invoice.aggregate([
         { $match: { pagado: true, ...facturaFiltro } },
         { $group: { _id: null, total: { $sum: "$importeConIVA" } } },
@@ -56,29 +60,21 @@ router.get("/overview", auth, async (req, res) => {
 });
 
 
-// Pipeline de oportunidades (conteo por etapa)
+// Resultados del mes: oportunidades ganadas y perdidas
 router.get("/pipeline", auth, async (req, res) => {
   try {
-    const etapas = ["prospeccion", "calificacion", "propuesta", "negociacion"]; // No contamos los cerrados aquí
     const vendedorFiltro = req.user.role === "WORKER" ? { vendedorId: req.user._id } : {};
 
-    const [conteos, cierre] = await Promise.all([
-      Promise.all(etapas.map((etapa) =>
-        Opportunity.countDocuments({ stage: etapa, ...vendedorFiltro })
-      )),
-      Opportunity.countDocuments({ stage: "cerrado_ganado", ...vendedorFiltro }),
+    const now = new Date();
+    const inicioMes = new Date(now.getFullYear(), now.getMonth(), 1);
+    const delMes = { closedAt: { $gte: inicioMes }, ...vendedorFiltro };
+
+    const [ganadasMes, perdidasMes] = await Promise.all([
+      Opportunity.countDocuments({ stage: "cerrado_ganado", ...delMes }),
+      Opportunity.countDocuments({ stage: "cerrado_perdido", ...delMes }),
     ]);
 
-    const pipelineData = {};
-    etapas.forEach((etapa, i) => { pipelineData[etapa] = conteos[i]; });
-    pipelineData["cierre"] = cierre;
-
-    res.json({
-        prospeccion: pipelineData["prospeccion"] || 0,
-        presentacion: pipelineData["calificacion"] || 0, // mapeo de legado por UI actual
-        propuesta: pipelineData["propuesta"] || 0,
-        cierre: pipelineData["cierre"] || 0,
-    });
+    res.json({ ganadasMes, perdidasMes });
   } catch (error) {
     res.status(500).json({ message: "Error interno" });
   }

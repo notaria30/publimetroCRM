@@ -22,7 +22,7 @@ export default function QuoteEditPage() {
     try {
       await updateQuote(id, payload);
       navigate(`/quotes/${id}`);
-    } catch { alert("Error al guardar la cotización"); }
+    } catch (err) { alert(err.response?.data?.message || "Error al guardar la cotización"); }
   };
 
   if (loading) return <div className="qt-status">Cargando...</div>;

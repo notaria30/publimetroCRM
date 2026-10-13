@@ -127,3 +127,12 @@ body.dark .opp-modal { background: #1e293b; border-color: #334155; }
   margin-bottom: 20px;
 }
 body.dark .opp-modal-header { color: #f1f5f9; }
+
+.opp-lost-box {
+  margin-top: 16px; padding: 12px 16px; border-radius: 8px; font-size: 14px;
+  background: #ef444414; border: 1px solid #ef444444; color: #b91c1c;
+}
+body.dark .opp-lost-box { color: #fca5a5; }
+
+.opp-card-flag { font-size: 11px; font-weight: 600; color: #b45309; margin: -6px 0 10px; }
+.opp-card-flag--lost { color: #b91c1c; }

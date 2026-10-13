@@ -15,27 +15,16 @@ export function LoadingDashboard() {
         ))}
       </div>
 
-      <div className="db-charts-grid">
-        <div className="db-card">
-          <div className="db-skel" style={{ height: 14, width: 140, marginBottom: 16 }} />
-          <div style={{ display: "flex", alignItems: "flex-end", gap: 10, height: 120 }}>
-            {[90, 60, 110, 45].map((h, i) => (
-              <div key={i} className="db-skel db-skel--pulse"
-                style={{ width: 32, height: h, borderRadius: "4px 4px 0 0", animationDelay: `${i * 0.2}s` }} />
-            ))}
-          </div>
-        </div>
-        <div className="db-card">
-          <div className="db-skel" style={{ height: 14, width: 100, marginBottom: 20 }} />
-          <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-            {["#16a34a", "#dc2626", "#2563eb"].map((color, i) => (
-              <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <div style={{ width: 10, height: 10, borderRadius: "50%", background: color, opacity: 0.3, flexShrink: 0 }} />
-                <div className="db-skel" style={{ height: 12, flex: 1 }} />
-                <div className="db-skel" style={{ height: 16, width: 80 }} />
-              </div>
-            ))}
-          </div>
+      <div className="db-card">
+        <div className="db-skel" style={{ height: 14, width: 100, marginBottom: 20 }} />
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          {["#16a34a", "#dc2626", "#2563eb"].map((color, i) => (
+            <div key={i} style={{ display: "flex", alignItems: "center", gap: 10 }}>
+              <div style={{ width: 10, height: 10, borderRadius: "50%", background: color, opacity: 0.3, flexShrink: 0 }} />
+              <div className="db-skel" style={{ height: 12, flex: 1 }} />
+              <div className="db-skel" style={{ height: 16, width: 80 }} />
+            </div>
+          ))}
         </div>
       </div>
 

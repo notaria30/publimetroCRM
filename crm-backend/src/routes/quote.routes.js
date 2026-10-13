@@ -1,6 +1,7 @@
 // src/routes/quote.routes.js
 const express = require("express");
 const Quote = require("../models/Quote");
+const Opportunity = require("../models/Opportunity");
 const { auth } = require("../middlewares/auth.middleware");
 const puppeteer = require("puppeteer");
 const router = express.Router();
@@ -118,6 +119,44 @@ function normalizeQuoteDates(data) {
   return data;
 }
 
+// Valida que la cotización pueda ligarse a la oportunidad. Devuelve el mensaje
+// de error o null.
+// - No se ligan cotizaciones nuevas a oportunidades cerradas.
+async function validarLigaOportunidad(oppId, quoteId = null) {
+  const opp = await Opportunity.findById(oppId);
+  if (!opp) return "La oportunidad seleccionada no existe.";
+
+  const alreadyLinked = quoteId && opp.quotes.some((q) => String(q) === String(quoteId));
+  if (alreadyLinked) return null;
+
+  if (opp.convertedToSale || ["cerrado_ganado", "cerrado_perdido"].includes(opp.stage)) {
+    return "La oportunidad ya está cerrada; no se le pueden ligar más cotizaciones.";
+  }
+  return null;
+}
+
+// Liga la cotización a su oportunidad y ajusta etapa/valor estimado.
+// - Una oportunidad cerrada (ganada/perdida) o ya convertida a venta no se toca.
+// - La etapa solo avanza cuando la cotización se liga por primera vez:
+//   1ª cotización → "propuesta", siguientes → "negociacion".
+async function syncOpportunityWithQuote(oppId, quote) {
+  const opp = await Opportunity.findById(oppId);
+  if (!opp) return;
+
+  const isClosed =
+    opp.convertedToSale || ["cerrado_ganado", "cerrado_perdido"].includes(opp.stage);
+  if (isClosed) return;
+
+  const update = { estimatedValue: quote.total || 0 };
+  const alreadyLinked = opp.quotes.some((q) => String(q) === String(quote._id));
+  if (!alreadyLinked) {
+    update.$addToSet = { quotes: quote._id };
+    update.stage = opp.quotes.length === 0 ? "propuesta" : "negociacion";
+  }
+
+  await Opportunity.findByIdAndUpdate(oppId, update);
+}
+
 // Crear cotización
 router.post("/", auth, async (req, res) => {
   try {
@@ -126,25 +165,18 @@ router.post("/", auth, async (req, res) => {
     normalizeActivaciones(data);
     normalizeQuoteDates(data);
 
+    if (data.opportunityId) {
+      const error = await validarLigaOportunidad(data.opportunityId);
+      if (error) return res.status(400).json({ message: error });
+    }
+
     // Asignar usuario creador
     data.createdBy = req.user._id;
 
     const quote = await Quote.create(data);
 
     if (data.opportunityId) {
-      const oppId = data.opportunityId;
-      const Opportunity = require("../models/Opportunity");
-      const opp = await Opportunity.findById(oppId);
-      if (opp) {
-        // If it's the very first quote, switch to 'propuesta'. Else 'negociacion'.
-        const newStage = opp.quotes.length === 0 ? "propuesta" : "negociacion";
-        
-        await Opportunity.findByIdAndUpdate(oppId, {
-          $addToSet: { quotes: quote._id },
-          stage: newStage,
-          estimatedValue: quote.total || 0
-        });
-      }
+      await syncOpportunityWithQuote(data.opportunityId, quote);
     }
 
     res.status(201).json({
@@ -239,6 +271,11 @@ router.put("/:id", auth, async (req, res) => {
     // Copia los datos que vienen del body
     const updateData = { ...req.body };
 
+    if (updateData.opportunityId) {
+      const error = await validarLigaOportunidad(updateData.opportunityId, quote._id);
+      if (error) return res.status(400).json({ message: error });
+    }
+
     normalizeActivaciones(updateData);
     normalizeQuoteDates(updateData);
 
@@ -255,11 +292,7 @@ router.put("/:id", auth, async (req, res) => {
     });
 
     if (updateData.opportunityId) {
-      await require("../models/Opportunity").findByIdAndUpdate(updateData.opportunityId, { 
-        $addToSet: { quotes: updatedQuote._id },
-        stage: "negociacion",
-        estimatedValue: updatedQuote.total || 0
-      });
+      await syncOpportunityWithQuote(updateData.opportunityId, updatedQuote);
     }
 
     res.json({

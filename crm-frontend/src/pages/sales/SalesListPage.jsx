@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { getSales } from "../../services/salesService";
+import { useAuth } from "../../context/AuthContext";
 import { Search, Receipt } from "lucide-react";
 import "./sales.css";
 import { TableSkeleton } from "../../components/skeletons/TableSkeleton";
@@ -21,6 +22,7 @@ const PIPELINE_BADGE = {
 
 export default function SalesListPage() {
   const navigate = useNavigate();
+  const { isOwner } = useAuth();
   const [sales, setSales]               = useState([]);
   const [loading, setLoading]           = useState(true);
   const [facturadoFilter, setFacturado] = useState("all");
@@ -119,13 +121,15 @@ if (loading) return (
                   <td>
                     <div className="sl-actions">
                       <Link to={`/sales/${s._id}`} className="sl-btn-outline">Ver</Link>
-                      <button
-                        className="sl-btn-invoice"
-                        onClick={() => navigate(`/invoices/new?saleId=${s._id}`)}
-                        disabled={isFacturado(s)}
-                      >
-                        <Receipt size={12} /> Facturar
-                      </button>
+                      {isOwner && (
+                        <button
+                          className="sl-btn-invoice"
+                          onClick={() => navigate(`/invoices/new?saleId=${s._id}`)}
+                          disabled={isFacturado(s)}
+                        >
+                          <Receipt size={12} /> Facturar
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

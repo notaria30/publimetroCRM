@@ -1,7 +1,7 @@
 import { Bar, LoadingDots } from "./Bar";
 
 const STAGES = [
-  "Prospección", "Calificación", "Propuesta",
+  "Prospección", "Propuesta",
   "Negociación", "Cerrado Ganado", "Cerrado Perdido",
 ];
 
