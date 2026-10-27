@@ -34,13 +34,6 @@ const TIPO_CLIENTE_ABBR = {
 };
 const tipoClienteAbbr = (t) => TIPO_CLIENTE_ABBR[t] || "—";
 
-const TIPO_PERSONA_ABBR = {
-  "Persona física": "P. Física",
-  "Persona moral": "P. Moral",
-  "Sin definir": "Sin definir",
-};
-const tipoPersonaAbbr = (t) => TIPO_PERSONA_ABBR[t] || "—";
-
 const varColor = (v) => (v > 0 ? "#16a34a" : v < 0 ? "#ef4444" : "inherit");
 const varBadge = (v) => (v > 0 ? "sl-badge--success" : v < 0 ? "sl-badge--error" : "sl-badge--gray");
 
@@ -65,11 +58,10 @@ export function ComparativeReport() {
   const dark = useApexTheme();
 
   const [filters, setFilters] = useState({
-    startDate: new Date(new Date().getFullYear(), 0, 1).toISOString(),
+    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(),
     endDate: new Date().toISOString(),
     clientId: "all",
     tipoCliente: "all",
-    tipoPersona: "all",
     tipoVenta: "all",
     pagado: "all",
   });
@@ -134,7 +126,6 @@ export function ComparativeReport() {
     exportToExcel(data.map((row) => ({
       "Tipo de venta": cap(row.tipoVenta),
       "Tipo de cliente": tipoClienteAbbr(row.tipoCliente),
-      "Tipo de persona": tipoPersonaAbbr(row.tipoPersona),
       "Cliente": row.cliente,
       "Cotización": row.cotizacion ?? "",
       "Factura": row.factura ?? "",
@@ -186,16 +177,6 @@ export function ComparativeReport() {
               <option value="corporativo">COR</option>
               <option value="iniciativa privada">IP</option>
               <option value="gobierno">GOB</option>
-            </select>
-          </div>
-          <div className="rp-filter-group rp-filter-group--sm">
-            <label className="sl-label">Tipo de persona</label>
-            <select className="sl-select-full" value={filters.tipoPersona}
-              onChange={(e) => setFilters({ ...filters, tipoPersona: e.target.value })}>
-              <option value="all">Todos</option>
-              <option value="Persona física">Persona física</option>
-              <option value="Persona moral">Persona moral</option>
-              <option value="Sin definir">Sin definir</option>
             </select>
           </div>
           <div className="rp-filter-group rp-filter-group--sm">
@@ -281,7 +262,6 @@ export function ComparativeReport() {
                 <tr>
                   <th>Tipo de venta</th>
                   <th>Tipo de cliente</th>
-                  <th>Tipo de persona</th>
                   <th>Cliente</th>
                   <th style={{ textAlign: "center" }}>Cotización</th>
                   <th style={{ textAlign: "center" }}>Factura</th>
@@ -303,7 +283,6 @@ export function ComparativeReport() {
                       </span>
                     </td>
                     <td>{tipoClienteAbbr(r.tipoCliente)}</td>
-                    <td>{tipoPersonaAbbr(r.tipoPersona)}</td>
                     <td>{r.cliente}</td>
                     <td style={{ textAlign: "center" }}>{r.cotizacion ?? "—"}</td>
                     <td style={{ textAlign: "center" }}>{r.factura ?? "—"}</td>
@@ -327,7 +306,7 @@ export function ComparativeReport() {
               </tbody>
               <tfoot>
                 <tr style={{ fontWeight: 700 }}>
-                  <td colSpan={7} style={{ textAlign: "right", padding: "12px 16px" }}>Totales</td>
+                  <td colSpan={6} style={{ textAlign: "right", padding: "12px 16px" }}>Totales</td>
                   <td style={{ textAlign: "right", padding: "12px 16px" }}>{fmtMoney2(totales.importeBase)}</td>
                   <td style={{ textAlign: "right", padding: "12px 16px" }}>{fmtMoney2(totales.importeFinal)}</td>
                   <td style={{ textAlign: "right", padding: "12px 16px", color: varColor(totales.variacionMonto) }}>

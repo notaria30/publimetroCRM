@@ -8,8 +8,11 @@ const SalesGoal = require("../models/SalesGoal");
 const User = require("../models/User");
 const Quote = require("../models/Quote");
 
-async function getFinancialEvents({ startDate, endDate, clientId, executiveId, tipoCliente, tipoPersona, tipoVenta, statusPago }) {
+async function getFinancialEvents({ startDate, endDate, clientId, executiveId, tipoCliente, tipoPersona, tipoVenta, statusPago, requestingUser }) {
   const events = [];
+  // Un usuario WORKER solo puede ver sus propias ventas, sin importar lo
+  // que se le pida por query string.
+  const isWorker = requestingUser?.role === "WORKER";
 
   // 1. FACTURADAS (Efectivo)
   if (!tipoVenta || tipoVenta === "all" || tipoVenta === "facturada") {
@@ -18,6 +21,7 @@ async function getFinancialEvents({ startDate, endDate, clientId, executiveId, t
     if (endDate) invFilter.fechaFactura = { ...invFilter.fechaFactura, $lte: new Date(endDate) };
     if (statusPago === "pagadas") invFilter.pagado = true;
     if (statusPago === "pendiente") invFilter.pagado = false;
+    if (isWorker) invFilter.createdBy = requestingUser._id;
 
     let invoices = await Invoice.find(invFilter)
       .populate("client", "nombreComercial razonSocial tipoCliente tipoPersona")
@@ -71,6 +75,7 @@ async function getFinancialEvents({ startDate, endDate, clientId, executiveId, t
         "intercambio.activo": true,
         "intercambio.porcentajeEspecie": { $gt: 0 },
       };
+      if (isWorker) quoteFilter.createdBy = requestingUser._id;
 
       if (startDate) quoteFilter.approvedAt = { $gte: new Date(startDate) };
       if (endDate) quoteFilter.approvedAt = { ...quoteFilter.approvedAt, $lte: new Date(endDate) };
@@ -136,7 +141,7 @@ router.get("/sales-monthly", auth, async (req, res) => {
     if (pagado === "all" && req.query.statusPago === "pagadas") pagado = "si";
     if (pagado === "all" && req.query.statusPago === "pendiente") pagado = "no";
 
-    let events = await getFinancialEvents({ startDate, endDate, clientId, tipoCliente, tipoPersona, tipoVenta });
+    let events = await getFinancialEvents({ startDate, endDate, clientId, tipoCliente, tipoPersona, tipoVenta, requestingUser: req.user });
 
     if (pagado === "si") events = events.filter((e) => e.paid);
     else if (pagado === "no") events = events.filter((e) => !e.paid);
@@ -237,7 +242,9 @@ router.get("/sales-monthly", auth, async (req, res) => {
 // ============================================
 router.get("/executive", auth, async (req, res) => {
   try {
-    const { startDate, endDate, clientId, executiveId, tipoVenta } = req.query;
+    const { startDate, endDate, clientId, tipoVenta } = req.query;
+    // Un WORKER solo puede ver su propio desempeño como ejecutivo.
+    const executiveId = req.user.role === "WORKER" ? String(req.user._id) : req.query.executiveId;
     // Segundo filtro de fecha: por fecha de pago (opcional, independiente)
     const { startDatePago, endDatePago } = req.query;
     // Filtro "Pagado": all | si | no
@@ -245,7 +252,7 @@ router.get("/executive", auth, async (req, res) => {
     if (pagado === "all" && req.query.statusPago === "pagadas") pagado = "si";
     if (pagado === "all" && req.query.statusPago === "pendiente") pagado = "no";
 
-    let events = await getFinancialEvents({ startDate, endDate, clientId, executiveId, tipoVenta });
+    let events = await getFinancialEvents({ startDate, endDate, clientId, executiveId, tipoVenta, requestingUser: req.user });
 
     if (pagado === "si") events = events.filter((e) => e.paid);
     else if (pagado === "no") events = events.filter((e) => !e.paid);
@@ -375,7 +382,7 @@ router.get("/comparative", auth, async (req, res) => {
     if (pagado === "all" && req.query.statusPago === "pagadas") pagado = "si";
     if (pagado === "all" && req.query.statusPago === "pendiente") pagado = "no";
 
-    let events = await getFinancialEvents({ startDate, endDate, clientId, tipoCliente, tipoPersona, tipoVenta });
+    let events = await getFinancialEvents({ startDate, endDate, clientId, tipoCliente, tipoPersona, tipoVenta, requestingUser: req.user });
 
     if (pagado === "si") events = events.filter((e) => e.paid);
     else if (pagado === "no") events = events.filter((e) => !e.paid);
@@ -439,7 +446,10 @@ router.get("/advertising", auth, async (req, res) => {
     // (la fecha de la orden/factura). El equipo de formación necesita
     // filtrar por esa fecha real, así que aquí NO se filtra por fechaFactura:
     // se trae todo y se filtra fila por fila, ya expandido, más abajo.
-    let invoices = await Invoice.find({})
+    const invoiceFiltro = {};
+    if (req.user.role === "WORKER") invoiceFiltro.createdBy = req.user._id;
+
+    let invoices = await Invoice.find(invoiceFiltro)
       .populate("client", "nombreComercial tipoCliente")
       .populate("quote", "tarifas desarrolloInformativo cortesias intercambio")
       .lean();
@@ -537,7 +547,7 @@ router.get("/advertising", auth, async (req, res) => {
       );
     }
 
-    filtered.sort((a, b) => b.fechaDate - a.fechaDate);
+    filtered.sort((a, b) => a.fechaDate - b.fechaDate);
 
     const data = filtered.map(({ fechaDate, ...row }) => row);
 
@@ -556,12 +566,20 @@ router.get("/active-clients", auth, async (req, res) => {
     const ninetyDaysAgo = new Date();
     ninetyDaysAgo.setDate(ninetyDaysAgo.getDate() - 90);
 
+    // Un WORKER solo puede ver sus propios clientes y facturas.
+    const clientFiltro = {};
+    const invoiceFiltro = { fechaFactura: { $gte: ninetyDaysAgo } };
+    if (req.user.role === "WORKER") {
+      clientFiltro.assignedTo = req.user._id;
+      invoiceFiltro.createdBy = req.user._id;
+    }
+
     // Obtener facturas recientes y clientes en paralelo (consultas independientes)
     const [invoices, allClients] = await Promise.all([
-      Invoice.find({ fechaFactura: { $gte: ninetyDaysAgo } })
+      Invoice.find(invoiceFiltro)
         .populate("client", "nombreComercial tipoCliente tipoPersona rfc")
         .lean(),
-      Client.find({}, "nombreComercial tipoCliente tipoPersona rfc").lean(),
+      Client.find(clientFiltro, "nombreComercial tipoCliente tipoPersona rfc").lean(),
     ]);
 
     // Agrupar por cliente
@@ -648,7 +666,9 @@ router.get("/active-clients", auth, async (req, res) => {
 // ============================================
 router.get("/clients", auth, async (req, res) => {
   try {
-    const clients = await Client.find({}, "nombreComercial razonSocial tipoCliente").sort({ razonSocial: 1 });
+    const filtro = {};
+    if (req.user.role === "WORKER") filtro.assignedTo = req.user._id;
+    const clients = await Client.find(filtro, "nombreComercial razonSocial tipoCliente").sort({ razonSocial: 1 });
     res.json(clients);
   } catch (error) {
     console.error(error);
@@ -661,7 +681,10 @@ router.get("/clients", auth, async (req, res) => {
 // ============================================
 router.get("/executives", auth, async (req, res) => {
   try {
-    const executives = await User.find({ role: { $in: ["WORKER", "OWNER"] } }, "name email role");
+    const filtro = req.user.role === "WORKER"
+      ? { _id: req.user._id }
+      : { role: { $in: ["WORKER", "OWNER"] } };
+    const executives = await User.find(filtro, "name email role");
     res.json(executives);
   } catch (error) {
     console.error(error);

@@ -82,7 +82,7 @@ export default function QuoteTarifasSection({
           style={{ padding: "4px 12px", fontSize: 13 }}
           onClick={addTarifa}
         >
-          <Plus size={14} /> Agregar tarifa
+          <Plus size={14} /> Agregar Linea
         </button>
       </div>
 

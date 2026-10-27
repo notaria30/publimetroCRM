@@ -199,8 +199,51 @@ export default function QuoteDetailPage() {
           <button className="qt-btn-danger" type="button" onClick={() => setConfirmDelete(true)}>
             <Trash2 size={14} /> Eliminar
           </button>
-          {!quote.opportunityId && canConvert && (() => {
+          {canConvert && (() => {
             const isApproved = quote.status === "aprobada";
+            const sale = quote.sale; // venta generada directamente desde ESTA cotización
+            const opportunity = quote.opportunityId; // objeto poblado o null
+            const oppSoldElsewhere = !!opportunity?.convertedToSale && !sale;
+
+            // 1) Ya existe una venta ligada a esta cotización (o a su oportunidad)
+            if (sale || oppSoldElsewhere) {
+              const saleId = sale?._id || opportunity?.saleId;
+              const linkTo = saleId ? `/sales/${saleId}` : `/opportunities/${opportunity?._id}`;
+              return (
+                <Link
+                  to={linkTo}
+                  className="qt-btn-primary"
+                  style={{ background: "#9ca3af", borderColor: "#9ca3af" }}
+                  title="Esta cotización ya fue convertida a venta"
+                >
+                  <ShoppingCart size={14} /> Ya convertida a venta
+                </Link>
+              );
+            }
+
+            // 2) La cotización pertenece a una oportunidad: la conversión se hace desde ahí
+            if (opportunity) {
+              return (
+                <Link
+                  to={isApproved ? `/opportunities/${opportunity._id}` : "#"}
+                  className="qt-btn-primary"
+                  title={isApproved
+                    ? "Esta cotización pertenece a una oportunidad; la conversión se hace desde ahí"
+                    : "La cotización debe estar aprobada para convertirla a venta"}
+                  style={{
+                    background: isApproved ? "#8b5cf6" : "#9ca3af",
+                    borderColor: isApproved ? "#8b5cf6" : "#9ca3af",
+                    cursor: isApproved ? "pointer" : "not-allowed",
+                    opacity: isApproved ? 1 : 0.7,
+                    pointerEvents: isApproved ? "auto" : "none",
+                  }}
+                >
+                  <ShoppingCart size={14} /> Convertir a Venta
+                </Link>
+              );
+            }
+
+            // 3) Cotización independiente (sin oportunidad): flujo directo
             return (
               <button
                 className="qt-btn-primary"

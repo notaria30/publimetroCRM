@@ -36,7 +36,7 @@ export default function ExecutiveReport() {
   const [hasSearched, setHasSearched] = useState(false);
   const dark = useApexTheme();
   const [filters, setFilters] = useState({
-    startDate: new Date(new Date().getFullYear(), 0, 1).toISOString(),
+    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(),
     endDate: new Date().toISOString(),
     startDatePago: "",
     endDatePago: "",

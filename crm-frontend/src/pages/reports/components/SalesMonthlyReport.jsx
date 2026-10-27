@@ -36,13 +36,6 @@ const TIPO_CLIENTE_ABBR = {
 };
 const tipoClienteAbbr = (t) => TIPO_CLIENTE_ABBR[t] || "—";
 
-const TIPO_PERSONA_ABBR = {
-  "Persona física": "P. Física",
-  "Persona moral": "P. Moral",
-  "Sin definir": "Sin definir",
-};
-const tipoPersonaAbbr = (t) => TIPO_PERSONA_ABBR[t] || "—";
-
 const cumplColor = (p) =>
   p >= 100 ? "sl-badge--success" : p >= 80 ? "sl-badge--warning" : "sl-badge--error";
 
@@ -68,11 +61,10 @@ export default function SalesMonthlyReport() {
   const [clients, setClients] = useState([]);
   const [hasSearched, setHasSearched] = useState(false);
   const [filters, setFilters] = useState({
-    startDate: new Date(new Date().getFullYear(), 0, 1).toISOString(),
+    startDate: new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString(),
     endDate: new Date().toISOString(),
     clientId: "all",
     tipoCliente: "all",
-    tipoPersona: "all",
     pagado: "all",
     tipoVenta: "all",
   });
@@ -266,7 +258,6 @@ export default function SalesMonthlyReport() {
     exportToExcel(detalle.map((r) => ({
       "Tipo de venta": cap(r.tipoVenta),
       "Tipo de cliente": tipoClienteAbbr(r.tipoCliente),
-      "Tipo de persona": tipoPersonaAbbr(r.tipoPersona),
       "Cliente": r.cliente,
       "Cotización": r.cotizacion ?? "",
       "Factura": r.factura ?? "",
@@ -315,16 +306,6 @@ export default function SalesMonthlyReport() {
               <option value="corporativo">COR</option>
               <option value="iniciativa privada">IP</option>
               <option value="gobierno">GOB</option>
-            </select>
-          </div>
-          <div className="rp-filter-group rp-filter-group--sm">
-            <label className="sl-label">Tipo de persona</label>
-            <select className="sl-select-full" value={filters.tipoPersona}
-              onChange={(e) => setFilters({ ...filters, tipoPersona: e.target.value })}>
-              <option value="all">Todos</option>
-              <option value="Persona física">Persona física</option>
-              <option value="Persona moral">Persona moral</option>
-              <option value="Sin definir">Sin definir</option>
             </select>
           </div>
           <div className="rp-filter-group rp-filter-group--sm">
@@ -488,7 +469,6 @@ export default function SalesMonthlyReport() {
                 <tr>
                   <th>Tipo de venta</th>
                   <th>Tipo de cliente</th>
-                  <th>Tipo de persona</th>
                   <th>Cliente</th>
                   <th style={{ textAlign: "center" }}>Cotización</th>
                   <th style={{ textAlign: "center" }}>Factura</th>
@@ -500,7 +480,7 @@ export default function SalesMonthlyReport() {
               </thead>
               <tbody>
                 {detalle.length === 0 ? (
-                  <tr><td colSpan={10} className="sl-empty">No hay ventas para los filtros seleccionados</td></tr>
+                  <tr><td colSpan={9} className="sl-empty">No hay ventas para los filtros seleccionados</td></tr>
                 ) : (
                   detalle.map((r, i) => (
                     <tr key={i}>
@@ -510,7 +490,6 @@ export default function SalesMonthlyReport() {
                         </span>
                       </td>
                       <td>{tipoClienteAbbr(r.tipoCliente)}</td>
-                      <td>{tipoPersonaAbbr(r.tipoPersona)}</td>
                       <td>{r.cliente}</td>
                       <td style={{ textAlign: "center" }}>{r.cotizacion ?? "—"}</td>
                       <td style={{ textAlign: "center" }}>{r.factura ?? "—"}</td>
@@ -527,7 +506,7 @@ export default function SalesMonthlyReport() {
               {detalle.length > 0 && (
                 <tfoot>
                   <tr style={{ fontWeight: 700 }}>
-                    <td colSpan={7} style={{ textAlign: "right", padding: "12px 16px" }}>Totales</td>
+                    <td colSpan={6} style={{ textAlign: "right", padding: "12px 16px" }}>Totales</td>
                     <td style={{ textAlign: "right", padding: "12px 16px" }}>{fmtMoney2(totales.importe)}</td>
                     <td style={{ textAlign: "right", padding: "12px 16px", color: "#15803d" }}>{fmtMoney2(totales.importePago)}</td>
                     <td style={{ padding: "12px 16px" }} />

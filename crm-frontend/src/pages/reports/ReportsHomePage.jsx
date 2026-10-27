@@ -27,7 +27,7 @@ export default function ReportsHomePage() {
 
   return (
     <div className="sl-page">
-      <h1 className="sl-title" style={{ marginBottom: 20 }}>Reportes</h1>
+      <h1 className="sl-title" style={{ marginBottom: 20 }}>Ventas por periodo</h1>
 
       <div className="rp-tabs-wrap">
         <div className="rp-tabs-bar">

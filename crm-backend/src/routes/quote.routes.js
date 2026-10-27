@@ -2,6 +2,7 @@
 const express = require("express");
 const Quote = require("../models/Quote");
 const Opportunity = require("../models/Opportunity");
+const Sale = require("../models/Sale");
 const { auth } = require("../middlewares/auth.middleware");
 const puppeteer = require("puppeteer");
 const router = express.Router();
@@ -217,7 +218,8 @@ router.get("/:id", auth, async (req, res) => {
     const quote = await Quote.findById(req.params.id)
       .populate("client", "nombreComercial razonSocial rfc tipoPersona")
       .populate("createdBy", "name email")
-      .populate("approvedBy", "name email role");
+      .populate("approvedBy", "name email role")
+      .populate("opportunityId", "title stage convertedToSale saleId");
 
     if (!quote) {
       return res.status(404).json({ message: "Cotización no encontrada" });
@@ -242,7 +244,13 @@ router.get("/:id", auth, async (req, res) => {
       quote.activaciones = [quote.activacion];
     }
 
-    res.json(quote);
+    // Estado de conversión a venta: ¿ya existe una venta generada a partir de esta cotización?
+    const sale = await Sale.findOne({ quote: quote._id }).select("_id folio");
+
+    const quoteData = quote.toObject();
+    quoteData.sale = sale ? { _id: sale._id, folio: sale.folio } : null;
+
+    res.json(quoteData);
   } catch (error) {
     console.error("Error al obtener cotización:", error);
     res.status(500).json({ message: "Error interno del servidor" });
